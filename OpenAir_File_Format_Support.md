@@ -4,7 +4,7 @@ description: SeeYou OpenAir specification with Naviter extensions, Copyright © 
 date: 2024-04-04
 ---
 
-# SeeYou OpenAir file format support
+# SeeYou OpenAir file format
 
 *Version 1.0, Copyright © 2024, Naviter d.o.o. All Rights Reserved*
 
@@ -26,7 +26,7 @@ Geographic coordinates can be represented in two formats:
 
 1. **Degrees, Minutes and Seconds (DMS) format:** `DD:MM:SS[N|S]` for latitude and `DDD:MM:SS[E|W]` for longitude.
    Example: `108:26:46W`
-2. **Degrees and Decimal Minutes (DDM) format:**  `DD:MM.mmm[N|S]` for latitude and `DDD:MM.mmm[E|W]` for lognitude.
+2. **Degrees and Decimal Minutes (DDM) format:**  `DD:MM.mmm[N|S]` for latitude and `DDD:MM.mmm[E|W]` for longitude.
    Example: `45:15.531N`
 
 Use a consistant format for each command or data point, either DMS  `45:40:30N 014:18:20E` or DDM `45:40.500N 014:18.333E`.
@@ -37,12 +37,12 @@ Altitude is specified in feet `ft` (recommended) or in meters `m`. Example: `300
 
 ### Distance
 
-Distance is measured in nautical miles `nm` and is implied, meaning it is specified <u>without a unit.</u>  This applies to definitions such as radii, widths and segmens, see: [DA](#da:-define-an-arc-between-start-and-end-bearing), [DB](#db:-define-an-arc-between-start-and-end-point), [DY](#dy:-define-an-airway-segment), or [V](#v:-variable-assignment) for more.
+Distance is measured in nautical miles `nm` and is implied, meaning it is specified <u>without a unit.</u>  This applies to definitions such as radii, widths and segments, see: [DA](#da:-define-an-arc-between-start-and-end-bearing), [DB](#db:-define-an-arc-between-start-and-end-point), [DY](#dy:-define-an-airway-segment), or [V](#v:-variable-assignment) for more.
 
 
 ## Airspace Definition
 
-An airspace definition consists of a series of commands grouped into a block starting with `AC` and the rest of the 'A' commands. This is followed by the geometric definiton of the airpsace, which utilazes commands starting with `D` and/or `V`
+An airspace definition consists of a series of commands grouped into a block starting with `AC` and the rest of the 'A' commands. This is followed by the geometric definiton of the airpsace, which utilizes commands starting with `D` and/or `V`
 
 > [!IMPORTANT]
 > Each individual airspace definition must begin with the `AC` command.
@@ -56,7 +56,6 @@ Commands beginning with `A` and define general attributes of an airspace.
 Specifies airspace class exclusively. The use is refined from the original format, where it was used more broadly.
 
 Format:
-
 ```
 AC Class
 ```
@@ -73,24 +72,32 @@ Class Options:
 | F     | Class F Airspace |
 | G     | Class G Airspace |
 
+Example:
+```
+AC D
+```
+
 #### AN: Airspace Name
 
 Defines the airspace's name.
 
 Format:
-
 ```
 AN Name
 ```
 
 Here `Name` is the designated name for the airspace. For example `CTR Muenchen`. Any UTF-8 character is allowed, but to avoid issues with some older systems that might not display special characters correctly, it's better to use simpler versions (for example, change `ü` to `ue`).
 
+Example:
+```
+AN ED-R6 Brokdorf H24
+```
+
 #### AY: Airspace Type
 
-*Optional.*  Identifies the type of airspace or a special-use airspace.
+*Optional.*  Identifies the type of airspace or a special-use airspace. Typically used immediately after the `AC` command.
 
 Format:
-
 ```
 AY Type
 ```
@@ -112,29 +119,46 @@ The `Type` field accepts various categories or functions of the airspace:
 | TRA  | Temporary Reserved Area            |
 | TMZ  | Transponder Mandatory Zone         |
 
+Example:
+```
+AC E 
+AY RMZ
+```
+
 #### AF: Airspace Frequency
 
 *Optional.* Communication frequency of ATC station or authority overseeing the airspace - used by glider pilots for contanct.
 
 Format:
-
 ```
 AF Frequency
 ```
 
-For example `AF 120.650`
+Example:
+```
+AC E 
+AY RMZ
+AN RMZ ETMN-GLIDER HX 
+AF 123.300
+```
 
 #### AG: Station Name
 
 *Optional.* Name of the controlling station for the specified airspace - a name that a glider pilot would use in a radio call.
 
 Format:
-
 ```
 AG Station Name
 ```
 
-For example `AG Langen Information`
+Example:
+```
+AC E 
+AY RMZ
+AN RMZ ETMN-GLIDER HX 
+AF 123.300
+AG Nordholz Radar
+```
 
 
 ### A: Altitude Definitions
@@ -144,14 +168,17 @@ For example `AG Langen Information`
 Defines the highest boundary (the ceiling) of the airspace, including the altitude's reference point.
 
 Format:
-
 ```
 AH Altitude AltRef
 ```
 
 Altitude references must be `AGL`, `FL`, `STD`, `AMSL` . For an undefined upper limit, use `UNL` without specifying an altitude.
 
-Exmple: `AH 3000ft AMSL` or `AH UNL`.
+Example:
+```
+AH FL145
+AL 1000ft MSL
+```
 
 > [!IMPORTANT]
 > Each airspace must have only one upper altitude limit. Including multiple altitude references creates ambiguity and is considered invalid (e.g., ~~`100m AGL/423m AMSL`~~ is not permitted).
@@ -161,14 +188,18 @@ Exmple: `AH 3000ft AMSL` or `AH UNL`.
 Defines the lowest boundary (the floor) of the airspace, including the altitude's reference point.
 
 Format:
-
 ```
 AL Altitude AltRef
 ```
 
 Altitude references must be `AGL`, `FL`, `STD`, `MSL`. For areas extending to the ground, use `GND`, omitting the altitude.
 
-Exmple: `AL GND`  or `AL 300ft AGL`
+
+Example:
+```
+AH FL145
+AL 1000ft AGL
+```
 
 > [!IMPORTANT]
 > Each airspace must have only one lower altitude limit. Including multiple altitude references creates ambiguity and is considered invalid (e.g., ~~`100m AGL/423m AMSL`~~ is not permitted).
@@ -194,12 +225,28 @@ Geometric definition commands, often used with variable assignemnt `V`, define a
 Polygons vertices are defined by a series of lines that start with `DP`. They are expected to be mapped clockwise and closed - last defined point is the same as the first . This is the recommended for outlining airspace geometry.
 
 Format:
-
 ```
 DP Point
 ```
 
-Example: `DP 45:40:30N 14:18:20E` or `DP 45:40.341N 14:18.100E`
+Example: 
+```
+DP 53:47:06 N 008:21:41 E   
+DP 53:50:58 N 008:55:25 E 
+DP 53:45:08 N 008:57:21 E 
+DP 53:41:10 N 008:23:38 E 
+DP 53:47:06 N 008:21:41 E 
+
+or
+
+DP 53:47.100 N 008:21.700 E   
+DP 53:50.960 N 008:55.825 E 
+DP 53:45.800 N 008:57.211 E 
+DP 53:41.755 N 008:23.890 E 
+DP 53:47.100 N 008:21.700 E 
+```
+> [!IMPORTANT]
+> Do not mix DMS and DDM notations. Stick to one definition throughout the file.
 
 #### DA: Arc between start and end bearing
 
@@ -210,13 +257,11 @@ Example: `DP 45:40:30N 14:18:20E` or `DP 45:40.341N 14:18.100E`
 Defines an arc between two bearings, with its center set by a [V](#v:-variable-assignment) command before. The direction is clockwise by default, but can be altered with `V`.
 
 Format:
-
 ```
 DA Radius, Start Angle, End Angle
 ```
 
 Example:
-
 ```
 V X=39:13:00N 118:13:00W
 DA 10, 270, 290
@@ -248,29 +293,25 @@ DB 39:36:40N 119:46:10W, 39:29:09N, 119:36:10W
 Defines a circular area centered on a point set by a preceding [V](#v:-variable-assignment) command. The radius is given in nautical miles.
 
 Format:
-
 ```
 DC Radius
 ```
 
-Example: `DC 5`
+Example:
+```
+AC Q
+AN PARA Ailertchen EDGA
+AH FL100
+AL GND
+V X=50:35:36 N 007:56:42 E
+DC 2.00
+```
 
-#### DY: Define an airway segment
+#### DY: Airway segment
 
 > [!NOTE]
 >
-> We do not recommend the use of `DY`. Use `DP` instead to define airways more accurately.
-
-Defines a segment of an airway between two points. Each airway should consist of only two points and must not be combined with additional `DY` commands.
-
-Format:
-
-```
-DY Point 1, Point 2
-```
-
-Example: `DY 45:40:30N 014:18:20E`
-
+> Although DY is part of the original WinPilot definition, we advise against using the `DY` type. It doesn't stitch well in a string of airways. Use `DP` instead to define airways more accurately.
 
 ### V: Variable Assignment
 
