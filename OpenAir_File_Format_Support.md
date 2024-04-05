@@ -4,7 +4,7 @@ description: SeeYou OpenAir specification with Naviter extensions, Copyright © 
 date: 2024-04-04
 ---
 
-# SeeYou OpenAir file format
+# SeeYou OpenAir file format support
 
 *Version 1.0, Copyright © 2024, Naviter d.o.o. All Rights Reserved*
 
