@@ -1,12 +1,12 @@
 ---
-title: SeeYou CUP file format description 
-description: SeeYou CUP file format specification file, Copyright © 2018, Naviter d.o.o. All Rights Reserved
-date: 2023-01-06
+title: SeeYou CUP file format 
+description: SeeYou CUP file format specification file, Copyright © 2024, Naviter d.o.o. All Rights Reserved
+date: 2024-05-08
 ---
 
-# SeeYou CUP file format
+# SeeYou CUP File Format
 
-*Copyright © 2023, Naviter d.o.o. All Rights Reserved*
+*Copyright © 2024, Naviter d.o.o. All Rights Reserved*
 
 SeeYou CUP Waypoint format is a simple comma separated text file. The extension is .CUP
 
@@ -17,7 +17,7 @@ It consists of two parts:
 
 The character formatting of the file is `UTF-8` or `Windows-1252` (legacy).
 
-## Format of waypoint records
+## Format of Waypoint Records
 
 Each line represents one waypoint with the fields: Name, Code, Country, Latitude, Longitude,  Elevation, Style, Runway Direction, Runway Length, Runway width, Airport Frequency, Description, User data and Pictures.
 
@@ -198,7 +198,7 @@ key: `pics`
 
 A string field containing the filename(s) of an JPG image stored in `pics/` folder of a seperate `pics.zip` file. See *SeeYou CUPX file format* specification. Multiple filenames must be separated by semicolon `;`  and string must be embraced in double quotes.
 
-## Format of task record
+## Format of Task Record
 
 Tasks part of the CUP file is divided from the Waypoints by including
 
@@ -249,7 +249,7 @@ ObsZone=2,Style=3,R1=2000m,A1=180,Line=1
 
 Options line must start with "Options" keyword.
 
-#### Possible values in Options line
+#### Possible Values in Options Line
 
 - `NoStart`
   Opening of start line
@@ -288,7 +288,7 @@ Options line must start with "Options" keyword.
 - `Bonus`
   Bonus for crossing the finish line Observation zone line must start with "ObsZone" keyword.
 
-#### Possible values in Observation Zone line
+#### Possible Values in Observation Zone Line
 
 - `ObsZone`
   Consecutive number of a waypoint (0 = Start)
@@ -310,7 +310,7 @@ Options line must start with "Options" keyword.
 - `A12`
   Angle 12
 
-### Multiple starts
+### Multiple Starts
 
 A sample line defining multiple task starts:
 `STARTS=Celovec,Hodos,Ratitovec,Jamnik`
