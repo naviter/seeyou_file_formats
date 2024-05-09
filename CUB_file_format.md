@@ -25,6 +25,8 @@ Byte ordering is defined by `PcByteOrder` for integer data, float data is always
 
 Coordinates data is in radians.
 
+Strings should be UTF-8 encoded.
+
 
 | Bytes | Data Type | Name             | Description                                                  |
 | ----- | --------- | ---------------- | ------------------------------------------------------------ |
@@ -149,7 +151,7 @@ If the `SizeOfItem` is smaller than the total size of the `CubItem` structure (4
 
 ### Extra Data
 
-The `Extra Data` field encodes specific NOTAM data when value is not 0 and the last two bits are set to 0. Below is a breakdown of how this data is structured within the field:
+The `Extra Data` field encodes specific NOTAM data when value is not 0 and the highest two bits are set to 0. Below is a breakdown of how this data is structured within the field:
 
 | Bits  | Description                   | Values                                                       |
 | ----- | ----------------------------- | ------------------------------------------------------------ |
@@ -160,7 +162,7 @@ The `Extra Data` field encodes specific NOTAM data when value is not 0 and the l
 | 13-17 | First Letter of NOTAM Action  | Encoded as 1 (A) to 26 (Z)[^fn1]                             |
 | 8-12  | Last Letter of NOTAM Action   | Encoded as 1 (A) to 26 (Z)[^fn1]                             |
 | 4-6   | NOTAM Traffic                 | `0`: Miscelaneous<br />`1`: IFR<br />`2`: VFR<br />`3`: IFR & VFR<br />`4`: Checklist |
-| 0-3   | NOTAM Scope                   | `0`: Unknown<br />`1`: Aerodrome<br />`2`: En-route<br />`3`: Aerodrome and En-route<br />`4`: Nav. Warnig<br />`5`: Aerodrome and Nav Warning, `8`: Checklist |
+| 0-3   | NOTAM Scope                   | `0`: Unknown<br />`1`: Aerodrome<br />`2`: En-route<br />`3`: Aerodrome and En-route<br />`4`: Nav. Warning<br />`5`: Aerodrome and Nav Warning<br />`8`: Checklist |
 
 [^fn1]: Letters are uppercase ASCII characters. They are encoded as integers, where 1 corresponds to 'A' and 26 corresponds to 'Z'.
 
@@ -240,40 +242,33 @@ Flag `0x01`adds a new point relative to the current origin:
 | 2     | INT16 | x    | New point X-coordinate (`originX + x * LoLaScale`) |
 | 2     | INT16 | y    | New point Y-coordinate (`originY + y * LoLaScale`) |
 
-### Add Airspace Name
+### Attribute records
 
-Flag with the 7th bit set to 1 indicates the start of a special block of attribute records.
+Flag with the 7th bit set to 1 indicates the start of a special block of attribute records (flag & 0x40 != 0).
 
+#### Airspace Name
 
-
-the airspace name encoding. The lower 6 bits of the flag represent the length of the name (up to 64 characters).
+The lower 6 bits of the first attribute record flag represent the length of the name (up to 63 characters).
 
 | Bytes | Type  | Name | Description                                                  |
 | ----- | ----- | ---- | ------------------------------------------------------------ |
 | 1     | UINT8 | flag | `0x40 + Length`. For example name of length 20 (`0x14`), would result in in flag `0x54` |
-| 4     |       | name | Airspace name                                                |
+|       |       | name | Airspace name                                                |
 
-### Add Airspace Frequency
+#### Airspace Frequency and Frequency Name
 
-Following the airspace name, the frequency and its associated name are stored:
+Following the airspace name, the frequency and its associated name may be stored (flag & 0xC0 == 0xC0).
 
 | Bytes | Type   | Name | Description        |
 | ----- | ------ | ---- | ------------------ |
-| 1     | UINT8  | flag | 0xC0               |
+| 1     | UINT8  | flag | `0xC0 + Length`. For example name of length 20 (`0x14`), would result in in flag `0xD4` |               |
 | 4     | UINT32 | freq | Airspace frequency |
+|       |        | name | Frequency name     |
 
-### Add Frequency Name
+#### Optional Data
 
-Length of name is encoded in lowest 6 bits. String is located right after the structure.
-
-| Bytes | Type  | Name | Description                                                  |
-| ----- | ----- | ---- | ------------------------------------------------------------ |
-| 1     | UINT8 | flag | `0x40 + Length`. For example name of length 20 (`0x14`), would result in in flag `0x54` |
-| 4     |       | name | Frequency name                                               |
-
-### Optional Data
-
-The last optional part of data is interpreted byte by byte based on the second byte named `CubDataId`, which maps to different types of additional data:
+The last optional part of data is interpreted byte by byte based on the second byte named `CubDataId`, which maps to different types of additional data.
+All the records with flag equal to 0xA0 must be read in a loop (flag == 0xA0).
 
 | Bytes | Type  | Name      | Description                               |
 | ----- | ----- | --------- | ----------------------------------------- |
@@ -283,7 +278,7 @@ The last optional part of data is interpreted byte by byte based on the second b
 | 1     | UINT8 | b2        | Varies based on `CubDataId`               |
 | 1     | UINT8 | b3        | Varies based on `CubDataId`               |
 
-### Data ID Mappings
+#### Data ID Mappings
 
 Different `CubDataId` values indicate specific types of data that follow the `CubPoint` structure:
 
@@ -294,6 +289,8 @@ Different `CubDataId` values indicate specific types of data that follow the `Cu
 | 2     | Exception rules to airspace class | `b2` and `b3` define the length of the subsequent string     |
 | 3     | NOTAM Remarks                     | `b2` and `b3` define the length of the subsequent string     |
 | 4     | NOTAM ID String                   | `b3` indicates the length of the subsequent string           |
-| 5     | NOTAM Insert date and time        | Comprised of `b1`, `b2`, `b3`, and an additional byte after the structure |
+| 5     | NOTAM Insert date and time        | Comprised of `b1`, `b2`, `b3`, and an additional byte after the structure [^fn2] |
 
-When integers are composed from multiple bytes, they are always ordered from highest to lowest byte.
+Integers composed from multiple bytes are ordered from highest to lowest byte, value = ((b1 << 16) + (b2 << 8) + (b3 << 0)).
+
+[^fn2]: Read one more byte (b4) for `NOTAM Insert date and time`, time = (value << 8) + (b4 << 0).
