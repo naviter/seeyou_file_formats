@@ -19,32 +19,32 @@ This format is structured as a binary file comprising three distinct parts: each
 
 ## CubHeader
 
-The ` CubHeader` is the initial segment of the CUB file format, spanning the first 210 bytes. It contains metadata about the file and defines how the data should be interpreted, most notably speciffying the byte offsets for `CubItem` and `CupPoint` segments.
+The `CubHeader` is the initial segment of the CUB file format, spanning the first 210 bytes. It contains metadata about the file and defines how the data should be interpreted, most notably specifying the byte offsets for `CubItem` and `CupPoint` segments.
 
-Byte ordering is defined by `PcByteOrder` for integer data (except where noted), float data is always LE.
+Byte ordering is defined by `PcByteOrder` for integer data (except where noted otherwise), float data is always LE.
 
-Coordinates data is in radians.
+Coordinates data is in radians, positive is N and E.
 
 Strings must be UTF-8 encoded.
 
 
 | Bytes | Data Type | Name             | Description                                                  |
 | ----- | --------- | ---------------- | ------------------------------------------------------------ |
-| 4     | UINT32    | `Ident`          | File Identifier, must be `0x425543C2`, LE                    |
+| 4     | UINT32    | `Ident`          | File Identifier, must be `0x425543C2`, LE.                   |
 | 112   | CHAR[112] | `Title`          | Copyright notice.                                            |
 | 16    | UNIT16[8] | `AllowedSerials` | List of  up to 8 device serial numbers authorized to access the file; set to `0` otherwise. Used only when `IsSecured` equals `2`, LE. |
 | 1     | UNIT8     | `PcByteOrder`    | Byte ordering flag; BE if set to `0`, LE otherwise.          |
-| 1     | UNIT8     | `IsSecured`      | Encryption status for data follwoing the header; `0` for no encryption. |
+| 1     | UNIT8     | `IsSecured`      | Encryption status for data following the header; `0` for no encryption. |
 | 4     | UINT32    | `Crc32`          | Reserved for future use (currently ignored).                 |
-| 16    | UINT8[16] | `Key`            | Encription key, used if `IsSecured`is not `0`                |
+| 16    | UINT8[16] | `Key`            | Encryption key, used if `IsSecured`is not `0`                |
 | 4     | INT32     | `SizeOfItem`     | Size of single `CubItem`.                                    |
 | 4     | INT32     | `SizeOfPoint`    | Size of single `CubPoint`.                                   |
 | 4     | INT32     | `HdrItems`       | Number of `CubItem's` contained in the file.                 |
 | 4     | INT32     | `MaxPts`         | Maximal number of points per `CubItem`.                      |
-| 4     | FLOAT     | `Left`           | Left value of data bounding box.                             |
-| 4     | FLOAT     | `Top`            | Top value of data bounding box.                              |
-| 4     | FLOAT     | `Right`          | Right value of data bounding box.                            |
-| 4     | FLOAT     | `Bottom`         | Bottom value of data bounding box.                           |
+| 4     | FLOAT     | `Left`           | Left value of data bounding box (longitude).                 |
+| 4     | FLOAT     | `Top`            | Top value of data bounding box (latitude).                   |
+| 4     | FLOAT     | `Right`          | Right value of data bounding box (longitude).                |
+| 4     | FLOAT     | `Bottom`         | Bottom value of data bounding box (latitude).                |
 | 4     | FLOAT     | `MaxWidth`       | Maximum width of any `CubItem`.                              |
 | 4     | FLOAT     | `MaxHeight`      | Maximum height of any `CubItem`.                             |
 | 4     | FLOAT     | `LoLaScale`      | Scaling factor used in shape construction.                   |
@@ -230,7 +230,7 @@ Flag `0x81` sets a new origin for subsequent points. Starting origin is `originX
 | 2     | INT16 | x    | Set deltaX to (`x * LoLaScale`)         |
 | 2     | INT16 | y    | Set deltaY to (`y * LoLaScale`)         |
 
-then set the new origin as `originX += x`, `originY += y`
+then set the new origin as `originX += deltaX`, `originY += deltaY`
 
 ### Add a New Point
 
@@ -242,7 +242,7 @@ Flag `0x01`adds a new point relative to the current origin:
 | 2     | INT16 | x    | New point X-coordinate (`originX + x * LoLaScale`) |
 | 2     | INT16 | y    | New point Y-coordinate (`originY + y * LoLaScale`) |
 
-### Attribute records
+### Attribute records sequence
 
 Flag with the 7th bit set to 1 indicates the start of a special block of attribute records (flag & 0x40 != 0).
 
@@ -258,6 +258,7 @@ The lower 6 bits of the first attribute record flag represent the length of the 
 #### Airspace Frequency and Frequency Name
 
 Following the airspace name, the frequency and its associated name may be stored (flag & 0xC0 == 0xC0).
+The lower 6 bits of the flag represent the length of the name (up to 63 characters).
 
 | Bytes | Type   | Name | Description        |
 | ----- | ------ | ---- | ------------------ |
@@ -291,6 +292,6 @@ Different `CubDataId` values indicate specific types of data that follow the `Cu
 | 4     | NOTAM ID String                   | `b3` indicates the length of the subsequent string           |
 | 5     | NOTAM Insert date and time        | Comprised of `b1`, `b2`, `b3`, and an additional byte after the structure [^fn2] |
 
-Integers composed from multiple bytes are ordered from highest to lowest byte, value = ((b1 << 16) + (b2 << 8) + (b3 << 0)).
+Integers composed from multiple bytes are ordered from highest to lowest byte, value = (b1 << 16) + (b2 << 8) + (b3 << 0).
 
 [^fn2]: Read one more byte (b4) for `NOTAM Insert date and time`, time = (value << 8) + (b4 << 0).
