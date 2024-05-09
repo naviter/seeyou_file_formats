@@ -21,11 +21,11 @@ This format is structured as a binary file comprising three distinct parts: each
 
 The ` CubHeader` is the initial segment of the CUB file format, spanning the first 210 bytes. It contains metadata about the file and defines how the data should be interpreted, most notably speciffying the byte offsets for `CubItem` and `CupPoint` segments.
 
-Byte ordering is defined by `PcByteOrder` for integer data, float data is always LE.
+Byte ordering is defined by `PcByteOrder` for integer data (except where noted), float data is always LE.
 
 Coordinates data is in radians.
 
-Strings should be UTF-8 encoded.
+Strings must be UTF-8 encoded.
 
 
 | Bytes | Data Type | Name             | Description                                                  |
