@@ -36,7 +36,7 @@ Strings should be UTF-8 encoded.
 | 1     | UNIT8     | `PcByteOrder`    | Byte ordering flag; BE if set to `0`, LE otherwise.          |
 | 1     | UNIT8     | `IsSecured`      | Encryption status for data follwoing the header; `0` for no encryption. |
 | 4     | UINT32    | `Crc32`          | Reserved for future use (currently ignored).                 |
-| 164   | UINT8[16] | `Key`            | Encription key, used if `IsSecured`is not `0`                |
+| 16    | UINT8[16] | `Key`            | Encription key, used if `IsSecured`is not `0`                |
 | 4     | INT32     | `SizeOfItem`     | Size of single `CubItem`.                                    |
 | 4     | INT32     | `SizeOfPoint`    | Size of single `CubPoint`.                                   |
 | 4     | INT32     | `HdrItems`       | Number of `CubItem's` contained in the file.                 |
