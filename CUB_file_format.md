@@ -21,12 +21,15 @@ This format is structured as a binary file comprising three distinct parts: each
 
 The ` CubHeader` is the initial segment of the CUB file format, spanning the first 210 bytes. It contains metadata about the file and defines how the data should be interpreted, most notably speciffying the byte offsets for `CubItem` and `CupPoint` segments.
 
+Byte ordering is defined by `PcByteOrder` for integer data, float data is always LE.
+Coordinates data is in radians.
+
 | Bytes | Data Type | Name             | Description                                                  |
 | ----- | --------- | ---------------- | ------------------------------------------------------------ |
-| 4     | UINT32    | `Ident`          | File Identifier, must be `0x425543C2`                        |
-| 122   | CHAR[122] | `Title`          | Copyright notice.                                            |
-| 16    | UNIT16[8] | `AllowedSerials` | List of  up to 8 device serial numbers authorized to access the file; set to `0` otherwise. Used only when `IsSecured` equals `2`. |
-| 1     | UNIT8     | `PcByteOrder`    | Byte ordering flag; if set to `0`, multibyte integer values are stored in reverse byte order. |
+| 4     | UINT32    | `Ident`          | File Identifier, must be `0x425543C2`, LE                    |
+| 112   | CHAR[112] | `Title`          | Copyright notice.                                            |
+| 16    | UNIT16[8] | `AllowedSerials` | List of  up to 8 device serial numbers authorized to access the file; set to `0` otherwise. Used only when `IsSecured` equals `2`, LE. |
+| 1     | UNIT8     | `PcByteOrder`    | Byte ordering flag; BE if set to `0`, LE otherwise.          |
 | 1     | UNIT8     | `IsSecured`      | Encryption status for data follwoing the header; `0` for no encryption. |
 | 4     | UINT32    | `Crc32`          | Reserved for future use (currently ignored).                 |
 | 164   | UINT8[16] | `Key`            | Encription key, used if `IsSecured`is not `0`                |
@@ -34,12 +37,12 @@ The ` CubHeader` is the initial segment of the CUB file format, spanning the fir
 | 4     | INT32     | `SizeOfPoint`    | Size of single `CubPoint`.                                   |
 | 4     | INT32     | `HdrItems`       | Number of `CubItem's` contained in the file.                 |
 | 4     | INT32     | `MaxPts`         | Maximal number of points per `CubItem`.                      |
-| 4     | FLOAT     | `Left`           | Left value of data bounding box (in degrees).                |
-| 4     | FLOAT     | `Top`            | Top value of data bounding box (in degrees).                 |
-| 4     | FLOAT     | `Right`          | Right value of data bounding box (in degrees).               |
-| 4     | FLOAT     | `Bottom`         | Bottom value of data bounding box (in degrees).              |
-| 4     | FLOAT     | `MaxWidth`       | Maximum width of any `CubItem` (in radians).                 |
-| 4     | FLOAT     | `MaxHeight`      | Maximum height of any `CubItem` (in m).                      |
+| 4     | FLOAT     | `Left`           | Left value of data bounding box.                             |
+| 4     | FLOAT     | `Top`            | Top value of data bounding box.                              |
+| 4     | FLOAT     | `Right`          | Right value of data bounding box.                            |
+| 4     | FLOAT     | `Bottom`         | Bottom value of data bounding box.                           |
+| 4     | FLOAT     | `MaxWidth`       | Maximum width of any `CubItem`.                              |
+| 4     | FLOAT     | `MaxHeight`      | Maximum height of any `CubItem`.                             |
 | 4     | FLOAT     | `LoLaScale`      | Scaling factor used in shape construction.                   |
 | 4     | INT32     | `HeaderOffset`   | Byte offset to the first `CubItem`.                          |
 | 4     | INT32     | `DataOffset`     | Byte offset to the first `CubPoint`.                         |
@@ -55,10 +58,10 @@ If the `SizeOfItem` is smaller than the total size of the `CubItem` structure (4
 
 | Bytes | Data Type | Name           | Description                                                  |
 | ----- | --------- | -------------- | ------------------------------------------------------------ |
-| 4     | FLOAT     | `Left`         | Left boundary of the item's bounding box (longitude in degrees). |
-| 4     | FLOAT     | `Top`          | Top boundary of the item's bounding box (latitude in degrees). |
-| 4     | FLOAT     | `Right`        | Right boundary of the item's bounding box (longitude in degrees). |
-| 4     | FLOAT     | `Bottom`       | Bottom boundary of the item's bounding box (latitude in degrees). |
+| 4     | FLOAT     | `Left`         | Left boundary of the item's bounding box.                    |
+| 4     | FLOAT     | `Top`          | Top boundary of the item's bounding box.                     |
+| 4     | FLOAT     | `Right`        | Right boundary of the item's bounding box.                   |
+| 4     | FLOAT     | `Bottom`       | Bottom boundary of the item's bounding box.                  |
 | 1     | UINT8     | `Style`        | Airspace type; combines highest bit and lowest 4 bits to form `CubStyle`, bits 5-7 represent `CubClass`. |
 | 1     | UINT8     | `AltStyle`     | Altitude style for `MinAlt` (lowest 4 bits) and `MaxAlt` (highest 4 bits). |
 | 2     | INT16     | `MinAlt`       | Minimum altitude of the airspace (in meters).                |
