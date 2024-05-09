@@ -71,9 +71,9 @@ If the `SizeOfItem` is smaller than the total size of the `CubItem` structure (4
 | 4     | INT32     | `PointsOffset` | Relative byte offset to the first `CubPoint` associated with this airspace from the beginning of the CubPoint's segment. |
 | 4     | INT32     | `TimeOut`      | Timeout for this airspace (not used).                        |
 | 4     | UINT32    | `ExtraData`    | Field reserved for additional data.                          |
-| 8     | UINT64    | `ActiveTime`   | Encoded active time for NOTAMs affecting this airspace.      |
+| 8     | UINT64    | `ActiveTime`   | Encoded active time for NOTAMs affecting this airspace. [^fn0] |
 
-
+[^fn0]: Set to 0x3FFFFFF as default value if not present
 
 ### CubStyle Mappings
 
@@ -149,7 +149,7 @@ If the `SizeOfItem` is smaller than the total size of the `CubItem` structure (4
 
 ### Extra Data
 
-The `Extra Data` field encodes specific NOTAM data when the last two bits are set to 0. Below is a breakdown of how this data is structured within the field:
+The `Extra Data` field encodes specific NOTAM data when value is not 0 and the last two bits are set to 0. Below is a breakdown of how this data is structured within the field:
 
 | Bits  | Description                   | Values                                                       |
 | ----- | ----------------------------- | ------------------------------------------------------------ |
@@ -169,13 +169,14 @@ The `Extra Data` field encodes specific NOTAM data when the last two bits are se
 | Bits  | Description               |
 | ----- | ------------------------- |
 | 63-52 | Days Active Flags.        |
-| 26-51 | Encoded NOTAM Start Date. |
-| 0-25  | Encoded NOTAM End Date.   |
+| 26-51 | Encoded NOTAM Start Date, valid if not 0. |
+| 0-25  | Encoded NOTAM End Date, valid if not 0x3FFFFFF. |
 
 #### Days Active Flags mapping
 
 | Flag Value | Description             |
 | ---------- | ----------------------- |
+| 0x000      | Unknown                 |
 | 0x001      | Sunday                  |
 | 0x002      | Monday                  |
 | 0x004      | Tuesday                 |
@@ -187,7 +188,7 @@ The `Extra Data` field encodes specific NOTAM data when the last two bits are se
 | 0x100      | AUP (Airspace Use Plan) |
 | 0x200      | Irregular               |
 | 0x400      | By NOTAM                |
-| 0x800      | Not Set                 |
+| 0x800      | Reserved                |
 
 #### Unpacking NOTAM Time
 
@@ -213,19 +214,21 @@ years = time+2000;
 
 `CubPoint` encodes information about the shape, name, frequency, and other optional attributes of an airspace. The structure is 5 bytes long, with the first byte serving as a flag that determines how the remaining bytes are interpreted:
 
-| 1st Byte | 2-4th Bytes                    |
+| 1st Byte | 2-5th Bytes                    |
 | -------- | ------------------------------ |
 | Flag     | Values, depending on the flag. |
 
 ### Set a New Origin
 
-Flag `0x81` sets a new origin for subsequent points
+Flag `0x81` sets a new origin for subsequent points. Starting origin is `originX = CubItem.Left`, `originY = CubItem.Bottom`.
 
 | Bytes | Type  | Name | Description                             |
 | ----- | ----- | ---- | --------------------------------------- |
 | 1     | UINT8 | flag | 0x81                                    |
-| 2     | INT16 | x    | Set new origin X-axis (`x * LoLaScale`) |
-| 2     | INT16 | y    | Set new origin Y-axis (`y * LoLaScale`) |
+| 2     | INT16 | x    | Set deltaX to (`x * LoLaScale`)         |
+| 2     | INT16 | y    | Set deltaY to (`y * LoLaScale`)         |
+
+then set the new origin as `originX += x`, `originY += y`
 
 ### Add a New Point
 
@@ -239,7 +242,11 @@ Flag `0x01`adds a new point relative to the current origin:
 
 ### Add Airspace Name
 
-The first `CubPoint` with the 7th bit of the flag set to 1 indicates the start of the airspace name encoding. The lower 6 bits of the flag represent the length of the name (up to 64 characters).
+Flag with the 7th bit set to 1 indicates the start of a special block of attribute records.
+
+
+
+the airspace name encoding. The lower 6 bits of the flag represent the length of the name (up to 64 characters).
 
 | Bytes | Type  | Name | Description                                                  |
 | ----- | ----- | ---- | ------------------------------------------------------------ |
