@@ -22,7 +22,9 @@ This format is structured as a binary file comprising three distinct parts: each
 The ` CubHeader` is the initial segment of the CUB file format, spanning the first 210 bytes. It contains metadata about the file and defines how the data should be interpreted, most notably speciffying the byte offsets for `CubItem` and `CupPoint` segments.
 
 Byte ordering is defined by `PcByteOrder` for integer data, float data is always LE.
+
 Coordinates data is in radians.
+
 
 | Bytes | Data Type | Name             | Description                                                  |
 | ----- | --------- | ---------------- | ------------------------------------------------------------ |
@@ -67,9 +69,49 @@ If the `SizeOfItem` is smaller than the total size of the `CubItem` structure (4
 | 2     | INT16     | `MinAlt`       | Minimum altitude of the airspace (in meters).                |
 | 2     | INT16     | `MaxAlt`       | Maximum altitude of the airspace (in meters).                |
 | 4     | INT32     | `PointsOffset` | Relative byte offset to the first `CubPoint` associated with this airspace from the beginning of the CubPoint's segment. |
-| 4     | INT32     | `TimeOut`      | Timeout for this airspace (if applicable).                   |
+| 4     | INT32     | `TimeOut`      | Timeout for this airspace (not used).                        |
 | 4     | UINT32    | `ExtraData`    | Field reserved for additional data.                          |
 | 8     | UINT64    | `ActiveTime`   | Encoded active time for NOTAMs affecting this airspace.      |
+
+
+
+### CubStyle Mappings
+
+`CubStyle` categorizes the airspace style.
+
+| Value | Description   |
+| ----- | ------------- |
+| 0x00  | Unknown Style |
+| 0x01  | ctr           |
+| 0x02  | rarea         |
+| 0x03  | parea         |
+| 0x04  | darea         |
+| 0x05  | tra           |
+| 0x06  | tma           |
+| 0x07  | tiz           |
+| 0x08  | awy           |
+| 0x09  | cta           |
+| 0x0a  | gliderSec     |
+| 0x0b  | tmz           |
+| 0x0c  | matz          |
+| 0x0d  | rmz           |
+| 0x0f  | notam         |
+| 0x80  | advisoryArea  |
+| 0x81  | airDefIdZone  |
+| 0x82  | flInfoRegion  |
+| 0x83  | delegatedFIR  |
+| 0x84  | trafficInfoArea |
+| 0x85  | specialRulesZone |
+| 0x86  | tempFlightRestriction |
+| 0x87  | aerodromeTrafficZone |
+| 0x88  | flInfoServiceArea |
+| 0x89  | rmz           |
+| 0x8a  | aerialSportAndRecreatArea |
+| 0x8b  | transponderRecommendedZone |
+| 0x8c  | vfrRoute      |
+| 0x8d  | alert         |
+| 0x8e  | tempReserved  |
+| 0x8f  | warning       |
 
 
 
@@ -187,7 +229,7 @@ Flag `0x81` sets a new origin for subsequent points
 
 ### Add a New Point
 
- Flag `0x01`adds a new point relative to the current origin:
+Flag `0x01`adds a new point relative to the current origin:
 
 | Bytes | Type  | Name | Description                                        |
 | ----- | ----- | ---- | -------------------------------------------------- |
