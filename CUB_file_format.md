@@ -2,6 +2,8 @@
 title: SeeYou CUB file format
 description: SeeYou CUB file format specification file, Copyright © 2024, Naviter d.o.o. All Rights Reserved
 date: 2024-05-08
+header: ${title} - Naviter d.o.o.
+footer: No. ${pageNo} / ${pageCount}
 ---
 
 # SeeYou CUB File Format 
@@ -14,23 +16,22 @@ This format is structured as a binary file comprising three distinct parts: each
 
 - Format: Binary
 - File Extension: `.cub`
+- Float byte ordering: Little Endian (LE)
+- Integer byte ordering: Little Endian (LE), unless changed in `PcByteOrder`
+- Coordinates unit: Radians, positive for `N` and `E`
+- String encoding: `UTF-8`
 
-
+Example implementation of a CUB file parser can be found in our [Github Repo: SeeYou File Formats](https://github.com/naviter/seeyou_file_formats)
 
 ## CubHeader
 
-The `CubHeader` is the initial segment of the CUB file format, spanning the first 210 bytes. It contains metadata about the file and defines how the data should be interpreted, most notably specifying the byte offsets for `CubItem` and `CupPoint` segments.
+The `CubHeader` is the initial segment of the CUB file format, spanning the first 210 bytes. It contains metadata about the file and defines how the data should be interpreted, most notably specifying the byte offsets for `CubItem` and `CupPoint` segments. 
 
-Byte ordering is defined by `PcByteOrder` for integer data (except where noted otherwise), float data is always LE.
-
-Coordinates data is in radians, positive is N and E.
-
-Strings must be UTF-8 encoded.
 
 
 | Bytes | Data Type | Name             | Description                                                  |
 | ----- | --------- | ---------------- | ------------------------------------------------------------ |
-| 4     | UINT32    | `Ident`          | File Identifier, must be `0x425543C2`, LE.                   |
+| 4     | UINT32    | `Ident`          | File Identifier, must be `0x425543C2` LE.                    |
 | 112   | CHAR[112] | `Title`          | Copyright notice.                                            |
 | 16    | UNIT16[8] | `AllowedSerials` | List of  up to 8 device serial numbers authorized to access the file; set to `0` otherwise. Used only when `IsSecured` equals `2`, LE. |
 | 1     | UNIT8     | `PcByteOrder`    | Byte ordering flag; BE if set to `0`, LE otherwise.          |
@@ -66,54 +67,54 @@ If the `SizeOfItem` is smaller than the total size of the `CubItem` structure (4
 | 4     | FLOAT     | `Top`          | Top boundary of the item's bounding box.                     |
 | 4     | FLOAT     | `Right`        | Right boundary of the item's bounding box.                   |
 | 4     | FLOAT     | `Bottom`       | Bottom boundary of the item's bounding box.                  |
-| 1     | UINT8     | `Style`        | Airspace type; combines highest bit and lowest 4 bits to form `CubStyle`, bits 5-7 represent `CubClass`. |
+| 1     | UINT8     | `Style`     | Airspace type; combines highest bit and lowest 4 bits to form `CubStyle`, bits 5-7 represent `CubClass`. |
 | 1     | UINT8     | `AltStyle`     | Altitude style for `MinAlt` (lowest 4 bits) and `MaxAlt` (highest 4 bits). |
 | 2     | INT16     | `MinAlt`       | Minimum altitude of the airspace (in meters).                |
 | 2     | INT16     | `MaxAlt`       | Maximum altitude of the airspace (in meters).                |
 | 4     | INT32     | `PointsOffset` | Relative byte offset to the first `CubPoint` associated with this airspace from the beginning of the CubPoint's segment. |
 | 4     | INT32     | `TimeOut`      | Timeout for this airspace (not used).                        |
 | 4     | UINT32    | `ExtraData`    | Field reserved for additional data.                          |
-| 8     | UINT64    | `ActiveTime`   | Encoded active time for NOTAMs affecting this airspace. [^fn0] |
+| 8     | UINT64    | `ActiveTime`   | Encoded active time affecting this airspace. Set to 0x3FFFFFF as default value if not present |
 
-[^fn0]: Set to 0x3FFFFFF as default value if not present
 
-### CubStyle Mappings
+
+### Style Mappings
 
 `CubStyle` categorizes the airspace style.
 
 | Value | Description   |
 | ----- | ------------- |
-| 0x00  | Unknown Style |
-| 0x01  | ctr           |
-| 0x02  | rarea         |
-| 0x03  | parea         |
-| 0x04  | darea         |
-| 0x05  | tra           |
-| 0x06  | tma           |
-| 0x07  | tiz           |
-| 0x08  | awy           |
-| 0x09  | cta           |
-| 0x0a  | gliderSec     |
-| 0x0b  | tmz           |
-| 0x0c  | matz          |
-| 0x0d  | rmz           |
-| 0x0f  | notam         |
-| 0x80  | advisoryArea  |
-| 0x81  | airDefIdZone  |
-| 0x82  | flInfoRegion  |
-| 0x83  | delegatedFIR  |
-| 0x84  | trafficInfoArea |
-| 0x85  | specialRulesZone |
-| 0x86  | tempFlightRestriction |
-| 0x87  | aerodromeTrafficZone |
-| 0x88  | flInfoServiceArea |
-| 0x89  | rmz           |
-| 0x8a  | aerialSportAndRecreatArea |
-| 0x8b  | transponderRecommendedZone |
-| 0x8c  | vfrRoute      |
-| 0x8d  | alert         |
-| 0x8e  | tempReserved  |
-| 0x8f  | warning       |
+| 0x00  | Unknown |
+| 0x01  | Control Zone (CTR) |
+| 0x02  | Restricted Area (RA) |
+| 0x03  | Prohibited Area (PA) |
+| 0x04  | Danger Area (DA) |
+| 0x05  | Temporary Reserved Area (TRA) |
+| 0x06  | Terminal Control Area (TMA) |
+| 0x07  | Traffinc Information Zone/Area (TIZ) |
+| 0x08  | Airway    |
+| 0x09  | Control Area (CTA) |
+| 0x0a  | Glider Sector |
+| 0x0b  | Transponder Mandatory Zone (TMZ) |
+| 0x0c  | Military Aerodrome Traffic Zone (MATZ) |
+| 0x0d  | Radio Mandatory Zone (RMZ) |
+| 0x0f  | NOTAM     |
+| 0x80  | Advisory Aarea |
+| 0x81  | Air Defence Identification Zone (ADIZ) |
+| 0x82  | Flight Information Region (FIR) |
+| 0x83  | Delegated FIR |
+| 0x84  | Traffic Information Area (TIA) |
+| 0x85  | Special Rules Zone (SRZ) |
+| 0x86  | Temporary Flight Restriction (TRA) |
+| 0x87  | Aerodrome Traffic Zone (ATZ) |
+| 0x88  | Flight Information Service Area |
+| 0x89  | Legacy. Maps to RMZ |
+| 0x8a  | Aerial Sporting and Recreation Area |
+| 0x8b  | Transponder Recomended Zone (TRZ) |
+| 0x8c  | VFR Route |
+| 0x8d  | Alert     |
+| 0x8e  | Temporary Reserved |
+| 0x8f  | Warning |
 
 
 
@@ -157,16 +158,18 @@ The `Extra Data` field encodes specific NOTAM data when value is not 0 and the h
 | ----- | ----------------------------- | ------------------------------------------------------------ |
 | 30-31 | Reserved                      | `00` indicates NOTAM data encoding                           |
 | 28-29 | NOTAM Type                    | `0`: None<br />`1`: Cancel<br />`2`: New<br />`3`: Replace   |
-| 23-27 | First Letter of NOTAM Subject | Encoded as 1 (A) to 26 (Z)[^fn1]                             |
-| 18-22 | Last Letter of NOTAM Subject  | Encoded as 1 (A) to 26 (Z)[^fn1]                             |
-| 13-17 | First Letter of NOTAM Action  | Encoded as 1 (A) to 26 (Z)[^fn1]                             |
-| 8-12  | Last Letter of NOTAM Action   | Encoded as 1 (A) to 26 (Z)[^fn1]                             |
+| 23-27 | First Letter of NOTAM Subject | Encoded as 1 (A) to 26 (Z)                                   |
+| 18-22 | Last Letter of NOTAM Subject  | Encoded as 1 (A) to 26 (Z)                                   |
+| 13-17 | First Letter of NOTAM Action  | Encoded as 1 (A) to 26 (Z)                                   |
+| 8-12  | Last Letter of NOTAM Action   | Encoded as 1 (A) to 26 (Z)                                   |
 | 4-6   | NOTAM Traffic                 | `0`: Miscelaneous<br />`1`: IFR<br />`2`: VFR<br />`3`: IFR & VFR<br />`4`: Checklist |
 | 0-3   | NOTAM Scope                   | `0`: Unknown<br />`1`: Aerodrome<br />`2`: En-route<br />`3`: Aerodrome and En-route<br />`4`: Nav. Warning<br />`5`: Aerodrome and Nav Warning<br />`8`: Checklist |
 
-[^fn1]: Letters are uppercase ASCII characters. They are encoded as integers, where 1 corresponds to 'A' and 26 corresponds to 'Z'.
+
 
 ### ActiveTime
+
+Encodes the activation time of an airspace.
 
 | Bits  | Description               |
 | ----- | ------------------------- |
@@ -174,7 +177,11 @@ The `Extra Data` field encodes specific NOTAM data when value is not 0 and the h
 | 26-51 | Encoded NOTAM Start Date, valid if not 0. |
 | 0-25  | Encoded NOTAM End Date, valid if not 0x3FFFFFF. |
 
+
+
 #### Days Active Flags mapping
+
+Encodes the active days of an airspace.
 
 | Flag Value | Description             |
 | ---------- | ----------------------- |
@@ -191,6 +198,8 @@ The `Extra Data` field encodes specific NOTAM data when value is not 0 and the h
 | 0x200      | Irregular               |
 | 0x400      | By NOTAM                |
 | 0x800      | Reserved                |
+
+
 
 #### Unpacking NOTAM Time
 
@@ -212,17 +221,21 @@ months = (time%12) + 1; time /= 12;
 years = time+2000;
 ```
 
+
+
 ## CubPoint
 
-`CubPoint` encodes information about the shape, name, frequency, and other optional attributes of an airspace. The structure is 5 bytes long, with the first byte serving as a flag that determines how the remaining bytes are interpreted:
+`CubPoint` encodes information about the shape, name, frequency, and other optional attributes of an airspace. The structure is 5 bytes long, with the first byte serving as a flag that determines how the remaining bytes are interpreted.
 
 | 1st Byte | 2-5th Bytes                    |
 | -------- | ------------------------------ |
 | Flag     | Values, depending on the flag. |
 
-### Set a New Origin
 
-Flag `0x81` sets a new origin for subsequent points. Starting origin is `originX = CubItem.Left`, `originY = CubItem.Bottom`.
+
+### Set Origin Offset
+
+Flag `0x81` sets a new origin for subsequent points. Starting origin is `originX = CubItem.Left`, `originY = CubItem.Bottom`. New origin is calculated as `originX += deltaX`, `originY += deltaY`
 
 | Bytes | Type  | Name | Description                             |
 | ----- | ----- | ---- | --------------------------------------- |
@@ -230,11 +243,11 @@ Flag `0x81` sets a new origin for subsequent points. Starting origin is `originX
 | 2     | INT16 | x    | Set deltaX to (`x * LoLaScale`)         |
 | 2     | INT16 | y    | Set deltaY to (`y * LoLaScale`)         |
 
-then set the new origin as `originX += deltaX`, `originY += deltaY`
+
 
 ### Add a New Point
 
-Flag `0x01`adds a new point relative to the current origin:
+Flag `0x01` adds a new point relative to the current origin:
 
 | Bytes | Type  | Name | Description                                        |
 | ----- | ----- | ---- | -------------------------------------------------- |
@@ -242,9 +255,13 @@ Flag `0x01`adds a new point relative to the current origin:
 | 2     | INT16 | x    | New point X-coordinate (`originX + x * LoLaScale`) |
 | 2     | INT16 | y    | New point Y-coordinate (`originY + y * LoLaScale`) |
 
-### Attribute records sequence
+
+
+### Attribute Record Sequence
 
 Flag with the 7th bit set to 1 indicates the start of a special block of attribute records (flag & 0x40 != 0).
+
+
 
 #### Airspace Name
 
@@ -253,23 +270,26 @@ The lower 6 bits of the first attribute record flag represent the length of the 
 | Bytes | Type  | Name | Description                                                  |
 | ----- | ----- | ---- | ------------------------------------------------------------ |
 | 1     | UINT8 | flag | `0x40 + Length`. For example name of length 20 (`0x14`), would result in in flag `0x54` |
-|       |       | name | Airspace name                                                |
+| Defined by first byte | STR   | name | Airspace name (max. 63 characters)                          |
+
+
 
 #### Airspace Frequency and Frequency Name
 
 Following the airspace name, the frequency and its associated name may be stored (flag & 0xC0 == 0xC0).
-The lower 6 bits of the flag represent the length of the name (up to 63 characters).
+The lower 6 bits of the flag represent the length of the name.
 
 | Bytes | Type   | Name | Description        |
 | ----- | ------ | ---- | ------------------ |
-| 1     | UINT8  | flag | `0xC0 + Length`. For example name of length 20 (`0x14`), would result in in flag `0xD4` |               |
+| 1     | UINT8  | flag | `0xC0 + Length`. For example name of length 20 (`0x14`), would result in in flag `0xD4` |
 | 4     | UINT32 | freq | Airspace frequency |
-|       |        | name | Frequency name     |
+| Defined by first byte | STR | name | Frequency name (max. 63 characters). |
+
+
 
 #### Optional Data
 
-The last optional part of data is interpreted byte by byte based on the second byte named `CubDataId`, which maps to different types of additional data.
-All the records with flag equal to 0xA0 must be read in a loop (flag == 0xA0).
+The last optional part of data is interpreted byte by byte based on the second byte named `CubDataId`, which maps to different types of additional data. All the records with flag equal to 0xA0 must be read in a loop (flag == 0xA0).
 
 | Bytes | Type  | Name      | Description                               |
 | ----- | ----- | --------- | ----------------------------------------- |
@@ -279,7 +299,9 @@ All the records with flag equal to 0xA0 must be read in a loop (flag == 0xA0).
 | 1     | UINT8 | b2        | Varies based on `CubDataId`               |
 | 1     | UINT8 | b3        | Varies based on `CubDataId`               |
 
-#### Data ID Mappings
+
+
+##### Data ID Mappings
 
 Different `CubDataId` values indicate specific types of data that follow the `CubPoint` structure:
 
@@ -290,8 +312,6 @@ Different `CubDataId` values indicate specific types of data that follow the `Cu
 | 2     | Exception rules to airspace class | `b2` and `b3` define the length of the subsequent string     |
 | 3     | NOTAM Remarks                     | `b2` and `b3` define the length of the subsequent string     |
 | 4     | NOTAM ID String                   | `b3` indicates the length of the subsequent string           |
-| 5     | NOTAM Insert date and time        | Comprised of `b1`, `b2`, `b3`, and an additional byte after the structure [^fn2] |
+| 5     | NOTAM Insert date and time        | Comprised of `b1`, `b2`, `b3`, and an additional byte after the structure. Read one more byte `b4` . Time is encoded as `(value << 8) + (b4 << 0)`. |
 
 Integers composed from multiple bytes are ordered from highest to lowest byte, value = (b1 << 16) + (b2 << 8) + (b3 << 0).
-
-[^fn2]: Read one more byte (b4) for `NOTAM Insert date and time`, time = (value << 8) + (b4 << 0).
