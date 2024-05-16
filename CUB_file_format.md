@@ -46,9 +46,9 @@ The `CubHeader` is the initial segment of the CUB file format, spanning the firs
 | 4     | FLOAT     | `Top`            | Top value of data bounding box (latitude).                   |
 | 4     | FLOAT     | `Right`          | Right value of data bounding box (longitude).                |
 | 4     | FLOAT     | `Bottom`         | Bottom value of data bounding box (latitude).                |
-| 4     | FLOAT     | `MaxWidth`       | Maximum width of any `CubItem`.                              |
-| 4     | FLOAT     | `MaxHeight`      | Maximum height of any `CubItem`.                             |
-| 4     | FLOAT     | `LoLaScale`      | Scaling factor used in shape construction.                   |
+| 4     | FLOAT     | `MaxWidth`       | Maximum width of any `CubItem` (longitude span in radians).  |
+| 4     | FLOAT     | `MaxHeight`      | Maximum height of any `CubItem` (latitude span in radians).  |
+| 4     | FLOAT     | `LoLaScale`      | Scaling factor used in shape construction, needed because coordinates are stored as integers. `Coordinate = LoLaScale * Stored Value` |
 | 4     | INT32     | `HeaderOffset`   | Byte offset to the first `CubItem`.                          |
 | 4     | INT32     | `DataOffset`     | Byte offset to the first `CubPoint`.                         |
 | 4     | INT32     | `Alignment`      | Reserved for future use (currently ignored).                 |
@@ -67,7 +67,7 @@ If the `SizeOfItem` is smaller than the total size of the `CubItem` structure (4
 | 4     | FLOAT     | `Top`          | Top boundary of the item's bounding box.                     |
 | 4     | FLOAT     | `Right`        | Right boundary of the item's bounding box.                   |
 | 4     | FLOAT     | `Bottom`       | Bottom boundary of the item's bounding box.                  |
-| 1     | UINT8     | `Style`     | Airspace type; combines highest bit and lowest 4 bits to form `CubStyle`, bits 5-7 represent `CubClass`. |
+| 1     | UINT8     | `Style`        | Airspace type; combines highest bit and lowest 4 bits to form `CubStyle`, bits 5-7 represent `CubClass`. |
 | 1     | UINT8     | `AltStyle`     | Altitude style for `MinAlt` (lowest 4 bits) and `MaxAlt` (highest 4 bits). |
 | 2     | INT16     | `MinAlt`       | Minimum altitude of the airspace (in meters).                |
 | 2     | INT16     | `MaxAlt`       | Maximum altitude of the airspace (in meters).                |
