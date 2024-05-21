@@ -108,7 +108,6 @@ The `Type` field accepts various categories or functions of the airspace:
 | ---- | --------------- |
 | AWY  | Airway                             |
 | CTR  | Control Zone                       |
-| DA   | Danger Area                        |
 | GSEC | Glider Sector                      |
 | MTMA | Militaty Terminal Manouvering Area |
 | GP   | Gllider Prohibited Area            |
