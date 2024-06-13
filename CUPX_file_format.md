@@ -6,7 +6,7 @@ date: 2022-01-03
 
 # SeeYou CUPX file format
 
-*Copyright © 2019, Naviter d.o.o. All Rights Reserved*
+*Copyright © 2024, Naviter d.o.o. All Rights Reserved. Version 2.4*
 
 
 

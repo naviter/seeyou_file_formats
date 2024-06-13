@@ -6,7 +6,7 @@ date: 2024-05-08
 
 # SeeYou CUP File Format
 
-*Copyright © 2024, Naviter d.o.o. All Rights Reserved*
+*Copyright © 2024, Naviter d.o.o. All Rights Reserved, Version 1.2*
 
 SeeYou CUP Waypoint format is a simple comma separated text file. The extension is .CUP
 
