@@ -8,40 +8,40 @@ The conceptual structure of the object is shown below with details listed later 
 
 ```
 {
-  "taskType": "CLASSIC",	Task Type							String						Required
-  "version": 2,						XCTrack Version				Integer						Required
-  "v": 2,									SeeYou Version				Integer 					Required
-  "t": [ 									Turnpoints						List of Objects 	Required
-    {											Turnpoint Object			Object	 					Required
-      "z": 								Definition						String						Required
-      "n": 								Name					 				String						Required
-      "d": 								Description 					String						Optional 
-      "t": 								Type 									Number						Optional
-      "o": {							Options								Object						Optional
-      	"a1":							Angle 1								Float							Optional
-      	"a2":							Angle 2								Float							Optional
-      	"a12":						Direction							Float							Optional
-      	"r2": 						Inner Radius					Integer						Optional
-	      "l":							Line Flag							Bool Integer			Optional
+  "taskType": "CLASSIC",  Task Type             String            Required
+  "version": 2,           XCTrack Version       Integer           Required
+  "v": 2,                 SeeYou Version        Integer           Required
+  "t": [                  Turnpoints            List of Objects   Required
+    {                     Turnpoint Object      Object            Required
+      "z":                Definition            String            Required
+      "n":                Name                  String            Required
+      "d":                Description           String            Optional 
+      "t":                Type                  Number            Optional
+      "o": {              Options               Object            Optional
+        "a1":             Angle 1               Float             Optional
+        "a2":             Angle 2               Float             Optional
+        "a12":            Direction             Float             Optional
+        "r2":             Inner Radius          Integer           Optional
+        "l":              Line Flag             Bool Integer      Optional
     },
     ...
   ],
-  "s": {									Start Object					Object						Optional
-  "g": [...]							Gates 								Array of Strings	Required			
-  	"t":									Type 									Integer						Required
-  	"d": 									Direction							Integer						Optional
-  }, 				
-  "g": {									Goal Object						Object						Optional
-  	"d":									Task Deadline					String						Optional
-  	"t":									Sector Shape					Integer						Optional
+  "s": {                  Start Object          Object            Optional
+  "g": [...]              Gates                 Array of Strings  Required      
+    "t":                  Type                  Integer           Required
+    "d":                  Direction             Integer           Optional
+  },        
+  "g": {                  Goal Object           Object            Optional
+    "d":                  Task Deadline         String            Optional
+    "t":                  Sector Shape          Integer           Optional
   },
-  "o": { 									Task Options					Object,		 				Optional
-  	"hf":									Hike & Fly Flag				Bool Integer			Required
-    "tt":									Task Duration					String						Optional
-    "bgi":								Before Gate Interval 	String						Optional
-    "gi":									Gate Interval 				String						Optional
+  "o": {                  Task Options          Object,           Optional
+    "hf":                 Hike & Fly Flag       Bool Integer      Required
+    "tt":                 Task Duration         String            Optional
+    "bgi":                Before Gate Interval  String            Optional
+    "gi":                 Gate Interval         String            Optional
   },
-  "e":										Geodetic System				Integer						Optional
+  "e":                    Geodetic System       Integer           Optional
 }
 ```
 
@@ -75,7 +75,7 @@ Turnpoint specification is a string that encodes *4 different values*: turpoint 
 Example:
 
 ```
-lon		lat.  alt	 r	
+lon   lat.  alt  r  
 48.12 17.42 2300 500 -> ""
 ```
 
@@ -156,4 +156,3 @@ Specifies this task is a hike and fly task.
 ### Geodetic System `e`
 
 Defines the geodetic system of reference for the coordinates. Value `0` represents WGS84 and `1` represents FAI Sphere. If no system is specified, WGS 84 is assumed.
-
