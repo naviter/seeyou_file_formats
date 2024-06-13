@@ -28,7 +28,7 @@ The conceptual structure of the object is shown below with details listed later 
     ...
   ],
   "s": {                  Start Object          Object            Optional
-  "g": [...]              Gates                 Array of Strings  Required      
+    "g": [...]            Gates                 Array of Strings  Required      
     "t":                  Type                  Integer           Required
     "d":                  Direction             Integer           Optional
   },        
