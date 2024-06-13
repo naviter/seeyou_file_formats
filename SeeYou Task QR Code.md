@@ -1,6 +1,6 @@
 # SeeYou Task QR Code specification
 
-The Task QR code format is used to share tasks between devices equipped with a QR Code scanner or a camera. This file format was originally designed by XCTrack for use in their software. This document extends the Version 2 format: [XCTrack V2 format](https://xctrack.org/Competition_Interfaces.html). Ideally, extensions described in this document would become part of the original file format specification. Since this has not happened for too long, Naviter extensions for use in SeeYou Navigator, Oudie N and Omni are described in this document. The extensions are compliant with JSON object structure and are therefore compatible with existing implementations of the original format.
+The Task QR code format is used to share tasks between devices equipped with a QR Code scanner or a camera. This file format was originally designed by XCTrack for use in their software. This document extends the Version 2 format: [XCTrack V2 format](https://xctrack.org/Competition_Interfaces.html). Ideally, extensions described in this document would become part of the original file format specification. Since this has not happened for too long, Naviter extensions for use in SeeYou Navigator, Oudie N and Omni are described in this document.
 
 
 ## Conceptual Structure
