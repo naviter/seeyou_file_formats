@@ -9,3 +9,4 @@ Repository contianing description of file formats used within SeeYou products.
 **Waypoints & Tasks:**
 - [CUP File Format](CUP_file_format.md) - [PDF](https://github.com/naviter/seeyou_file_formats/releases/latest/download/CUP_file_format.pdf)
 - [CUPX File Format](CUPX_file_format.md) - [PDF](https://github.com/naviter/seeyou_file_formats/releases/latest/download/CUPX_file_format.pdf)
+- [Task QR Code Format](SeeYou_Task_QR_Code.md) - [PDF](https://github.com/naviter/seeyou_file_formats/releases/latest/download/SeeYou_Task_QR_Code.pdf)
