@@ -90,7 +90,7 @@ Optional numerical property that defines if the turnpoint is a Start of Speed Se
 
 *This is an Extension of the original format.*
 
-This extension allows you to define turnpoint sector shapes that are not circles. Such shapes are often used in gliding to describe Assigned Area turnpoints. With this extension it is possible to define an FAI sector, semicircle, a pie-slice and many other shapes.
+This extension allows you to define turnpoint sector shapes that are not circles. Such shapes are often used in gliding to describe Assigned Area turnpoints. With this extension it is possible to define an FAI sector, semicircle, a pie-slice, keyhole and many other shapes.
 
 This schematic shows all the parameters available to define the shape of the turnpoint sector:
 ![SectorDefinition](./images/SectorDefinition.png)
@@ -102,6 +102,13 @@ This schematic shows all the parameters available to define the shape of the tur
 | `a12` | Bearing of the sector centre line.                           | integer      |
 | `r2`  | Radius 2 in meters. Required if a2 is specified.             | integer      |
 | `l`   | Line flag specifies if the sector is a line.                 | bool integer |
+| Name  | Description                                                  | Data Type |
+| ----- | ------------------------------------------------------------ | --------- |
+| `a1`  | Angle 1 is half the width of the sector in degrees relative to the center line. 45 defines a right angle. | float     |
+| `a2`  | Angle 2 is half of the inner width of the sector in degrees relative to the center line. 180 defines a full circle. | float     |
+| `a12` | Bearing of the sector center line.                           | integer   |
+| `r2`  | Radius 2 in meters. Required if a2 is specified.             | integer   |
+| `l`   | Line flag specifies if the sector is a line.                 | number    |
 
 ### Start Description `s`
 
@@ -160,3 +167,108 @@ Specifies this task is a hike and fly task.
 ### Geodetic System `e`
 
 Defines the geodetic system of reference for the coordinates. Value `0` represents WGS84 and `1` represents FAI Sphere. If no system is specified, WGS 84 is assumed.
+
+## Example QR Code
+
+This is an example of a complex QR code with extensions described in this document:
+
+![QR_Code_Example](https://github.com/naviter/seeyou_file_formats/assets/18327498/2b833117-a2fd-4171-a9e8-471eec4dc13e)
+
+JSON object encoded in the above QR Code
+```
+{
+    "taskType": "CLASSIC",
+    "version": 2,
+    "t": [
+        {
+            "z": "gk|lAyg{|Gml@owH",
+            "n": "Lienz mesto",
+            "d": "Lienz",
+            "t": 2,
+            "na_o": {
+                "a1": 45,
+                "a2": 0,
+                "a12": 253.532702409686,
+                "r2": 0,
+                "l": true
+            }
+        },
+        {
+            "z": "wrsiAove|GolA_pR",
+            "n": "Toblach Mil",
+            "d": "TOBLACH",
+            "na_o": {
+                "a1": 180,
+                "a2": 0,
+                "a12": 55.6705325849832,
+                "r2": 0,
+                "l": false
+            }
+        },
+        {
+            "z": "k}okAezz}Gq{@oh\\",
+            "n": "Matrei",
+            "d": "Matrei",
+            "na_o": {
+                "a1": 45,
+                "a2": 180,
+                "a12": 157.708671784623,
+                "r2": 4000,
+                "l": false
+            }
+        },
+        {
+            "z": "kosoAsln}G__Aoh\\",
+            "n": "Moelltal",
+            "d": "Obervach",
+            "na_o": {
+                "a1": 45,
+                "a2": 0,
+                "a12": 270,
+                "r2": 5000,
+                "l": false
+            }
+        },
+        {
+            "z": "ondoAini|Gwj@oh\\",
+            "n": "Berg",
+            "d": "Berg",
+            "na_o": {
+                "a1": 45,
+                "a2": 22.5,
+                "a12": 330.978918725122,
+                "r2": 8000,
+                "l": false
+            }
+        },
+        {
+            "z": "uusmAyfs|Gyf@ozD",
+            "n": "Lienz",
+            "d": "LIENZ",
+            "t": 3,
+            "na_o": {
+                "a1": 180,
+                "a2": 0,
+                "a12": 106.337520784386,
+                "r2": 0,
+                "l": false
+            }
+        }
+    ],
+    "s": {
+        "g": [],
+        "d": 2,
+        "t": 2
+    },
+    "g": {},
+    "na_o": {
+        "tt": "03:00:00"
+    }
+}
+```
+
+What it looks like in SeeYou:
+![image](https://github.com/naviter/seeyou_file_formats/assets/18327498/c764289b-e436-4f36-b0c2-67a7dabbc7c6)
+
+
+
