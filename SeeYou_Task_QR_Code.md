@@ -172,73 +172,69 @@ Defines the geodetic system of reference for the coordinates. Value `0` represen
 
 This is an example of a complex QR code with extensions described in this document:
 
-![QR_Code_Example](https://github.com/naviter/seeyou_file_formats/assets/18327498/2b833117-a2fd-4171-a9e8-471eec4dc13e)
+![QR_Code_Example](./images/ExampleQRCode.jpeg)
 
 JSON object encoded in the above QR Code
 ```
 {
     "taskType": "CLASSIC",
     "version": 2,
-    "t": [
+    "t":
+    [
         {
             "z": "gk|lAyg{|Gml@owH",
             "n": "Lienz mesto",
             "d": "Lienz",
             "t": 2,
-            "na_o": {
-                "a1": 45,
-                "a2": 0,
-                "a12": 253.532702409686,
-                "r2": 0,
-                "l": true
+            "o":
+            {
+                "l": 1,
+                "a12": 253.5
             }
         },
         {
             "z": "wrsiAove|GolA_pR",
             "n": "Toblach Mil",
             "d": "TOBLACH",
-            "na_o": {
+            "o":
+            {
                 "a1": 180,
-                "a2": 0,
-                "a12": 55.6705325849832,
-                "r2": 0,
-                "l": false
+                "a12": 55.7
             }
         },
         {
             "z": "k}okAezz}Gq{@oh\\",
             "n": "Matrei",
             "d": "Matrei",
-            "na_o": {
+            "o":
+            {
                 "a1": 45,
                 "a2": 180,
-                "a12": 157.708671784623,
-                "r2": 4000,
-                "l": false
+                "a12": 157.7,
+                "r2": 4000
             }
         },
         {
             "z": "kosoAsln}G__Aoh\\",
             "n": "Moelltal",
             "d": "Obervach",
-            "na_o": {
+            "o":
+            {
                 "a1": 45,
-                "a2": 0,
                 "a12": 270,
-                "r2": 5000,
-                "l": false
+                "r2": 5000
             }
         },
         {
             "z": "ondoAini|Gwj@oh\\",
             "n": "Berg",
             "d": "Berg",
-            "na_o": {
+            "o":
+            {
                 "a1": 45,
                 "a2": 22.5,
-                "a12": 330.978918725122,
-                "r2": 8000,
-                "l": false
+                "a12": 331,
+                "r2": 8000
             }
         },
         {
@@ -246,23 +242,28 @@ JSON object encoded in the above QR Code
             "n": "Lienz",
             "d": "LIENZ",
             "t": 3,
-            "na_o": {
+            "o":
+            {
                 "a1": 180,
-                "a2": 0,
-                "a12": 106.337520784386,
-                "r2": 0,
-                "l": false
+                "a12": 106.3
             }
         }
     ],
-    "s": {
-        "g": [],
+    "s":
+    {
+        "g":
+        [
+            "10:00:00Z"
+        ],
         "d": 2,
-        "t": 2
+        "t": 1
     },
-    "g": {},
-    "na_o": {
-        "tt": "03:00:00"
+    "o":
+    {
+        "v": 2,
+        "tt": 10800,
+        "bgi": 600,
+        "gi": 300
     }
 }
 ```
