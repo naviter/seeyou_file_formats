@@ -1,0 +1,90 @@
+{
+    "taskType": "CLASSIC",
+    "version": 2,
+    "t":
+    [
+        {
+            "z": "gk|lAyg{|Gml@owH",
+            "n": "Lienz mesto",
+            "d": "Lienz",
+            "t": 2,
+            "o":
+            {
+                "l": 1,
+                "a12": 253.5
+            }
+        },
+        {
+            "z": "wrsiAove|GolA_pR",
+            "n": "Toblach Mil",
+            "d": "TOBLACH",
+            "o":
+            {
+                "a1": 180,
+                "a12": 55.7
+            }
+        },
+        {
+            "z": "k}okAezz}Gq{@oh\\",
+            "n": "Matrei",
+            "d": "Matrei",
+            "o":
+            {
+                "a1": 45,
+                "a2": 180,
+                "a12": 157.7,
+                "r2": 4000
+            }
+        },
+        {
+            "z": "kosoAsln}G__Aoh\\",
+            "n": "Moelltal",
+            "d": "Obervach",
+            "o":
+            {
+                "a1": 45,
+                "a12": 270,
+                "r2": 5000
+            }
+        },
+        {
+            "z": "ondoAini|Gwj@oh\\",
+            "n": "Berg",
+            "d": "Berg",
+            "o":
+            {
+                "a1": 45,
+                "a2": 22.5,
+                "a12": 331,
+                "r2": 8000
+            }
+        },
+        {
+            "z": "uusmAyfs|Gyf@ozD",
+            "n": "Lienz",
+            "d": "LIENZ",
+            "t": 3,
+            "o":
+            {
+                "a1": 180,
+                "a12": 106.3
+            }
+        }
+    ],
+    "s":
+    {
+        "g":
+        [
+            "10:00:00Z"
+        ],
+        "d": 2,
+        "t": 1
+    },
+    "o":
+    {
+        "v": 2,
+        "tt": 10800,
+        "bgi": 600,
+        "gi": 300
+    }
+}
