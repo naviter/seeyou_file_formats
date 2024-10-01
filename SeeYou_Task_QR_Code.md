@@ -90,15 +90,15 @@ Optional numerical property that defines if the turnpoint is a Start of Speed Se
 
 *This is an Extension of the original format.*
 
-This extension allows you to define turnpoint sector shapes that are not circles. Such shapes are often used in gliding to describe Assigned Area turnpoints. With this extension it is possible to define an FAI sector, semicircle, a pie-slice and many other shapes.
+This extension allows you to define turnpoint sector shapes that are not circles. Such shapes are often used in gliding to describe Assigned Area turnpoints. With this extension it is possible to define an FAI sector, semicircle, a pie-slice, keyhole and many other shapes.
 
 This schematic shows all the parameters available to define the shape of the turnpoint sector:
 ![SectorDefinition](./images/SectorDefinition.png)
 
 | Name  | Description                                                  | Data Type    |
 | ----- | ------------------------------------------------------------ | ------------ |
-| `a1`  | Angle 1 is half the width of the sector in degrees relative to the centre line. 45 defines a right angle. 180 defines a full circle | float     |
-| `a2`  | Angle 2 is half of the inner width of the sector in degrees relative to the centre line. 90 defines a semicircle. | float     |
+| `a1`  | Angle 1 is half the width of the sector in degrees relative to the center line. 45 defines a right angle. | float     |
+| `a2`  | Angle 2 is half of the inner width of the sector in degrees relative to the center line. 180 defines a full circle. | float     |
 | `a12` | Bearing of the sector centre line.                           | integer      |
 | `r2`  | Radius 2 in meters. Required if a2 is specified.             | integer      |
 | `l`   | Line flag specifies if the sector is a line.                 | bool integer |
@@ -160,3 +160,109 @@ Specifies this task is a hike and fly task.
 ### Geodetic System `e`
 
 Defines the geodetic system of reference for the coordinates. Value `0` represents WGS84 and `1` represents FAI Sphere. If no system is specified, WGS 84 is assumed.
+
+## Example QR Code
+
+This is an example of a complex QR code with extensions described in this document:
+
+![QR_Code_Example](./images/ExampleQRCode.jpg)
+
+JSON object encoded in the above QR Code
+```
+{{
+    "taskType": "CLASSIC",
+    "version": 2,
+    "t":
+    [
+        {
+            "z": "gk|lAyg{|Gml@owH",
+            "n": "Lienz mesto",
+            "d": "Lienz",
+            "t": 2,
+            "o":
+            {
+                "l": 1,
+                "a12": 253.5
+            }
+        },
+        {
+            "z": "wrsiAove|GolA_pR",
+            "n": "Toblach Mil",
+            "d": "TOBLACH",
+            "o":
+            {
+                "a1": 180,
+                "a12": 55.7
+            }
+        },
+        {
+            "z": "k}okAezz}Gq{@oh\\",
+            "n": "Matrei",
+            "d": "Matrei",
+            "o":
+            {
+                "a1": 45,
+                "a2": 180,
+                "a12": 157.7,
+                "r2": 4000
+            }
+        },
+        {
+            "z": "kosoAsln}G__Aoh\\",
+            "n": "Moelltal",
+            "d": "Obervach",
+            "o":
+            {
+                "a1": 45,
+                "a12": 270,
+                "r2": 5000
+            }
+        },
+        {
+            "z": "ondoAini|Gwj@oh\\",
+            "n": "Berg",
+            "d": "Berg",
+            "o":
+            {
+                "a1": 45,
+                "a2": 22.5,
+                "a12": 331,
+                "r2": 8000
+            }
+        },
+        {
+            "z": "uusmAyfs|Gyf@ozD",
+            "n": "Lienz",
+            "d": "LIENZ",
+            "t": 3,
+            "o":
+            {
+                "a1": 180,
+                "a12": 106.3
+            }
+        }
+    ],
+    "s":
+    {
+        "g":
+        [
+            "10:00:00Z"
+        ],
+        "d": 2,
+        "t": 1
+    },
+    "o":
+    {
+        "v": 2,
+        "tt": 10800,
+        "bgi": 600,
+        "gi": 300
+    }
+}
+```
+
+What it looks like in SeeYou:
+![image](images/SeeYouQRCodeTask.jpg)
+
+
+
