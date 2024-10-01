@@ -40,9 +40,9 @@ The conceptual structure of the object is shown below with details given later i
   },
   "o": {                  Task Options          Object,           Optional
     "hf":                 Hike & Fly Flag       Bool Integer      Required
-    "tt":                 Task Duration         String            Optional
-    "bgi":                Before Gate Interval  String            Optional
-    "gi":                 Gate Interval         String            Optional
+    "tt":                 Task Duration         Integer           Optional
+    "bgi":                Before Gate Interval  Integer           Optional
+    "gi":                 Gate Interval         Integer           Optional
   },
   "e":                    Geodetic System       Integer           Optional
 }
@@ -52,11 +52,11 @@ The conceptual structure of the object is shown below with details given later i
 
 ## Units
 
-- **Coordinates:** Decimal Degrees with positive values for N and E hemispheres
-- **Altitudes and Elevations:** Meters
-- **Time:** UTC Time formatted as `H:MM:SSZ`, example: `1:30:00Z`
-- **Duration and Intervals:** Time formated as `H:MM:SS`
-- **Angles:** Decimal Degrees
+- **Coordinates:** Google's [Encoded Polyline Algorithm Format](https://developers.google.com/maps/documentation/utilities/polylinealgorithm) (string), example: `uxyzlO_}zj}DwnCg^`
+- **Altitudes and Elevations:** Meters (integer), example: `1500`
+- **Time:** UTC Time formatted as `"H:MM:SSZ"`, example: `"1:30:00Z"`
+- **Duration and Intervals:** Duration in seconds (integer), example `3600` 
+- **Angles:** Decimal Degrees (float), example: `45.73645`
 - **Boolean Values** Are represented as an integer `1` (True) or `0`  false.
 
 
@@ -73,7 +73,7 @@ Each task turnpoint must be represented in the list of turnpoints with a turnpoi
 
 ##### Turnpoint location `z`
 
-Turnpoint specification is a string that encodes *4 different values*: turpoint center coordinates longitude and latitude as well as the turnpoint altitude and cylinder radius. The four values are fed into the [Google Polyline Algorithm](https://developers.google.com/maps/documentation/utilities/polylinealgorithm) to produce the encoded string.
+Turnpoint specification is a string that encodes *4 different values*: turpoint center coordinates longitude and latitude as well as the turnpoint altitude and cylinder radius. The four values are fed into the Google's [Encoded Polyline Algorithm Format](https://developers.google.com/maps/documentation/utilities/polylinealgorithm) to produce the encoded string.
 
 Example:
 
@@ -95,13 +95,13 @@ This extension allows you to define turnpoint sector shapes that are not circles
 This schematic shows all the parameters available to define the shape of the turnpoint sector:
 ![SectorDefinition](./images/SectorDefinition.png)
 
-| Name  | Description                                                  | Data Type |
-| ----- | ------------------------------------------------------------ | --------- |
+| Name  | Description                                                  | Data Type    |
+| ----- | ------------------------------------------------------------ | ------------ |
 | `a1`  | Angle 1 is half the width of the sector in degrees relative to the centre line. 45 defines a right angle. 180 defines a full circle | float     |
 | `a2`  | Angle 2 is half of the inner width of the sector in degrees relative to the centre line. 90 defines a semicircle. | float     |
-| `a12` | Bearing of the sector centre line.                           | integer   |
-| `r2`  | Radius 2 in meters. Required if a2 is specified.             | integer   |
-| `l`   | Line flag specifies if the sector is a line.                 | number    |
+| `a12` | Bearing of the sector centre line.                           | integer      |
+| `r2`  | Radius 2 in meters. Required if a2 is specified.             | integer      |
+| `l`   | Line flag specifies if the sector is a line.                 | bool integer |
 
 ### Start Description `s`
 
@@ -143,15 +143,15 @@ Defines the shape of the last task turnpoint sector. Possible values are `1` (Li
 
 ##### Task Time Duration  `tt`
 
-Defines the length of the task. Usually used for Assigned Area Tasks in gliding. Formatted as a duration. Example `3:30:00`.
+Defines the length of the task. Usually used for Assigned Area Tasks in gliding. Formatted as a duration. Example `12600`.
 
 ##### Before Gate Interval `bgi`
 
-Defines the wait time from pressing the pilot event marker (PEV) until gate open time for PEV start procedures. Formatted as a duration. Example `0:05:00`.
+Defines the wait time from pressing the pilot event marker (PEV) until gate open time for PEV start procedures. Formatted as a duration. Example `300`.
 
 ##### Gate Interval `gi`
 
-Defines the time between gate open times of different start windows for tasks with multiple gate windows. Formatted as a duration. Example `0:15:00`.
+Defines the time between gate open times of different start windows for tasks with multiple gate windows. Formatted as a duration. Example `900`.
 
 ##### Hike & Fly Flag `h`
 
