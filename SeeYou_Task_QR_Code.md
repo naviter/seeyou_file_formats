@@ -21,15 +21,14 @@ Naviter extensions allow all sports and all task types to be supported by this s
 The conceptual structure of the object is shown below with details given later in the document:
 
 ```
-{
+XCTSK:{
   "taskType": "CLASSIC",  Task Type             String            Required
   "version": 2,           XCTrack Version       Integer           Required
-  "v": 2,                 SeeYou Version        Integer           Required
   "t": [                  Turnpoints            List of Objects   Required
     {                     Turnpoint Object      Object            Required
       "z":                Definition            String            Required
       "n":                Name                  String            Required
-      "d":                Description           String            Optional 
+      "d":                Description           String            Optional
       "t":                Type                  Number            Optional
       "o": {              Options               Object            Optional
         "a1":             Angle 1               Float             Optional
@@ -41,7 +40,7 @@ The conceptual structure of the object is shown below with details given later i
     ...
   ],
   "s": {                  Start Object          Object            Optional
-    "g": [...]            Gates                 Array of Strings  Required      
+    "g": [...]            Gates                 Array of Strings  Required
     "t":                  Type                  Integer           Required
     "d":                  Direction             Integer           Optional
   },        
@@ -49,8 +48,9 @@ The conceptual structure of the object is shown below with details given later i
     "d":                  Task Deadline         String            Optional
     "t":                  Sector Shape          Integer           Optional
   },
-  "o": {                  Task Options          Object,           Optional
-    "hf":                 Hike & Fly Flag       Bool Integer      Required
+  "o": {                  Task Options          Object            Optional
+    "v": 2                SeeYou Version        Integer           Required
+    "hf":                 Hike & Fly Flag       Bool Integer      Optional
     "tt":                 Task Duration         Integer           Optional
     "bgi":                Before Gate Interval  Integer           Optional
     "gi":                 Gate Interval         Integer           Optional
@@ -178,9 +178,9 @@ This is an example of a complex QR code with extensions described in this docume
 
 ![QR_Code_Example](./images/ExampleQRCode.jpg)
 
-JSON object encoded in the above QR Code
+JSON object with XCTSK prefix, encoded in the above QR Code:
 ```
-{
+XCTSK:{
     "taskType": "CLASSIC",
     "version": 2,
     "t":
