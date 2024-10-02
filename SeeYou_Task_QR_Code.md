@@ -50,6 +50,7 @@ XCTSK:{
   },
   "o": {                  Task Options          Object            Optional
     "v": 2                SeeYou Version        Integer           Required
+    "fa":                 Finish Altitude (MSL) Integer           Optional  
     "hf":                 Hike & Fly Flag       Bool Integer      Optional
     "tt":                 Task Duration         Integer           Optional
     "bgi":                Before Gate Interval  Integer           Optional
@@ -151,6 +152,10 @@ Defines the shape of the last task turnpoint sector. Possible values are `1` (Li
 ### Task Options `o`
 
 *This is an Extension of the original format.*
+
+##### Finish Altitude `fa`
+
+Defines the height of the finish line / sector in meters above mean sea level (MSL). Example: `1350`.
 
 ##### Task Time Duration  `tt`
 
