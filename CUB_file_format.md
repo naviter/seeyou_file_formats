@@ -1,15 +1,15 @@
 ---
 title: SeeYou CUB file format
 description: SeeYou CUB file format specification file, Copyright © 2024, Naviter d.o.o. All Rights Reserved
-date: 2024-05-08
-version: 1.2
+date: 2024-10-03
+version: 1.3
 header: ${title} - Naviter d.o.o.
 footer: No. ${pageNo} / ${pageCount}
 ---
 
 # SeeYou CUB File Format 
 
-*Copyright © 2024, Naviter d.o.o. All Rights Reserved. Version 1.2*
+*Copyright © 2024, Naviter d.o.o. All Rights Reserved. Version 1.3*
 
 The CUB file format is designed to store airspace data that is displayed and utilized by flight navigation software from Naviter and LX Nav.
 
@@ -20,7 +20,7 @@ This format is structured as a binary file comprising three distinct parts: each
 - Float byte ordering: Little Endian (LE)
 - Integer byte ordering: Little Endian (LE), unless changed in `PcByteOrder`
 - Coordinates unit: Radians, positive for `N` and `E`
-- String encoding: `UTF-8`
+- String encoding: `UTF-8`, use `Extended ASCII` if string contains incorrect utf-8 sequence
 
 Example implementation of a CUB file parser can be found in our [Github Repo: SeeYou File Formats](https://github.com/naviter/seeyou_file_formats)
 
@@ -226,7 +226,7 @@ years = time+2000;
 
 ## CubPoint
 
-`CubPoint` encodes information about the shape, name, frequency, and other optional attributes of an airspace. The structure is 5 bytes long, with the first byte serving as a flag that determines how the remaining bytes are interpreted.
+`CubPoint` encodes information about the shape, name, frequency, and other optional attributes of an airspace. The structure is `SizeOfPoint` bytes long, with the first byte serving as a flag that determines how the remaining bytes are interpreted. `SizeOfPoint` will never be less than 5.
 
 | 1st Byte | 2-5th Bytes                    |
 | -------- | ------------------------------ |
@@ -270,7 +270,7 @@ The lower 6 bits of the first attribute record flag represent the length of the 
 
 | Bytes | Type  | Name | Description                                                  |
 | ----- | ----- | ---- | ------------------------------------------------------------ |
-| 1     | UINT8 | flag | `0x40 + Length`. For example name of length 20 (`0x14`), would result in in flag `0x54` |
+| `SizeOfPoint` | CubPoint | flag | First byte `0x40 + Length`. For example name of length 20 (`0x14`), would result in in flag `0x54` |
 | Defined by first byte | STR   | name | Airspace name (max. 63 characters)                          |
 
 
