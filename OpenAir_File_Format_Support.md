@@ -41,7 +41,7 @@ Distance is measured in nautical miles `nm` andis implied, meaning it is specifi
 
 ### Time
 
-Time is specified using the [ISO8061](https://en.wikipedia.org/wiki/ISO_8601) format, use only UTC (Zulu) time.
+Time is specified using the [ISO8601](https://en.wikipedia.org/wiki/ISO_8601) format, use only UTC (Zulu) time.
 
 
 
@@ -210,7 +210,7 @@ AG Nordholz Radar
 
 #### AT: Airspace Activation Times
 
-*Optional.* Use [ISO8061](https://en.wikipedia.org/wiki/ISO_8601) time interval format to express the time when the airspace is active. Only the time interval format is allowed and must be specified in UTC (Zulu) time, no local or time offsets are supproted. `NONE` token can be used to indicate the unspecified start or end time of the airspace activation. In case of `None/None`  this airspace is included in the data but will be shown when the activation time is supplied (e.g. by NOAM).
+*Optional.* Use [ISO8601](https://en.wikipedia.org/wiki/ISO_8601) time interval format to express the time when the airspace is active. Only the time interval format is allowed and must be specified in UTC (Zulu) time, no local or time offsets are supproted. `NONE` token can be used to indicate the unspecified start or end time of the airspace activation. In case of `None/None`  this airspace is included in the data but will be shown when the activation time is supplied (e.g. by NOAM).
 
 ```
 AT 2023-12-16T12:00Z/2023-12-16T13:00Z 
