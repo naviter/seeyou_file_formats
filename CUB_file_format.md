@@ -68,7 +68,7 @@ If the `SizeOfItem` is smaller than the total size of the `CubItem` structure (4
 | 4     | FLOAT     | `Top`          | Top boundary of the item's bounding box.                     |
 | 4     | FLOAT     | `Right`        | Right boundary of the item's bounding box.                   |
 | 4     | FLOAT     | `Bottom`       | Bottom boundary of the item's bounding box.                  |
-| 1     | UINT8     | `Style`        | Airspace type; combines highest bit and lowest 4 bits to form `CubStyle`, bits 5-7 represent `CubClass`. |
+| 1     | UINT8     | `Type`         | Airspace type; combines highest bit and lowest 4 bits to form `CubStyle`, bits 5-7 represent `CubClass`. |
 | 1     | UINT8     | `AltStyle`     | Altitude style for `MinAlt` (lowest 4 bits) and `MaxAlt` (highest 4 bits). |
 | 2     | INT16     | `MinAlt`       | Minimum altitude of the airspace (in meters).                |
 | 2     | INT16     | `MaxAlt`       | Maximum altitude of the airspace (in meters).                |
@@ -76,10 +76,11 @@ If the `SizeOfItem` is smaller than the total size of the `CubItem` structure (4
 | 4     | INT32     | `TimeOut`      | Timeout for this airspace (not used).                        |
 | 4     | UINT32    | `ExtraData`    | Field reserved for additional data.                          |
 | 8     | UINT64    | `ActiveTime`   | Encoded active time affecting this airspace. Set to 0x3FFFFFF as default value if not present |
+| 1     | UINT8     | `ExtendedType` | If it exists and is not 0, this ExtendedType will be used. Otherwise the Type field will be used. |
 
 
 
-### Style Mappings
+### Type Mappings
 
 `CubStyle` categorizes the airspace style.
 
@@ -116,6 +117,17 @@ If the `SizeOfItem` is smaller than the total size of the `CubItem` structure (4
 | 0x8d  | Alert     |
 | 0x8e  | Temporary Reserved |
 | 0x8f  | Warning |
+
+### ExtendedTypes Mappings
+
+| Value | Description                |
+| ----- | -------------------------- |
+| 0x01  | Upper Info Region          |
+| 0x02  | Military Training Route    |
+| 0x03  | Helicopter Traffic Zone    |
+| 0x04  | Area Control Center Sector |
+| 0x05  | Lower Traffic Area         |
+| 0x06  | Upper Traffic Area         |
 
 
 
