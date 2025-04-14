@@ -13,16 +13,16 @@ aircraft beacon messages.
 ## 1 Versions
 
 In accordance with the OGN’s versioning schema, all sent messages will be versioned using
-thedesttofield of the APRS message.
+the destto field of the APRS message.
 
 Format version consists of two parts:
 
 1. 6 character long OGN-assigned identifier for Naviter: OGNAVI,
 2. 1 character long format version
 
-Thus, every version will be formatted asOGNAVI-<version>, for exampleOGNAVI-1.
+Thus, every version will be formatted as OGNAVI-<version>, for example OGNAVI-1.
 
-**Note:** Thedesttofield _may_ be set toOGNAVI. This implies version 1.
+**Note:** The destto field _may_ be set to OGNAVI. This implies version 1.
 
 ### 1.1 Version history
 
@@ -45,15 +45,22 @@ specification:
 Parameters:
 
 **device_type** 3-character device type identifier (e.g.NAV,FLR, ...)
+
 **device_id** 24-bit device identifier written in hexadecimal format. Device identifier is
 only unique in the Naviter’s namespace (e.g. two devices using ids NAV000000 and
 FLR000000 are not necessarily the same).
+
 **timestamp** using the HMS format as specified in APRS 1.01 (e.g. 010203 means 01:02:
 UTC).
+
 **latitude** as specified in APRS 1.
+
 **longitude** as specified in APRS 1.
+
 **heading** as specified in OGN-flavoured APRS
+
 **ground_speed** as specified in OGN-flavoured APRS
+
 **altitude** as specified in OGN-flavoured APRS
 
 
@@ -70,10 +77,10 @@ formatted as follows:
 
 Parameters:
 
-**precision_enhancment** as specified in OGN-flavoured APRS
-**identifier** 40-bit device identifier. See bellow for details.
-**climb_rate** as specified in OGN-flavoured APRS
-**turn_rate** as specified in OGN-flavoured APRS
+* **precision_enhancment** as specified in OGN-flavoured APRS
+* **identifier** 40-bit device identifier. See bellow for details.
+* **climb_rate** as specified in OGN-flavoured APRS
+* **turn_rate** as specified in OGN-flavoured APRS
 
 **Device identifier**
 
@@ -84,8 +91,7 @@ most to least significant bits):
 - bit 0: stealth mode
 - bit 1: do not track mode
 - bits 2-5: aircraft type
-- bits 6-11: address type (namespace is extended from 2 to 6 bits to avoid collisions
-    with other tracking providers)
+- bits 6-11: address type (namespace is extended from 2 to 6 bits to avoid collisions with other tracking providers)
 - bits 12-15: reserved for use at a later time
 - bits 16-39: device id (24-bit device identifier, same as in APRS header)
 
@@ -94,12 +100,12 @@ represent unknown, ICAO, FLARM and OGN devices (respectively).
 
 For the extended address type Naviter is reserving the following ids:
 
-**000000** unknown
-**000001** ICAO
-**000010** FLARM
-**000011** OGN trackers
-**000100** Naviter
-**000101** FANET
+- **000000** unknown
+- **000001** ICAO
+- **000010** FLARM
+- **000011** OGN trackers
+- **000100** Naviter
+- **000101** FANET
 
 Other address types might be added at a later time.
 
@@ -118,7 +124,7 @@ NAV07220E>OGNAVI,qAS,NAVITER:/125447h4557.77N/01220.19E'258/056/A=
 ### 4.1 Relaying messages from other devices
 
 Naviter is able to relay position of a FLARM device connected to an Oudie through
-it’s network. Origin of of such messages will beFLR<flarm_id>, notNAV<device_id>.
+its network. Origin of such messages will beFLR<flarm_id>, notNAV<device_id>.
 However, message will still be formatted usingOGNAVIschema.
 
 Format of such messages will be:
@@ -128,14 +134,14 @@ Format of such messages will be:
 
 Parameters:
 
-All parameters – with the exception ofrelay_id– are the same as in the standard message
+All parameters – with the exception of relay_id are the same as in the standard message
 format described in section 2.
 
-Therelay_idwill contain the identifier of the device that served as a relay. The identifier
-will be formatted asNAV<device_id>, where device_idis a 6 character hexadecimal
-number uniquely identifying an Oudie device.
+The relay_id will contain the identifier of the device that served as a relay. The identifier
+will be formatted as <device_type><device_id>, where device_type is a 3 characted string and 
+device_id is a 6 character hexadecimal number uniquely identifying the relayer device.
 
-The asterisk following therelay_idindicates that the transmision has been relayed.
+The asterisk following the relay_id indicates that the transmision has been relayed.
 
 **Example:**
 
@@ -144,7 +150,5 @@ A=003281 !W00! id2820FFFFFF +300fpm +1.7rot
 
 ## 5 Related documents
 
-**APRS Protocol Reference, Protocol Version 1.0:** [http://www.aprs.org/doc/](http://www.aprs.org/doc/)
-APRS101.PDF
-**OGN-flavoured APRS:** https://github.com/svoop/ogn_client-ruby/wiki/OGN-
-flavoured-APRS/c6678fecc15222cb980f491d09dfaba7e2982df
+**APRS Protocol Reference, Protocol Version 1.0:** [http://www.aprs.org/doc/](http://www.aprs.org/doc/APRS101.PDF)
+**OGN-flavoured APRS:** https://github.com/svoop/ogn_client-ruby/wiki/OGN-flavoured-APRS/c6678fecc15222cb980f491d09dfaba7e2982df
