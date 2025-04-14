@@ -3,8 +3,6 @@ title: OGNAVI APRS message specification
 description: Naviter APRS message specification file, Copyright © 2025, Naviter d.o.o. All Rights Reserved
 date: 2025-04-14
 version: 1.0.2
-header: ${title} - Naviter d.o.o.
-footer: No. ${pageNo} / ${pageCount}
 ---
 
 # OGNAVI APRS message specification
@@ -27,6 +25,8 @@ Thus, every version will be formatted asOGNAVI-<version>, for exampleOGNAVI-1.
 **Note:** Thedesttofield _may_ be set toOGNAVI. This implies version 1.
 
 ### 1.1 Version history
+
+**OGNAVI-1.0.2** FANET address type added (introduced 2025-04-14)
 
 **OGNAVI-1** first version (introduced 2017-09-16)
 
