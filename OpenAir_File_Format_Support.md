@@ -113,7 +113,7 @@ AN ED-R6 Brokdorf H24
 
 #### AY: Airspace Type
 
-*Optional.*  Identifies the type of airspace or a special-use airspace. Omit for airspaces without a type. Typically used immediately after the `AC` command.
+Identifies the type of airspace or a special-use airspace. Typically used immediately after the `AC` command.
 
 Format:
 ```
@@ -126,40 +126,42 @@ The `Type` field accepts various categories or functions of the airspace:
 | ------- | ---------------------------------------------------------- |
 | ACCSEC  | Airspace providing communication frequency in remote areas |
 | ADIZ    | Air Defence Ident Zone                                     |
-| ASRA    | Aerial Sporting Or Recreational Activity                   |
 | ALERT   | Alert Area                                                 |
+| ASRA    | Aerial Sporting Or Recreational Activity                   |
+| ATZ     | Aeordrome Traffic Zone                                     |
 | AWY     | Airway                                                     |
 | CTA     | Controlled Traffic Area                                    |
 | CTR     | Control Zone                                               |
-| Q       | Danger Area                                                |
+| CUSTOM  | Custom or user defined airspace                            |
 | FIR     | Flight Information Region                                  |
 | FIS     | Flight Information Service Sector                          |
 | GSEC    | Gliding Sector                                             |
 | HTZ     | Helicopter Traffic Zone                                    |
 | LTA     | Lower Traffic Area (Allows VFR Traffic in CTA)             |
 | MATZ    | Military Airport Traffic Zone                              |
-| MRT     | Military Route                                             |
 | MTA     | Military Training Area                                     |
 | MTR     | Military Training Route                                    |
+| N       | NTOAM Affected Area                                        |
+| NONE    | Airspace without type                                      |
 | OFR     | Overflight Restriction                                     |
 | P       | Prohibited Area                                            |
-| PROT    | Protected Airspace                                         |
+| Q       | Danger Area                                                |
 | R       | Restricted Area                                            |
 | RMZ     | Radio Mandatory Zone                                       |
-| TFR     | TSA/RRA Feeding Route                                      |
+| TFR     | Temporary Flight Restriction                               |
 | TIA     | Traffic Information Area                                   |
 | TIZ     | Traffic Information Zone                                   |
 | TMA     | Terminal Manoeuvring Area                                  |
 | TMZ     | Transponder Mandatory Zone                                 |
 | TRA     | Temporary Reserved Area                                    |
-| TRP     | Transponder Setting                                        |
+| TRAFR   | TRA/TSA Feeding Route                                      |
+| TRZ     | Transponder Recommended Zone                               |
 | TSA     | Temporary Segregated Area                                  |
 | UIR     | Upper Flight Information Region                            |
 | UTA     | Upper Traffic Area (Allows VFR Traffic in CTA)             |
+| VFRR    | Designated Route for VFR                                   |
 | VFRSEC  | Visual Flying Rules Sector                                 |
 | WARNING | Warning Area                                               |
-| GP      | Glider prohibited area                                     |
-| MTMA    | Military Terminal Manouvering Area                         |
 
 Example:
 ```
@@ -210,12 +212,13 @@ AG Nordholz Radar
 
 #### AA: Airspace Activation Times
 
-*Optional.* Use [ISO8601](https://en.wikipedia.org/wiki/ISO_8601) time interval format to express the time when the airspace is active. Only the time interval format is allowed and must be specified in UTC (Zulu) time, no local or time offsets are supproted. `NONE` token can be used to indicate the unspecified start or end time of the airspace activation. In case of `None/None`  this airspace is included in the data but will be shown when the activation time is supplied (e.g. by NOAM).
+*Optional.* Use [ISO8601](https://en.wikipedia.org/wiki/ISO_8601) time interval format to express the time when the airspace is active. Only the time interval format is allowed and must be specified in UTC (Zulu) time, no local or time offsets are supproted. `NONE` token can be used to indicate the unspecified start or end time of the airspace activation. In case of `NONE/NONE`  this airspace is included in the data but will be shown when the activation time is supplied (e.g. by NOAM).
 
 ```
 AA 2023-12-16T12:00Z/2023-12-16T13:00Z 
 AA 2024-12-17T00:00Z/2024-12-17T24:00Z
 AA 2024-12-17T00:00Z/NONE
+AA NONE/2024-12-18T00:00Z
 AA NONE/NONE
 ```
 
