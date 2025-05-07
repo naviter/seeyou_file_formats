@@ -212,13 +212,14 @@ AG Nordholz Radar
 
 #### AA: Airspace Activation Times
 
-*Optional.* Use [ISO8601](https://en.wikipedia.org/wiki/ISO_8601) time interval format to express the time when the airspace is active. Only the time interval format is allowed and must be specified in UTC (Zulu) time, no local or time offsets are supported. `NONE` token can be used to indicate the unspecified start or end time of the airspace activation. In case of `NONE/NONE`  this airspace is included in the data but will be shown when the activation time is supplied (e.g. by NOAM).
+*Optional.* Use [ISO8601](https://en.wikipedia.org/wiki/ISO_8601) time interval format to express the time when the airspace is active. Only the time interval format is allowed and must be specified in UTC (Zulu) time, no local or time offsets are supported. `NONE` token can be used to indicate the unspecified start or end time of the airspace activation. In case of `NONE/NONE`  this airspace is included in the data but will be shown when the activation time is supplied (e.g. by NOTAM) and no other AA commands can be set/all others will be ignored.
 
 ```
 AA 2023-12-16T12:00Z/2023-12-16T13:00Z 
 AA 2024-12-17T00:00Z/2024-12-17T24:00Z
 AA 2024-12-17T00:00Z/NONE
 AA NONE/2024-12-18T00:00Z
+------OR------
 AA NONE/NONE
 ```
 
@@ -243,11 +244,11 @@ AH Altitude AltRef
 ```
 
 Altitude references are `AGL`, `FL`, `STD`, `AMSL` . For an undefined upper limit, use `UNL` without specifying an altitude.
-
+ 
 Example:
 ```
 AH FL145
-AL 1000ft MSL
+AL 1000ft AMSL
 ```
 
 > [!IMPORTANT]
@@ -262,7 +263,7 @@ Format:
 AL Altitude AltRef
 ```
 
-Altitude references are `AGL`, `FL`, `STD`, `MSL`. For areas extending to the ground, use `GND`, omitting the altitude.
+Altitude references are `AGL`, `FL`, `STD`, `AMSL`. For areas extending to the ground, use `GND`, omitting the altitude.
 
 
 Example:
