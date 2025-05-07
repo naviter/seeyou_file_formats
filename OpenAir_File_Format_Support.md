@@ -243,7 +243,7 @@ Format:
 AH Altitude AltRef
 ```
 
-Altitude references are `AGL`, `FL`, `STD`, `AMSL` . For an undefined upper limit, use `UNL` without specifying an altitude.
+Altitude references must be `AGL`, `FL`, `STD`, `AMSL` . For an undefined upper limit, use `UNL` without specifying an altitude.
  
 Example:
 ```
