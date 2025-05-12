@@ -1,7 +1,7 @@
 ---
 title: Extended OpenAir file format specification
 description: SeeYou OpenAir specification with Naviter extensions, Copyright © 2025, Naviter d.o.o. All Rights Reserved
-date: 2025-04-04
+date: 2025-05-12
 ---
 
 # SeeYou OpenAir file format specification
