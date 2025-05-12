@@ -115,7 +115,7 @@ If the `SizeOfItem` is smaller than the total size of the `CubItem` structure (4
 | 0x8b  | Transponder Recomended Zone (TRZ) |
 | 0x8c  | VFR Route |
 | 0x8d  | Alert     |
-| 0x8e  | Temporary Reserved |
+| 0x8e  | Temporary Segregated Area |
 | 0x8f  | Warning |
 
 ### ExtendedTypes Mappings
@@ -128,6 +128,10 @@ If the `SizeOfItem` is smaller than the total size of the `CubItem` structure (4
 | 0x04  | Area Control Center Sector |
 | 0x05  | Lower Traffic Area         |
 | 0x06  | Upper Traffic Area         |
+| 0x07  | Military Training Area     |
+| 0x08  | Overflight Restriction     |
+| 0x00  | TRA/TSA Feeding Route      |
+| 0x0a  | VFR Sector                 |
 
 
 
