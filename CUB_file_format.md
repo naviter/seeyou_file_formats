@@ -60,7 +60,7 @@ The `CubHeader` is the initial segment of the CUB file format, spanning the firs
 
 The `CubItem` structure stores essential information about each airspace or NOTAM-defined airspace. Information regarding their storage is detailed in the header. The first `CubItem` is located at the `HeaderOffset` specified in the `CubHeader`, and the file contains a total of `HdrItems` items. Each item occupies `SizeOfItem` bytes, and each subsequent `CubItem` is located immediately following the previous one.
 
-If the `SizeOfItem` is smaller than the total size of the `CubItem` structure (42 bytes), the remaining bytes should be set to 0.
+If the `SizeOfItem` is smaller than the total size of the `CubItem` structure (43 bytes), the remaining bytes should be set to 0.
 
 | Bytes | Data Type | Name           | Description                                                  |
 | ----- | --------- | -------------- | ------------------------------------------------------------ |
