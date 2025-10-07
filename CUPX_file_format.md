@@ -1,12 +1,15 @@
 ---
 title: SeeYou CUPX file format description 
 description: SeeYou CUP file format specification file, Copyright © 2021, Naviter d.o.o. All Rights Reserved
-date: 2022-01-03
+date: 2025-10-07
+version: 2.4.0
+header: ${title} - Naviter d.o.o.
+footer: Page ${pageNo} of ${pageCount}
 ---
 
 # SeeYou CUPX file format
 
-*Copyright © 2024, Naviter d.o.o. All Rights Reserved. Version 2.4*
+*Copyright © 2025-10-07, Naviter d.o.o. All Rights Reserved. Version 2.4.0*
 
 
 

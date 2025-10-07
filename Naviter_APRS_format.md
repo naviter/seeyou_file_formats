@@ -1,11 +1,14 @@
 ---
 title: OGNAVI APRS message specification
 description: Naviter APRS message specification file, Copyright © 2025, Naviter d.o.o. All Rights Reserved
-date: 2025-04-14
+date: 2025-10-07
 version: 1.0.2
+header: ${title} - Naviter d.o.o.
+footer: Page ${pageNo} of ${pageCount}
 ---
 
 # OGNAVI APRS message specification
+*Copyright © 2025-10-07, Naviter d.o.o. All Rights Reserved. Version 1.0.2*
 
 Naviter’s APRS message format is built on top of the standard OGN-flavoured APRS aircraft beacon messages.
 

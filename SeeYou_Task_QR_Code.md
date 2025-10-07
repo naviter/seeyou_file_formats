@@ -1,15 +1,15 @@
 ---
 title: SeeYou Task QR Code specification
 description: SeeYou Task QR Code specification file, Copyright © 2024, Naviter d.o.o. All Rights Reserved
-date: 2024-10-4
-version: 2.2
+date: 2025-10-07
+version: 2.2.0
 header: ${title} - Naviter d.o.o.
-footer: No. ${pageNo} / ${pageCount}
+footer: Page ${pageNo} of ${pageCount}
 ---
 
 # SeeYou Task QR Code specification
 
-*Copyright © 2024, Naviter d.o.o. All Rights Reserved. Version 2.2*
+*Copyright © 2025-10-07, Naviter d.o.o. All Rights Reserved. Version 2.2.0*
 
 The Task QR Code format is used to share tasks between devices equipped with a QR Code scanner or a camera. This file format was originally developed by XCTrack for use in their software. This document extends the version 2 format: [XCTrack V2 format](https://xctrack.org/Competition_Interfaces.html). Ideally, the extensions described in this document would become part of the original file format specification. As this has not happened for too long, this document describes Naviter extensions for use in SeeYou Navigator, Oudie N and Omni are described in this document.
 
@@ -181,7 +181,7 @@ Defines the geodetic system of reference for the coordinates. Value `0` represen
 
 This is an example of a complex QR code with extensions described in this document:
 
-![QR_Code_Example](./images/ExampleQRCode.jpg)
+<img src="./images/ExampleQRCode.jpg" alt="QR_Code_Example" style="zoom:25%;" />
 
 JSON object with XCTSK prefix, encoded in the above QR Code:
 ```
