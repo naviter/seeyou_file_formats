@@ -1,16 +1,16 @@
 ---
 title: SeeYou CUB file format
 description: SeeYou CUB file format specification file, Copyright © 2025, Naviter d.o.o. All Rights Reserved
-date: 2025-10-07
-version: 2.0.1
+date: 2025-10-14
+version: 2.0.2
 header: ${title} - Naviter d.o.o.
 footer: Page ${pageNo} of ${pageCount}
 ---
 
 # SeeYou CUB File Format 
 
-*Copyright © 2025-10-07, Naviter d.o.o. All Rights Reserved. Version 2.0.1*
-
+*Copyright © 2025-10-14, Naviter d.o.o. All Rights Reserved. Version 2.0.2*
+same 
 The CUB file format is designed to store airspace data that is displayed and utilized by flight navigation software from Naviter and LX Nav.
 
 This format is structured as a binary file comprising three distinct parts: each file begins with a `CubHeader`, followed by a list of `CubItem's`. Each `CubItem` represents a single airspace, detailing its properties and linking to `CubPoint's`, which are cataloged in the final section of the file.

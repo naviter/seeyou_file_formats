@@ -9,7 +9,7 @@ footer: Page ${pageNo} of ${pageCount}
 
 # SeeYou CUP File Format
 
-*Copyright © 2025-10-07, Naviter d.o.o. All Rights Reserved, Version 1.2*
+*Copyright © 2025-10-07, Naviter d.o.o. All Rights Reserved. Version 1.2.0*
 
 SeeYou CUP Waypoint format is a simple comma separated text file. The extension is .CUP
 
