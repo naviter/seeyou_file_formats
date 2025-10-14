@@ -129,8 +129,8 @@ If the `SizeOfItem` is smaller than the total size of the `CubItem` structure (4
 | 0x05  | Lower Traffic Area         |
 | 0x06  | Upper Traffic Area         |
 | 0x07  | Military Training Area     |
-| 0x08  | Overflight Restriction     |
-| 0x00  | TRA/TSA Feeding Route      |
+| 0x08  | Overflight Restriction     |
+| 0x09  | TRA/TSA Feeding Route      |
 | 0x0a  | VFR Sector                 |
 
 
