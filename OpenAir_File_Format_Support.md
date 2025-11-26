@@ -1,15 +1,15 @@
 ---
 title: Extended OpenAir file format specification
 description: SeeYou OpenAir specification with Naviter extensions, Copyright © 2025, Naviter d.o.o. All Rights Reserved
-date: 2025-10-07
-version: 2.1.0
+date: 2025-11-25
+version: 2.1.1
 header: ${title} - Naviter d.o.o.
 footer: Page ${pageNo} of ${pageCount}
 ---
 
 # SeeYou OpenAir file format specification
 
-*Copyright © 2025-10-07, Naviter d.o.o. All Rights Reserved. Version 2.1.0*
+*Copyright © 2025-11-25, Naviter d.o.o. All Rights Reserved. Version 2.1.1*
 
 The OpenAir format, widely utilized in gliding, paragliding, and hang gliding applications, serves to disseminate airspace information and visualize it on maps. Originally developed by WinPilot in 1998, this format has since been embraced and extended by Naviter. This document outlines the OpenAir format alongside the extensions introduced by Naviter.
 
@@ -20,6 +20,26 @@ The OpenAir format, widely utilized in gliding, paragliding, and hang gliding ap
 - **Structure:** Text-based, with one command or data point per line
 - **Comment Syntax:** Begins with `*` and extends to the end of the line.
 
+**Command Reference**
+
+| Command | Format | Description | Required | Link |
+|---------|--------|-------------|----------|------|
+| `*VERSION` | `*VERSION: 2.1` | OpenAir version number | Yes | [Header](#header) |
+| `*WRITTEN_BY` | `*WRITTEN_BY: Name` | Author/application name | Yes | [Header](#header) |
+| `AC` | `AC Class` | Airspace class (A-G, UNC) | Yes | [AC](#ac-airspace-class) |
+| `AN` | `AN Name` | Airspace name | No | [AN](#an-airspace-name) |
+| `AY` | `AY Type` | Airspace type (CTR, TMA, RMZ, etc.) | No | [AY](#ay-airspace-type) |
+| `AF` | `AF Frequency` | Communication frequency | No | [AF](#af-airspace-frequency) |
+| `AG` | `AG Station Name` | Controlling station name | No | [AG](#ag-station-name) |
+| `AA` | `AA start/end` or `AA NONE` | Activation times (ISO8601 UTC) | No | [AA](#aa-airspace-activation-times) |
+| `AX` | `AX Code` | Transponder code (4 digits) | No | [AX](#ax-transponder-code) |
+| `AH` | `AH Altitude AltRef` or `AH UNL` | Upper altitude limit | No | [AH](#ah-upper-alitutde-limit) |
+| `AL` | `AL Altitude AltRef` or `AL GND` | Lower altitude limit | No | [AL](#al-lower-alitutde-limit) |
+| `DP` | `DP Point` | Polygon point (recommended) | No* | [DP](#dp-polygon-point) |
+| `DA` | `DA Radius, Start, End` | Arc between bearings | No* | [DA](#da-arc-between-start-and-end-bearing) |
+| `DB` | `DB Point1, Point2` | Arc between points | No* | [DB](#db-arc-between-start-and-end-point) |
+| `DC` | `DC Radius` | Circular area | No* | [DC](#dc-circular-area) |
+| `V` | `V Command=Value` | Variable assignment (X, D, W) | No* | [V](#v-variable-assignment) |
 
 ## Units
 
@@ -47,14 +67,11 @@ Distance is measured in nautical miles `nm` and is implied, meaning it is specif
 Time is specified using the [ISO8601](https://en.wikipedia.org/wiki/ISO_8601) format, use only UTC (Zulu) time.
 
 
-
-
-
 ## Header
 
 Header **must** contain a comment with the following information:
 
-* OpenAIR Version number: `*VERSION: 2.0`
+* OpenAIR Version number: `*VERSION: 2.1`
 * Author (App/Person) of  file: `*WRITTEN_BY: SeeYou`
 
 
@@ -363,7 +380,7 @@ Example:
 
 ```
 V X=39:13:00N 118:13:00W
-DB 39:36:40N 119:46:10W, 39:29:09N, 119:36:10W
+DB 39:36:40N 119:46:10W, 39:29:09N 119:36:10W
 ```
 
 #### DC: Circular area
