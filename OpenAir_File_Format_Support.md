@@ -1,15 +1,15 @@
 ---
 title: Extended OpenAir file format specification
 description: SeeYou OpenAir specification with Naviter extensions, Copyright © 2025, Naviter d.o.o. All Rights Reserved
-date: 2025-11-25
-version: 2.1.1
+date: 2026-05-21
+version: 2.1.2
 header: ${title} - Naviter d.o.o.
 footer: Page ${pageNo} of ${pageCount}
 ---
 
 # SeeYou OpenAir file format specification
 
-*Copyright © 2025-11-25, Naviter d.o.o. All Rights Reserved. Version 2.1.1*
+*Copyright © 2026-05-21, Naviter d.o.o. All Rights Reserved. Version 2.1.2*
 
 The OpenAir format, widely utilized in gliding, paragliding, and hang gliding applications, serves to disseminate airspace information and visualize it on maps. Originally developed by WinPilot in 1998, this format has since been embraced and extended by Naviter. This document outlines the OpenAir format alongside the extensions introduced by Naviter.
 
@@ -233,18 +233,27 @@ AG Nordholz Radar
 #### AA: Airspace Activation Times
 *Optional.* Use the ISO 8601 time interval format to specify when the airspace is active. The interval must use UTC (Zulu) time. Local time or time zone offsets are not supported.
 
+Multiple `AA` commands are permitted within a single airspace definition. Each `AA` command defines one activation interval. When multiple activation intervals are provided, they must be sorted from earliest to latest by their start time. This allows parsers and navigation software to process activation periods deterministically. Activation intervals should not overlap. Adjacent intervals may be represented as separate `AA` commands, but maintainers are encouraged to merge them when possible. 
+
 To handle unknown or flexible activation times, use the NONE token:
 * `AA start_time/end_time`: Defines a fixed activation interval.
 * `AA start_time/NONE`: The airspace becomes active at start_time, and stays active until an unspecified end time.
 * `AA NONE/end_time`: The airspace is active until end_time, with no known start time.
 * `AA NONE`: No specific activation times are defined. The airspace is included in the data but only shown when activation times are later provided (e.g. by NOTAM). No other AA commands may follow — this overrides them all.
 
+> [!IMPORTANT]
+> `AA NONE` overrides all other activation-time definitions for the airspace. If `AA NONE` is used, no other `AA` commands may be present in the same airspace definition. Airspace data maintainers and navigation software developers must pay special attention to `NONE`, because it changes the interpretation of the activation schedule.
+
+Exmple:
 ```
 AA 2023-12-16T12:00Z/2023-12-16T13:00Z   ; Active from 12:00 to 13:00 UTC
 AA 2024-12-17T00:00Z/2024-12-17T24:00Z   ; Active for the entire UTC day
+----
 AA 2024-12-17T00:00Z/NONE                ; Active from midnight UTC until unspecified end
+----
 AA NONE/2024-12-18T00:00Z                ; Active until midnight UTC, with unknown start
-AA NONE                                  ; No defined time - inactive
+----
+AA NONE                                  ; No defined time - inactive. SeeYou Software will not show this airspace on the map.
 ```
 
 #### AX: Transponder Code
