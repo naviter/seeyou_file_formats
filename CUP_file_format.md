@@ -293,6 +293,10 @@ Options line must start with "Options" keyword.
 
 #### Possible Values in Observation Zone Line
 
+This schematic shows all the parameters available to define the shape of the turnpoint sector:
+
+![SectorDefinition](./images/SectorDefinition.png)
+
 - `ObsZone`
   Consecutive number of a waypoint (0 = Start)
 - `Style`
@@ -302,16 +306,17 @@ Options line must start with "Options" keyword.
   - 2 - To next point
   - 3 - To previous point
   - 4 - To start point
+  The default value is 0.
 - `R1`
-  Radius 1
+  Radius 1 in meters. The default value is 3000.
 - `A1`
-  Angle 1 in degrees
+  Angle 1 is half the width of the sector in degrees relative to the center line. 45 defines a right angle. The default value is 45.
 - `R2`
-  Radius 2
+  Radius 2 in meters. The default value is 0, meaning that the R1 sector goes all the way to the center point.
 - `A2`
-  Angle 2 in degrees
+  Angle 2 is half of the inner width of the sector in degrees relative to the center line. 180 defines a full circle. The default value is 0, meaning that any sector given by R2 has no part in the observation zone.
 - `A12`
-  Angle 12
+  Bearing of the sector centre line. Only appliccable if Style=0. Default value: UNKNOWN
 
 ### Multiple Starts
 
