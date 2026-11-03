@@ -312,6 +312,8 @@ Options line must start with "Options" keyword.
   Angle 2 in degrees
 - `A12`
   Angle 12
+- `Line`
+  Boolean. Line=1 means that this observation zone is a line
 
 ### Multiple Starts
 
