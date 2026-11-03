@@ -245,8 +245,8 @@ AG Nordholz Radar
 *Optional.* `AA` commands specify when the airspace is active. There are three kinds of `AA` command:
 
 * **Interval:** `AA start_time/end_time` defines one fixed activation interval. See [Interval activation](#interval-activation).
-* **Weekly:** `AA [Days] Start/End [DateFrom/DateTo]` defines a schedule that repeats every week. See [Weekly activation](#weekly-activation). *New in version 3.0.*
-* **Exception:** `AA EXCEPT Date` removes the weekly schedule on one date or a range of dates. See [Exceptions](#exceptions). *New in version 3.0.*
+* **Weekday:** `AA [Days] Start/End [DateFrom/DateTo]` defines a schedule that repeats every week. See [Weekday activation](#weekday-activation). *New in version 3.0.*
+* **Exception:** `AA EXCEPT Date` removes the weekday schedule on one date or a range of dates. See [Exceptions](#exceptions). *New in version 3.0.*
 
 `AA NONE` is a special case, see [Interval activation](#interval-activation).
 
@@ -283,9 +283,9 @@ AA NONE/2024-12-18T00:00Z                * Active until midnight UTC, with unkno
 AA NONE                                  * No defined time - inactive. SeeYou Software will not show this airspace on the map.
 ```
 
-##### Weekly activation
+##### Weekday activation
 
-*New in version 3.0.* A weekly `AA` command defines a schedule that repeats every week. It has this form:
+*New in version 3.0.* A weekday `AA` command defines a schedule that repeats every week. It can use any day of the week, including Saturday and Sunday. It has this form:
 
 ```
 AA [Days] Start/End [DateFrom/DateTo]
@@ -315,7 +315,7 @@ AA FRI 22:00Z/02:00Z                           * Friday 22:00 to Saturday 02:00 
 AA MON-FRI 06:00Z/14:00Z 2026-03-29/2026-10-24 * Working days in summer only
 ```
 
-**Schedules published in local time.** Most AIPs publish schedules in local time, for example "MON-FRI 08:00-16:00 LT". The data maintainer must convert the schedule to UTC. Where daylight saving time applies, the UTC hours are different in summer and in winter. Give each period as a separate weekly `AA` command with its own date range:
+**Schedules published in local time.** Most AIPs publish schedules in local time, for example "MON-FRI 08:00-16:00 LT". The data maintainer must convert the schedule to UTC. Where daylight saving time applies, the UTC hours are different in summer and in winter. Give each period as a separate weekday `AA` command with its own date range:
 
 ```
 AA MON-FRI 06:00Z/14:00Z 2026-03-29/2026-10-24 * 08:00-16:00 CEST
@@ -327,7 +327,7 @@ AA MON-FRI 07:00Z/15:00Z 2026-10-25/2027-03-27 * 08:00-16:00 CET
 
 ##### Exceptions
 
-*New in version 3.0.* An `AA EXCEPT` command removes the weekly schedule on one date or on a range of dates. Use it for public holidays and other days when a weekly schedule does not apply. It has one of these forms:
+*New in version 3.0.* An `AA EXCEPT` command removes the weekday schedule on one date or on a range of dates. Use it for public holidays and other days when a weekday schedule does not apply. It has one of these forms:
 
 ```
 AA EXCEPT YYYY-MM-DD
@@ -335,9 +335,9 @@ AA EXCEPT YYYY-MM-DD/YYYY-MM-DD
 ```
 
 * The date range includes both dates.
-* The dates are UTC calendar days. A weekly window is removed when it **starts** on an excepted date. A window that starts on the day before and continues past midnight UTC is not removed.
-* `AA EXCEPT` applies only to weekly `AA` commands. It does not change interval `AA` commands.
-* `AA EXCEPT` may only be used in an airspace definition that has at least one weekly `AA` command.
+* The dates are UTC calendar days. A weekday window is removed when it **starts** on an excepted date. A window that starts on the day before and continues past midnight UTC is not removed.
+* `AA EXCEPT` applies only to weekday `AA` commands. It does not change interval `AA` commands.
+* `AA EXCEPT` may only be used in an airspace definition that has at least one weekday `AA` command.
 
 Example:
 ```
@@ -348,16 +348,16 @@ AA EXCEPT 2026-12-31/2027-01-01                * Not on 31 December and 1 Januar
 
 ##### Combining AA commands
 
-One airspace definition can have interval, weekly and exception `AA` commands together:
+One airspace definition can have interval, weekday and exception `AA` commands together:
 
-1. The airspace is active when at least one interval or weekly `AA` command says it is active.
-2. `AA EXCEPT` commands then remove weekly windows, as described in [Exceptions](#exceptions).
+1. The airspace is active when at least one interval or weekday `AA` command says it is active.
+2. `AA EXCEPT` commands then remove weekday windows, as described in [Exceptions](#exceptions).
 3. `AA NONE` cannot be combined with any other `AA` command, see [Interval activation](#interval-activation).
 
 Write the commands in this order:
 
 1. Interval commands, sorted by start time.
-2. Weekly commands, sorted by DateFrom. Commands without a date range come first.
+2. Weekday commands, sorted by DateFrom. Commands without a date range come first.
 3. Exception commands, sorted by date.
 
 Example:
@@ -370,7 +370,7 @@ AA EXCEPT 2026-12-25
 
 ##### AA commands a reader does not understand
 
-A reader can find an `AA` command it cannot parse. This happens, for example, when software that supports only version 2.1 reads a weekly command such as `AA MON 09:00Z/11:30Z`.
+A reader can find an `AA` command it cannot parse. This happens, for example, when software that supports only version 2.1 reads a weekday command such as `AA MON 09:00Z/11:30Z`.
 
 In this case the reader must ignore **all** `AA` commands of that airspace and treat the airspace as always active. The reader must not use only the `AA` commands it understands, because that could show an active airspace as inactive.
 
