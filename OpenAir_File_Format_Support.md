@@ -259,7 +259,7 @@ AG Nordholz Radar
 
 Use the ISO 8601 time interval format to specify when the airspace is active. The interval must use UTC (Zulu) time. Local time or time zone offsets are not supported.
 
-Multiple `AA` commands are permitted within a single airspace definition. Each interval `AA` command defines one activation interval. When multiple activation intervals are provided, they must be sorted from earliest to latest by their start time. This allows parsers and navigation software to process activation periods deterministically. Activation intervals should not overlap. Adjacent intervals may be represented as separate `AA` commands, but maintainers are encouraged to merge them when possible. 
+Multiple `AA` commands are permitted within a single airspace definition. Each interval `AA` command defines one activation interval. When multiple activation intervals are provided, they should be sorted from earliest to latest by their start time. See [Combining AA commands](#combining-aa-commands) for the recommended order. Activation intervals should not overlap. Adjacent intervals may be represented as separate `AA` commands, but maintainers are encouraged to merge them when possible. 
 
 To handle unknown or flexible activation times, use the NONE token:
 * `AA start_time/end_time`: Defines a fixed activation interval.
@@ -354,11 +354,13 @@ One airspace definition can have interval, weekday and exception `AA` commands t
 2. `AA EXCEPT` commands then remove weekday windows, as described in [Exceptions](#exceptions).
 3. `AA NONE` cannot be combined with any other `AA` command, see [Interval activation](#interval-activation).
 
-Write the commands in this order:
+The recommended order of the commands is:
 
 1. Interval commands, sorted by start time.
 2. Weekday commands, sorted by DateFrom. Commands without a date range come first.
 3. Exception commands, sorted by date.
+
+This order makes the file easier to read. It does not change the meaning. A reader must accept `AA` commands in any order. An `AA EXCEPT` command applies to all weekday commands of the airspace, also to those that come after it.
 
 Example:
 ```
@@ -533,7 +535,7 @@ DC 2.00
 
 > [!NOTE]
 >
-> Although DY is part of the original WinPilot definition, we advise against using the `DY` type. It doesn't stitch well in a string of airways. Use `DP` instead to define airways more accurately.
+> `DY` is part of the original WinPilot definition, but its use is not recommended. Consecutive `DY` segments do not join cleanly into one continuous airway. Use `DP` instead to define airways more accurately.
 
 ### V: Variable Assignment
 
