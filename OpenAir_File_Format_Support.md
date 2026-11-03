@@ -315,7 +315,7 @@ AA FRI 22:00Z/02:00Z                           * Friday 22:00 to Saturday 02:00 
 AA MON-FRI 06:00Z/14:00Z 2026-03-29/2026-10-24 * Working days in summer only
 ```
 
-**Schedules published in local time.** Most AIPs publish schedules in local time, for example "MON-FRI 08:00-16:00 LT". The data maintainer must convert the schedule to UTC. Where daylight saving time applies, the UTC hours are different in summer and in winter. Give each period as a separate weekday `AA` command with its own date range:
+**Schedules published in local time.** All times in OpenAir are UTC. Most AIPs publish schedules in local time, for example "MON-FRI 08:00-16:00 LT". The data maintainer must convert these times to UTC. If the date range includes a change between summer time and winter time, the same local time has a different UTC time before and after the change. In this case, write two weekday `AA` commands, one for each period. Each command has its own date range and its own UTC times:
 
 ```
 AA MON-FRI 06:00Z/14:00Z 2026-03-29/2026-10-24 * 08:00-16:00 CEST
