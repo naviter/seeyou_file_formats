@@ -19,6 +19,17 @@ The OpenAir format, widely utilized in gliding, paragliding, and hang gliding ap
 - **File Extension:** Use `.openair`, with  `.txt` as legacy alternative
 - **Structure:** Text-based, with one command or data point per line
 - **Comment Syntax:** Begins with `*` and extends to the end of the line.
+- **Self-contained:** A file contains all the information needed to interpret it. See [Self-contained data](#self-contained-data).
+
+**Self-contained data**
+
+Every client must interpret an OpenAir file in the same way, using only the content of the file. The meaning of the data must not depend on information outside the file, such as time zones, daylight saving time rules, public holiday calendars, NOTAMs, the location of the device or the settings of the client.
+
+For this reason:
+
+* All times and dates are in UTC. Local time and time zone names are not supported.
+* Every activation time is written as an explicit date, weekday or time. A rule that needs outside knowledge, for example "except public holidays" or "sunrise to sunset", is not allowed. The software or person that writes the OpenAir file must do the calculation and write the result as explicit `AA` commands. For example, write each public holiday as an `AA EXCEPT` command, and calculate the sunrise and sunset times in UTC for each date.
+* Comments (`*`) are for humans only. A client must not need a comment to interpret the data.
 
 **Command Reference**
 
