@@ -1,15 +1,15 @@
 ---
 title: SeeYou Task QR Code specification
 description: SeeYou Task QR Code specification file, Copyright © 2024, Naviter d.o.o. All Rights Reserved
-date: 2025-10-07
-version: 2.2.0
+date: 2026-11-04
+version: 2.2.1
 header: ${title} - Naviter d.o.o.
 footer: Page ${pageNo} of ${pageCount}
 ---
 
 # SeeYou Task QR Code specification
 
-*Copyright © 2025-10-07, Naviter d.o.o. All Rights Reserved. Version 2.2.0*
+*Copyright © 2026-11-04, Naviter d.o.o. All Rights Reserved. Version 2.2.1*
 
 The Task QR Code format is used to share tasks between devices equipped with a QR Code scanner or a camera. This file format was originally developed by XCTrack for use in their software. This document extends the version 2 format: [XCTrack V2 format](https://xctrack.org/Competition_Interfaces.html). Ideally, the extensions described in this document would become part of the original file format specification. As this has not happened for too long, this document describes Naviter extensions for use in SeeYou Navigator, Oudie N and Omni are described in this document.
 
@@ -111,7 +111,7 @@ This schematic shows all the parameters available to define the shape of the tur
 | ----- | ------------------------------------------------------------ | ------------ |
 | `a1`  | Angle 1 is half the width of the sector in degrees relative to the center line. 45 defines a right angle. | float     |
 | `a2`  | Angle 2 is half of the inner width of the sector in degrees relative to the center line. 180 defines a full circle. | float     |
-| `a12` | Bearing of the sector centre line.                           | integer      |
+| `a12` | Bearing of the center line in degrees, clockwise from north, pointing towards the turnpoint. The zone lies at a12 + 180. | float        |
 | `r2`  | Radius 2 in meters. Required if a2 is specified.             | integer      |
 | `l`   | Line flag specifies if the sector is a line.                 | bool integer |
 
