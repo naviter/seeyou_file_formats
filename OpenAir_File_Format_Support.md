@@ -411,6 +411,32 @@ V X=50:35:36N 007:56:42E
 DC 2.00
 ```
 
+#### DE: Elliptical area
+
+Defines an elliptical area. The center of the ellipse is defined by a preceding [V](#v:-variable-assignment) command. Like with the
+`DC` circle command, the ellipse is the only geometry of the airspace and replaces all other geometry definitions.
+
+Format:
+
+```
+DE <axis>,<axis>,<azimuth>
+```
+
+- `axis`: the two axis dimensions of the ellipse in nautical miles `NM` (unit omitted). The axes may be defined in any order.
+- `azimuth`: the compass bearing of the major (longest) axis in degrees (0-359), independent of the definition order of the axis dimensions.
+
+Example - an ellipse with axis dimensions of `43.2x21.6` (NM) and an azimuth of the major axis of `053` degrees:
+
+```
+AC D
+AY TMA
+AN TMA Ellipse
+AH 40000ft AMSL
+AL GND
+V X=45:05:27 N 009:39:59 E
+DE 43.2,21.6,053
+```
+
 #### DY: Airway segment
 
 > [!NOTE]
