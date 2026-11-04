@@ -1,15 +1,15 @@
 ---
 title: SeeYou CUP file format 
 description: SeeYou CUP file format specification file, Copyright © 2024, Naviter d.o.o. All Rights Reserved
-date: 2026-11-03
-version: 1.2.1
+date: 2026-11-04
+version: 1.2.2
 header: ${title} - Naviter d.o.o.
 footer: Page ${pageNo} of ${pageCount}
 ---
 
 # SeeYou CUP File Format
 
-*Copyright © 2025-10-07, Naviter d.o.o. All Rights Reserved. Version 1.2.1*
+*Copyright © 2026-11-04, Naviter d.o.o. All Rights Reserved. Version 1.2.2*
 
 SeeYou CUP Waypoint format is a simple comma separated text file. The extension is .CUP
 
@@ -241,7 +241,7 @@ This defines first turnpoint (after takeoff). Format must be the same as for the
 
 ### Options and Observation Zones
 
-The line with the definition of the description and the list of task points is followed by "Task Options" line, this line is successively followed by "Observation Zone" lines for the turn points specified in the task above. Every value is optional. If a value is missing, its default is used. The defaults for observation zones are listed under [Possible Values in Observation Zone Line](#possible-values-in-observation-zone-line). Here an example:
+The line with the definition of the description and the list of task points is followed by "Task Options" line, this line is successively followed by "Observation Zone" lines for the turn points specified in the task above. Some observation zone values are required, the others have defaults. See [Possible Values in Observation Zone Line](#possible-values-in-observation-zone-line). Here an example:
 
 ```
 Options,NoStart=12:34:56,TaskTime=01:45:12,WpDis=False,NearDis=0.7km,NearAlt=300.0m
@@ -293,7 +293,9 @@ Options line must start with "Options" keyword.
 
 #### Possible Values in Observation Zone Line
 
-Observation zone line must start with "ObsZone" keyword. All other values are optional.
+Observation zone line must start with "ObsZone" keyword. `Style`, `R1` and `A1` are required, because programs fill in missing ones differently. The other values are optional.
+
+A task point without an Observation Zone line gets the default zone of the program that reads the file. In SeeYou these are the user's default zones.
 
 This schematic shows all the parameters available to define the shape of the turnpoint sector:
 
@@ -309,18 +311,16 @@ Distances are numbers with a unit, like `500m`, `3km` or `1.5nm`. A number witho
 - `ObsZone`
   Consecutive number of the task point (0 = Start).
 - `Style`
-  Direction of the center line.
+  Required. Direction of the center line.
   - 0 - Fixed, set by `A12`
   - 1 - Symmetrical: the zone lies on the bisector of the incoming and outgoing legs, on the outside of the turn. At the start it works as "To next point", at the finish as "To previous point".
   - 2 - To next point
   - 3 - To previous point
   - 4 - To start point
-
-  The default value is 1.
 - `R1`
-  Outer radius. When `Line=1`, this is half the length of the line. The default value is 500m when `Line=1` or `A1` is 180 or more. Otherwise it is 3000m.
+  Required. Outer radius. When `Line=1`, this is half the length of the line.
 - `A1`
-  Half the angle of the outer sector, measured from the center line to each side. 45 gives a 90° (FAI) sector, 180 gives a full circle (cylinder). The default value is 180 when `R2` or `A2` is greater than 0, or when `Style` is 0 or 4. Otherwise it is 45.
+  Required. Half the angle of the outer sector, measured from the center line to each side. 45 gives a 90° (FAI) sector, 180 gives a full circle (cylinder).
 - `R2`
   Inner radius. The outer sector starts at `R2`. The default value is 0, meaning the outer sector reaches all the way to the turnpoint.
 - `A2`
@@ -328,7 +328,7 @@ Distances are numbers with a unit, like `500m`, `3km` or `1.5nm`. A number witho
 - `A12`
   Used only when `Style=0`. Bearing of the center line, clockwise from north, pointing from the zone towards the turnpoint. The zone lies on the opposite side, at `A12` + 180. For example, `A12=0` puts the zone south of the turnpoint. The default value is 0.
 - `Line`
-  `Line=1` makes the zone a line through the turnpoint, at a right angle to the center line, `R1` long on each side. `A1`, `R2` and `A2` are ignored. The default value is 0.
+  `Line=1` means that this observation zone is a line through the turnpoint, at a right angle to the center line, `R1` long on each side. `A1`, `R2` and `A2` are ignored. Without `Line`, the observation zone is not a line.
 
 ### Multiple Starts
 
