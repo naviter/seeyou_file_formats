@@ -1,15 +1,15 @@
 ---
 title: Extended OpenAir file format specification
 description: SeeYou OpenAir specification with Naviter extensions, Copyright © 2025, Naviter d.o.o. All Rights Reserved
-date: 2026-05-21
-version: 2.1.2
+date: 2026-11-03
+version: 3.0.0
 header: ${title} - Naviter d.o.o.
 footer: Page ${pageNo} of ${pageCount}
 ---
 
 # SeeYou OpenAir file format specification
 
-*Copyright © 2026-05-21, Naviter d.o.o. All Rights Reserved. Version 2.1.2*
+*Copyright © 2026-11-03, Naviter d.o.o. All Rights Reserved. Version 3.0.0*
 
 The OpenAir format, widely utilized in gliding, paragliding, and hang gliding applications, serves to disseminate airspace information and visualize it on maps. Originally developed by WinPilot in 1998, this format has since been embraced and extended by Naviter. This document outlines the OpenAir format alongside the extensions introduced by Naviter.
 
@@ -19,19 +19,31 @@ The OpenAir format, widely utilized in gliding, paragliding, and hang gliding ap
 - **File Extension:** Use `.openair`, with  `.txt` as legacy alternative
 - **Structure:** Text-based, with one command or data point per line
 - **Comment Syntax:** Begins with `*` and extends to the end of the line.
+- **Case:** Commands, keywords and units are not case sensitive. For example, `AC D` and `ac d` are the same. Writers are encouraged to use the case shown in this document.
+- **Self-contained:** A file contains all the information needed to interpret it. See [Self-contained data](#self-contained-data).
+
+**Self-contained data**
+
+Every client must interpret an OpenAir file in the same way, using only the content of the file. The meaning of the data must not depend on information outside the file, such as time zones, daylight saving time rules, public holiday calendars, NOTAMs, the location of the device or the settings of the client.
+
+For this reason:
+
+* All times and dates are in UTC. Local time and time zone names are not supported.
+* Every activation time is written as an explicit date, weekday or time. A rule that needs outside knowledge, for example "except public holidays" or "sunrise to sunset", is not allowed. The software or person that writes the OpenAir file must do the calculation and write the result as explicit `AA` commands. For example, write each public holiday as an `AA EXCEPT` command, and calculate the sunrise and sunset times in UTC for each date.
+* Comments (`*`) are for humans only. A client must not need a comment to interpret the data.
 
 **Command Reference**
 
 | Command | Format | Description | Required | Link |
 |---------|--------|-------------|----------|------|
-| `*VERSION` | `*VERSION: 2.1` | OpenAir version number | Yes | [Header](#header) |
+| `*VERSION` | `*VERSION: 3.0` | OpenAir version number | Yes | [Header](#header) |
 | `*WRITTEN_BY` | `*WRITTEN_BY: Name` | Author/application name | Yes | [Header](#header) |
 | `AC` | `AC Class` | Airspace class (A-G, UNC) | Yes | [AC](#ac-airspace-class) |
 | `AN` | `AN Name` | Airspace name | No | [AN](#an-airspace-name) |
 | `AY` | `AY Type` | Airspace type (CTR, TMA, RMZ, etc.) | No | [AY](#ay-airspace-type) |
 | `AF` | `AF Frequency` | Communication frequency | No | [AF](#af-airspace-frequency) |
 | `AG` | `AG Station Name` | Controlling station name | No | [AG](#ag-station-name) |
-| `AA` | `AA start/end` or `AA NONE` | Activation times (ISO8601 UTC) | No | [AA](#aa-airspace-activation-times) |
+| `AA` | `AA start/end`, `AA [Days] Start/End [DateFrom/DateTo]`, `AA EXCEPT Date` or `AA NONE` | Activation times (UTC) | No | [AA](#aa-airspace-activation-times) |
 | `AX` | `AX Code` | Transponder code (4 digits) | No | [AX](#ax-transponder-code) |
 | `AH` | `AH Altitude AltRef` or `AH UNL` | Upper altitude limit | Yes | [AH](#ah-upper-alitutde-limit) |
 | `AL` | `AL Altitude AltRef` or `AL GND` | Lower altitude limit | Yes | [AL](#al-lower-alitutde-limit) |
@@ -71,7 +83,7 @@ Time is specified using the [ISO8601](https://en.wikipedia.org/wiki/ISO_8601) fo
 
 Header **must** contain a comment with the following information:
 
-* OpenAIR Version number: `*VERSION: 2.1`
+* OpenAIR Version number: `*VERSION: 3.0`
 * Author (App/Person) of  file: `*WRITTEN_BY: SeeYou`
 
 
@@ -231,9 +243,24 @@ AG Nordholz Radar
 
 
 #### AA: Airspace Activation Times
-*Optional.* Use the ISO 8601 time interval format to specify when the airspace is active. The interval must use UTC (Zulu) time. Local time or time zone offsets are not supported.
+*Optional.* `AA` commands specify when the airspace is active. There are three kinds of `AA` command:
 
-Multiple `AA` commands are permitted within a single airspace definition. Each `AA` command defines one activation interval. When multiple activation intervals are provided, they must be sorted from earliest to latest by their start time. This allows parsers and navigation software to process activation periods deterministically. Activation intervals should not overlap. Adjacent intervals may be represented as separate `AA` commands, but maintainers are encouraged to merge them when possible. 
+* **Interval:** `AA start_time/end_time` defines one fixed activation interval. See [Interval activation](#interval-activation).
+* **Weekday:** `AA [Days] Start/End [DateFrom/DateTo]` defines a schedule that repeats every week. See [Weekday activation](#weekday-activation). *New in version 3.0.*
+* **Exception:** `AA EXCEPT Date` removes the weekday schedule on one date or a range of dates. See [Exceptions](#exceptions). *New in version 3.0.*
+
+`AA NONE` is a special case, see [Interval activation](#interval-activation).
+
+> [!IMPORTANT]
+> All times and dates in `AA` commands are UTC (Zulu). Local time and time zones are not supported, in any form.
+>
+> Weekdays and dates are UTC calendar days. Each activation window belongs to the UTC day on which it starts.
+
+##### Interval activation
+
+Use the ISO 8601 time interval format to specify when the airspace is active. The interval must use UTC (Zulu) time. Local time or time zone offsets are not supported.
+
+Multiple `AA` commands are permitted within a single airspace definition. Each interval `AA` command defines one activation interval. When multiple activation intervals are provided, they should be sorted from earliest to latest by their start time. See [Combining AA commands](#combining-aa-commands) for the recommended order. Activation intervals should not overlap. Adjacent intervals may be represented as separate `AA` commands, but maintainers are encouraged to merge them when possible. 
 
 To handle unknown or flexible activation times, use the NONE token:
 * `AA start_time/end_time`: Defines a fixed activation interval.
@@ -244,7 +271,8 @@ To handle unknown or flexible activation times, use the NONE token:
 > [!IMPORTANT]
 > `AA NONE` overrides all other activation-time definitions for the airspace. If `AA NONE` is used, no other `AA` commands may be present in the same airspace definition. Airspace data maintainers and navigation software developers must pay special attention to `NONE`, because it changes the interpretation of the activation schedule.
 
-Exmple:
+Example:
+
 ```
 AA 2023-12-16T12:00Z/2023-12-16T13:00Z   * Active from 12:00 to 13:00 UTC
 AA 2024-12-17T00:00Z/2024-12-17T24:00Z   * Active for the entire UTC day
@@ -255,6 +283,100 @@ AA NONE/2024-12-18T00:00Z                * Active until midnight UTC, with unkno
 ----
 AA NONE                                  * No defined time - inactive. SeeYou Software will not show this airspace on the map.
 ```
+
+##### Weekday activation
+
+*New in version 3.0.* A weekday `AA` command defines a schedule that repeats every week. It can use any day of the week, including Saturday and Sunday. It has this form:
+
+```
+AA [Days] Start/End [DateFrom/DateTo]
+```
+
+* **Days** *(optional)*: one or more weekdays. Use `MON`, `TUE`, `WED`, `THU`, `FRI`, `SAT`, `SUN`.
+  * A range: `MON-FRI`. A range can wrap past Sunday: `FRI-MON` means Friday, Saturday, Sunday and Monday.
+  * The first and last day of a range must be different. A range such as `MON-MON` is not allowed. For one day, write only that day: `MON`. For every day, leave Days out. A reader must treat an `AA` command with such a range as a command it cannot parse. See [AA commands a reader does not understand](#aa-commands-a-reader-does-not-understand).
+  * A list: `MON,WED,FRI`. Do not put spaces in the list.
+  * A list can contain ranges: `MON-FRI,SUN`.
+  * If Days is left out, the schedule applies to every day.
+* **Start/End** *(required)*: an ISO 8601 time interval in UTC, in the form `hh:mmZ/hh:mmZ`, for example `09:00Z/11:30Z`. This is the same time format as in [Interval activation](#interval-activation), without the date.
+  * `24:00Z` is allowed as an end time. It means the end of the day.
+  * If End is earlier than or equal to Start, the window ends on the next day. For example, `FRI 22:00Z/02:00Z` starts on Friday at 22:00 UTC and ends on Saturday at 02:00 UTC.
+* **DateFrom/DateTo** *(optional)*: an ISO 8601 date range, `YYYY-MM-DD/YYYY-MM-DD`. The schedule applies only between these dates, **including both dates**.
+  * Use `NONE` for an open end: `2026-04-01/NONE` or `NONE/2026-10-31`.
+  * If the date range is left out, the schedule repeats with no time limit.
+
+The weekday and the date range always refer to the UTC day on which a window **starts**. A window that crosses midnight UTC belongs to the day on which it starts.
+
+Example:
+```
+AA MON 09:00Z/11:30Z                           * Every Monday, 09:00-11:30 UTC
+AA MON-FRI 07:00Z/15:00Z                       * Every working day, 07:00-15:00 UTC
+AA SAT,SUN 08:00Z/18:00Z                       * Weekends, 08:00-18:00 UTC
+AA 06:00Z/20:00Z                               * Every day, 06:00-20:00 UTC
+AA FRI 22:00Z/02:00Z                           * Friday 22:00 to Saturday 02:00 UTC
+AA MON-FRI 06:00Z/14:00Z 2026-03-29/2026-10-24 * Working days in summer only
+```
+
+**Schedules published in local time.** All times in OpenAir are UTC. Most AIPs publish schedules in local time, for example "MON-FRI 08:00-16:00 LT". The data maintainer must convert these times to UTC. If the date range includes a change between summer time and winter time, the same local time has a different UTC time before and after the change. In this case, write two weekday `AA` commands, one for each period. Each command has its own date range and its own UTC times:
+
+```
+AA MON-FRI 06:00Z/14:00Z 2026-03-29/2026-10-24 * 08:00-16:00 CEST
+AA MON-FRI 07:00Z/15:00Z 2026-10-25/2027-03-27 * 08:00-16:00 CET
+```
+
+> [!WARNING]
+> Check the weekday after the conversion to UTC. A local time shortly after midnight can be on the previous UTC day. For example, Monday 00:30 CEST is Sunday 22:30 UTC, so the command must use `SUN`.
+
+##### Exceptions
+
+*New in version 3.0.* An `AA EXCEPT` command removes the weekday schedule on one date or on a range of dates. Use it for public holidays and other days when a weekday schedule does not apply. It has one of these forms:
+
+```
+AA EXCEPT YYYY-MM-DD
+AA EXCEPT YYYY-MM-DD/YYYY-MM-DD
+```
+
+* The date range includes both dates.
+* The dates are UTC calendar days. A weekday window is removed when it **starts** on an excepted date. A window that starts on the day before and continues past midnight UTC is not removed.
+* `AA EXCEPT` applies only to weekday `AA` commands. It does not change interval `AA` commands.
+* `AA EXCEPT` may only be used in an airspace definition that has at least one weekday `AA` command.
+
+Example:
+```
+AA MON-FRI 07:00Z/15:00Z                       * Every working day, 07:00-15:00 UTC
+AA EXCEPT 2026-12-25                           * Not on Christmas Day
+AA EXCEPT 2026-12-31/2027-01-01                * Not on 31 December and 1 January
+```
+
+##### Combining AA commands
+
+One airspace definition can have interval, weekday and exception `AA` commands together:
+
+1. The airspace is active when at least one interval or weekday `AA` command says it is active.
+2. `AA EXCEPT` commands then remove weekday windows, as described in [Exceptions](#exceptions).
+3. `AA NONE` cannot be combined with any other `AA` command, see [Interval activation](#interval-activation).
+
+The recommended order of the commands is:
+
+1. Interval commands, sorted by start time.
+2. Weekday commands, sorted by DateFrom. Commands without a date range come first.
+3. Exception commands, sorted by date.
+
+This order makes the file easier to read. It does not change the meaning. A reader must accept `AA` commands in any order. An `AA EXCEPT` command applies to all weekday commands of the airspace, also to those that come after it.
+
+Example:
+```
+AA 2026-07-04T08:00Z/2026-07-04T16:00Z         * Extra activation on a Saturday
+AA MON-FRI 06:00Z/14:00Z 2026-03-29/2026-10-24 * Summer
+AA MON-FRI 07:00Z/15:00Z 2026-10-25/2027-03-27 * Winter
+AA EXCEPT 2026-12-25
+```
+
+##### AA commands a reader does not understand
+
+A reader can find an `AA` command it cannot parse. This happens, for example, when software that supports only version 2.1 reads a weekday command such as `AA MON 09:00Z/11:30Z`.
+
+In this case the reader must ignore **all** `AA` commands of that airspace and treat the airspace as always active. The reader must not use only the `AA` commands it understands, because that could show an active airspace as inactive.
 
 #### AX: Transponder Code
 
@@ -415,7 +537,7 @@ DC 2.00
 
 > [!NOTE]
 >
-> Although DY is part of the original WinPilot definition, we advise against using the `DY` type. It doesn't stitch well in a string of airways. Use `DP` instead to define airways more accurately.
+> `DY` is part of the original WinPilot definition, but its use is not recommended. Consecutive `DY` segments do not join cleanly into one continuous airway. Use `DP` instead to define airways more accurately.
 
 ### V: Variable Assignment
 
