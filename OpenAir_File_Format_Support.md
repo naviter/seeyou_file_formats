@@ -294,6 +294,7 @@ AA [Days] Start/End [DateFrom/DateTo]
 
 * **Days** *(optional)*: one or more weekdays. Use `MON`, `TUE`, `WED`, `THU`, `FRI`, `SAT`, `SUN`.
   * A range: `MON-FRI`. A range can wrap past Sunday: `FRI-MON` means Friday, Saturday, Sunday and Monday.
+  * The first and last day of a range must be different. A range such as `MON-MON` is not allowed. For one day, write only that day: `MON`. For every day, leave Days out. A reader must treat an `AA` command with such a range as a command it cannot parse. See [AA commands a reader does not understand](#aa-commands-a-reader-does-not-understand).
   * A list: `MON,WED,FRI`. Do not put spaces in the list.
   * A list can contain ranges: `MON-FRI,SUN`.
   * If Days is left out, the schedule applies to every day.
