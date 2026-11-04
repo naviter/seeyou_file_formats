@@ -1,15 +1,15 @@
 ---
 title: SeeYou CUP file format 
 description: SeeYou CUP file format specification file, Copyright © 2024, Naviter d.o.o. All Rights Reserved
-date: 2025-10-07
-version: 1.2.0
+date: 2026-11-03
+version: 1.2.1
 header: ${title} - Naviter d.o.o.
 footer: Page ${pageNo} of ${pageCount}
 ---
 
 # SeeYou CUP File Format
 
-*Copyright © 2025-10-07, Naviter d.o.o. All Rights Reserved. Version 1.2.0*
+*Copyright © 2025-10-07, Naviter d.o.o. All Rights Reserved. Version 1.2.1*
 
 SeeYou CUP Waypoint format is a simple comma separated text file. The extension is .CUP
 
@@ -316,7 +316,10 @@ This schematic shows all the parameters available to define the shape of the tur
 - `A2`
   Angle 2 is half of the inner width of the sector in degrees relative to the center line. 180 defines a full circle. The default value is 0, meaning that any sector given by R2 has no part in the observation zone.
 - `A12`
-  Bearing of the sector centre line. Only appliccable if Style=0. Default value: UNKNOWN
+  Bearing of the sector centre line. Only appliccable if Style=0.
+  Angle 12
+- `Line`
+  Boolean. Line=1 means that this observation zone is a line
 
 ### Multiple Starts
 

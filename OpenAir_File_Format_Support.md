@@ -33,8 +33,8 @@ The OpenAir format, widely utilized in gliding, paragliding, and hang gliding ap
 | `AG` | `AG Station Name` | Controlling station name | No | [AG](#ag-station-name) |
 | `AA` | `AA start/end` or `AA NONE` | Activation times (ISO8601 UTC) | No | [AA](#aa-airspace-activation-times) |
 | `AX` | `AX Code` | Transponder code (4 digits) | No | [AX](#ax-transponder-code) |
-| `AH` | `AH Altitude AltRef` or `AH UNL` | Upper altitude limit | No | [AH](#ah-upper-alitutde-limit) |
-| `AL` | `AL Altitude AltRef` or `AL GND` | Lower altitude limit | No | [AL](#al-lower-alitutde-limit) |
+| `AH` | `AH Altitude AltRef` or `AH UNL` | Upper altitude limit | Yes | [AH](#ah-upper-alitutde-limit) |
+| `AL` | `AL Altitude AltRef` or `AL GND` | Lower altitude limit | Yes | [AL](#al-lower-alitutde-limit) |
 | `DP` | `DP Point` | Polygon point (recommended) | No* | [DP](#dp-polygon-point) |
 | `DA` | `DA Radius, Start, End` | Arc between bearings | No* | [DA](#da-arc-between-start-and-end-bearing) |
 | `DB` | `DB Point1, Point2` | Arc between points | No* | [DB](#db-arc-between-start-and-end-point) |
@@ -246,14 +246,14 @@ To handle unknown or flexible activation times, use the NONE token:
 
 Exmple:
 ```
-AA 2023-12-16T12:00Z/2023-12-16T13:00Z   ; Active from 12:00 to 13:00 UTC
-AA 2024-12-17T00:00Z/2024-12-17T24:00Z   ; Active for the entire UTC day
+AA 2023-12-16T12:00Z/2023-12-16T13:00Z   * Active from 12:00 to 13:00 UTC
+AA 2024-12-17T00:00Z/2024-12-17T24:00Z   * Active for the entire UTC day
 ----
-AA 2024-12-17T00:00Z/NONE                ; Active from midnight UTC until unspecified end
+AA 2024-12-17T00:00Z/NONE                * Active from midnight UTC until unspecified end
 ----
-AA NONE/2024-12-18T00:00Z                ; Active until midnight UTC, with unknown start
+AA NONE/2024-12-18T00:00Z                * Active until midnight UTC, with unknown start
 ----
-AA NONE                                  ; No defined time - inactive. SeeYou Software will not show this airspace on the map.
+AA NONE                                  * No defined time - inactive. SeeYou Software will not show this airspace on the map.
 ```
 
 #### AX: Transponder Code
