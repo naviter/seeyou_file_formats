@@ -19,6 +19,7 @@ The OpenAir format, widely utilized in gliding, paragliding, and hang gliding ap
 - **File Extension:** Use `.openair`, with  `.txt` as legacy alternative
 - **Structure:** Text-based, with one command or data point per line
 - **Comment Syntax:** Begins with `*` and extends to the end of the line.
+- **Case:** Commands, keywords and units are not case sensitive. For example, `AC D` and `ac d` are the same. Writers are encouraged to use the case shown in this document.
 - **Self-contained:** A file contains all the information needed to interpret it. See [Self-contained data](#self-contained-data).
 
 **Self-contained data**
@@ -291,7 +292,7 @@ AA NONE                                  * No defined time - inactive. SeeYou So
 AA [Days] Start/End [DateFrom/DateTo]
 ```
 
-* **Days** *(optional)*: one or more weekdays. Use `MON`, `TUE`, `WED`, `THU`, `FRI`, `SAT`, `SUN`. Upper or lower case is allowed.
+* **Days** *(optional)*: one or more weekdays. Use `MON`, `TUE`, `WED`, `THU`, `FRI`, `SAT`, `SUN`.
   * A range: `MON-FRI`. A range can wrap past Sunday: `FRI-MON` means Friday, Saturday, Sunday and Monday.
   * A list: `MON,WED,FRI`. Do not put spaces in the list.
   * A list can contain ranges: `MON-FRI,SUN`.
