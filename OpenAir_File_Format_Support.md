@@ -1,15 +1,15 @@
 ---
 title: Extended OpenAir file format specification
 description: SeeYou OpenAir specification with Naviter extensions, Copyright © 2025, Naviter d.o.o. All Rights Reserved
-date: 2026-05-21
-version: 2.1.2
+date: 2026-11-04
+version: 2.1.3
 header: ${title} - Naviter d.o.o.
 footer: Page ${pageNo} of ${pageCount}
 ---
 
 # SeeYou OpenAir file format specification
 
-*Copyright © 2026-05-21, Naviter d.o.o. All Rights Reserved. Version 2.1.2*
+*Copyright © 2026-11-04, Naviter d.o.o. All Rights Reserved. Version 2.1.3*
 
 The OpenAir format, widely utilized in gliding, paragliding, and hang gliding applications, serves to disseminate airspace information and visualize it on maps. Originally developed by WinPilot in 1998, this format has since been embraced and extended by Naviter. This document outlines the OpenAir format alongside the extensions introduced by Naviter.
 
