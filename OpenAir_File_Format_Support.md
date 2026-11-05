@@ -43,7 +43,7 @@ For this reason:
 | `AY` | `AY Type` | Airspace type (CTR, TMA, RMZ, etc.) | No | [AY](#ay-airspace-type) |
 | `AF` | `AF Frequency` | Communication frequency | No | [AF](#af-airspace-frequency) |
 | `AG` | `AG Station Name` | Controlling station name | No | [AG](#ag-station-name) |
-| `AA` | `AA StartDateTime/EndDateTime`, `AA [Days] StartTime/EndTime [StartDate/EndDate]`, `AA EXCEPT Date`, `AA EXCEPT StartDate/EndDate` or `AA NONE` | Activation times (UTC) | No | [AA](#aa-airspace-activation-times) |
+| `AA` | `AA StartDateTime/EndDateTime`, `AA [Weekdays] StartTime/EndTime [StartDate/EndDate]`, `AA EXCEPT Date`, `AA EXCEPT StartDate/EndDate` or `AA NONE` | Activation times (UTC) | No | [AA](#aa-airspace-activation-times) |
 | `AX` | `AX Code` | Transponder code (4 digits) | No | [AX](#ax-transponder-code) |
 | `AH` | `AH Altitude AltRef` or `AH UNL` | Upper altitude limit | Yes | [AH](#ah-upper-alitutde-limit) |
 | `AL` | `AL Altitude AltRef` or `AL GND` | Lower altitude limit | Yes | [AL](#al-lower-alitutde-limit) |
@@ -260,7 +260,7 @@ AG Nordholz Radar
 *Optional.* `AA` commands specify when the airspace is active. There are three kinds of `AA` command:
 
 * **Interval:** `AA StartDateTime/EndDateTime` defines one fixed activation interval. See [Interval activation](#interval-activation).
-* **Weekday:** `AA [Days] StartTime/EndTime [StartDate/EndDate]` defines a schedule that repeats every week. See [Weekday activation](#weekday-activation). *New in version 3.0.*
+* **Weekday:** `AA [Weekdays] StartTime/EndTime [StartDate/EndDate]` defines a schedule that repeats every week. See [Weekday activation](#weekday-activation). *New in version 3.0.*
 * **Exception:** `AA EXCEPT Date` or `AA EXCEPT StartDate/EndDate` removes the weekday schedule on one date or a range of dates. See [Exceptions](#exceptions). *New in version 3.0.*
 
 `AA NONE` is a special case, see [Interval activation](#interval-activation).
@@ -313,15 +313,15 @@ AA NONE                                  * No defined time - inactive. SeeYou So
 *New in version 3.0.* A weekday `AA` command defines a schedule that repeats every week. It can use any day of the week, including Saturday and Sunday. It has this form:
 
 ```
-AA [Days] StartTime/EndTime [StartDate/EndDate]
+AA [Weekdays] StartTime/EndTime [StartDate/EndDate]
 ```
 
-* **Days** *(optional)*: one or more weekdays. Use `MON`, `TUE`, `WED`, `THU`, `FRI`, `SAT`, `SUN`.
+* **Weekdays** *(optional)*: one or more days of the week. Use `MON`, `TUE`, `WED`, `THU`, `FRI`, `SAT`, `SUN`.
   * A range: `MON-FRI`. A range can wrap past Sunday: `FRI-MON` means Friday, Saturday, Sunday and Monday.
-  * The first and last day of a range must be different. A range such as `MON-MON` is not allowed. For one day, write only that day: `MON`. For every day, leave Days out. A reader must treat an `AA` command with such a range as a command it cannot parse. See [AA commands a reader does not understand](#aa-commands-a-reader-does-not-understand).
+  * The first and last day of a range must be different. A range such as `MON-MON` is not allowed. For one day, write only that day: `MON`. For every day, leave Weekdays out. A reader must treat an `AA` command with such a range as a command it cannot parse. See [AA commands a reader does not understand](#aa-commands-a-reader-does-not-understand).
   * A list: `MON,WED,FRI`. Do not put spaces in the list.
   * A list can contain ranges: `MON-FRI,SUN`.
-  * If Days is left out, the schedule applies to every day.
+  * If Weekdays is left out, the schedule applies to every day.
 * **StartTime/EndTime** *(required)*: two `Time` values in UTC, see [Time](#time). For example `09:00Z/11:30Z`. `NONE` is not allowed.
   * `24:00Z` is allowed as EndTime. It means the end of the day.
   * If EndTime is earlier than or equal to StartTime, the window ends on the next day. For example, `FRI 22:00Z/02:00Z` starts on Friday at 22:00 UTC and ends on Saturday at 02:00 UTC.
