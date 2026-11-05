@@ -43,7 +43,7 @@ For this reason:
 | `AY` | `AY Type` | Airspace type (CTR, TMA, RMZ, etc.) | No | [AY](#ay-airspace-type) |
 | `AF` | `AF Frequency` | Communication frequency | No | [AF](#af-airspace-frequency) |
 | `AG` | `AG Station Name` | Controlling station name | No | [AG](#ag-station-name) |
-| `AA` | `AA start/end`, `AA [Days] Start/End [DateFrom/DateTo]`, `AA EXCEPT Date` or `AA NONE` | Activation times (UTC) | No | [AA](#aa-airspace-activation-times) |
+| `AA` | `AA StartDateTime/EndDateTime`, `AA [Days] StartTime/EndTime [StartDate/EndDate]`, `AA EXCEPT Date`, `AA EXCEPT StartDate/EndDate` or `AA NONE` | Activation times (UTC) | No | [AA](#aa-airspace-activation-times) |
 | `AX` | `AX Code` | Transponder code (4 digits) | No | [AX](#ax-transponder-code) |
 | `AH` | `AH Altitude AltRef` or `AH UNL` | Upper altitude limit | Yes | [AH](#ah-upper-alitutde-limit) |
 | `AL` | `AL Altitude AltRef` or `AL GND` | Lower altitude limit | Yes | [AL](#al-lower-alitutde-limit) |
@@ -76,7 +76,21 @@ Distance is measured in nautical miles `nm` and is implied, meaning it is specif
 
 ### Time
 
-Time is specified using the [ISO8601](https://en.wikipedia.org/wiki/ISO_8601) format, use only UTC (Zulu) time.
+Time is specified using the [ISO8601](https://en.wikipedia.org/wiki/ISO_8601) format, use only UTC (Zulu) time. Write `Z` after every time of day. Local time and time zone offsets, such as `+01:00`, are not supported.
+
+The [AA](#aa-airspace-activation-times) command uses three types of time values:
+
+| Type | Meaning | Recommended form | Example |
+| --- | --- | --- | --- |
+| `DateTime` | A date and a time of day | `YYYY-MM-DDThh:mmZ` | `2026-07-04T08:00Z` |
+| `Date` | A UTC calendar day | `YYYY-MM-DD` | `2026-12-25` |
+| `Time` | A time of day, without a date | `hh:mmZ` | `09:00Z` |
+
+Any other representation that ISO 8601 defines for the same type is also allowed. Examples are a time with seconds (`2026-07-04T08:00:00Z`) or the basic format without separators (`20260704T0800Z`). Writers should use the recommended form.
+
+`24:00Z` is allowed as an end time. It means the end of the day.
+
+Some `AA` commands allow `NONE` in place of a value. The description of each command says where `NONE` is allowed.
 
 
 ## Header
@@ -245,11 +259,13 @@ AG Nordholz Radar
 #### AA: Airspace Activation Times
 *Optional.* `AA` commands specify when the airspace is active. There are three kinds of `AA` command:
 
-* **Interval:** `AA start_time/end_time` defines one fixed activation interval. See [Interval activation](#interval-activation).
-* **Weekday:** `AA [Days] Start/End [DateFrom/DateTo]` defines a schedule that repeats every week. See [Weekday activation](#weekday-activation). *New in version 3.0.*
-* **Exception:** `AA EXCEPT Date` removes the weekday schedule on one date or a range of dates. See [Exceptions](#exceptions). *New in version 3.0.*
+* **Interval:** `AA StartDateTime/EndDateTime` defines one fixed activation interval. See [Interval activation](#interval-activation).
+* **Weekday:** `AA [Days] StartTime/EndTime [StartDate/EndDate]` defines a schedule that repeats every week. See [Weekday activation](#weekday-activation). *New in version 3.0.*
+* **Exception:** `AA EXCEPT Date` or `AA EXCEPT StartDate/EndDate` removes the weekday schedule on one date or a range of dates. See [Exceptions](#exceptions). *New in version 3.0.*
 
 `AA NONE` is a special case, see [Interval activation](#interval-activation).
+
+`DateTime`, `Date` and `Time` are defined in [Time](#time).
 
 > [!IMPORTANT]
 > All times and dates in `AA` commands are UTC (Zulu). Local time and time zones are not supported, in any form.
@@ -258,14 +274,22 @@ AG Nordholz Radar
 
 ##### Interval activation
 
-Use the ISO 8601 time interval format to specify when the airspace is active. The interval must use UTC (Zulu) time. Local time or time zone offsets are not supported.
+An interval `AA` command has this form:
+
+```
+AA StartDateTime/EndDateTime
+```
+
+StartDateTime and EndDateTime are `DateTime` values, see [Time](#time). Together they are an ISO 8601 time interval. The interval must use UTC (Zulu) time. Local time or time zone offsets are not supported.
+
+Any other time interval form that ISO 8601 defines is also allowed. For example, a start and a duration: `2026-07-04T08:00Z/PT8H`. Writers should use the StartDateTime/EndDateTime form.
 
 Multiple `AA` commands are permitted within a single airspace definition. Each interval `AA` command defines one activation interval. When multiple activation intervals are provided, they should be sorted from earliest to latest by their start time. See [Combining AA commands](#combining-aa-commands) for the recommended order. Activation intervals should not overlap. Adjacent intervals may be represented as separate `AA` commands, but maintainers are encouraged to merge them when possible. 
 
 To handle unknown or flexible activation times, use the NONE token:
-* `AA start_time/end_time`: Defines a fixed activation interval.
-* `AA start_time/NONE`: The airspace becomes active at start_time, and stays active until an unspecified end time.
-* `AA NONE/end_time`: The airspace is active until end_time, with no known start time.
+* `AA StartDateTime/EndDateTime`: Defines a fixed activation interval.
+* `AA StartDateTime/NONE`: The airspace becomes active at StartDateTime, and stays active until an unspecified end time.
+* `AA NONE/EndDateTime`: The airspace is active until EndDateTime, with no known start time.
 * `AA NONE`: No specific activation times are defined. The airspace is included in the data but only shown when activation times are later provided (e.g. by NOTAM). No other AA commands may follow — this overrides them all.
 
 > [!IMPORTANT]
@@ -289,7 +313,7 @@ AA NONE                                  * No defined time - inactive. SeeYou So
 *New in version 3.0.* A weekday `AA` command defines a schedule that repeats every week. It can use any day of the week, including Saturday and Sunday. It has this form:
 
 ```
-AA [Days] Start/End [DateFrom/DateTo]
+AA [Days] StartTime/EndTime [StartDate/EndDate]
 ```
 
 * **Days** *(optional)*: one or more weekdays. Use `MON`, `TUE`, `WED`, `THU`, `FRI`, `SAT`, `SUN`.
@@ -298,10 +322,10 @@ AA [Days] Start/End [DateFrom/DateTo]
   * A list: `MON,WED,FRI`. Do not put spaces in the list.
   * A list can contain ranges: `MON-FRI,SUN`.
   * If Days is left out, the schedule applies to every day.
-* **Start/End** *(required)*: an ISO 8601 time interval in UTC, in the form `hh:mmZ/hh:mmZ`, for example `09:00Z/11:30Z`. This is the same time format as in [Interval activation](#interval-activation), without the date.
-  * `24:00Z` is allowed as an end time. It means the end of the day.
-  * If End is earlier than or equal to Start, the window ends on the next day. For example, `FRI 22:00Z/02:00Z` starts on Friday at 22:00 UTC and ends on Saturday at 02:00 UTC.
-* **DateFrom/DateTo** *(optional)*: an ISO 8601 date range, `YYYY-MM-DD/YYYY-MM-DD`. The schedule applies only between these dates, **including both dates**.
+* **StartTime/EndTime** *(required)*: two `Time` values in UTC, see [Time](#time). For example `09:00Z/11:30Z`. `NONE` is not allowed.
+  * `24:00Z` is allowed as EndTime. It means the end of the day.
+  * If EndTime is earlier than or equal to StartTime, the window ends on the next day. For example, `FRI 22:00Z/02:00Z` starts on Friday at 22:00 UTC and ends on Saturday at 02:00 UTC.
+* **StartDate/EndDate** *(optional)*: two `Date` values, see [Time](#time). For example `2026-03-29/2026-10-24`. The schedule applies only between these dates, **including both dates**.
   * Use `NONE` for an open end: `2026-04-01/NONE` or `NONE/2026-10-31`.
   * If the date range is left out, the schedule repeats with no time limit.
 
@@ -332,10 +356,11 @@ AA MON-FRI 07:00Z/15:00Z 2026-10-25/2027-03-27 * 08:00-16:00 CET
 *New in version 3.0.* An `AA EXCEPT` command removes the weekday schedule on one date or on a range of dates. Use it for public holidays and other days when a weekday schedule does not apply. It has one of these forms:
 
 ```
-AA EXCEPT YYYY-MM-DD
-AA EXCEPT YYYY-MM-DD/YYYY-MM-DD
+AA EXCEPT Date
+AA EXCEPT StartDate/EndDate
 ```
 
+* Date, StartDate and EndDate are `Date` values, see [Time](#time). `NONE` is not allowed.
 * The date range includes both dates.
 * The dates are UTC calendar days. A weekday window is removed when it **starts** on an excepted date. A window that starts on the day before and continues past midnight UTC is not removed.
 * `AA EXCEPT` applies only to weekday `AA` commands. It does not change interval `AA` commands.
@@ -358,9 +383,9 @@ One airspace definition can have interval, weekday and exception `AA` commands t
 
 The recommended order of the commands is:
 
-1. Interval commands, sorted by start time.
-2. Weekday commands, sorted by DateFrom. Commands without a date range come first.
-3. Exception commands, sorted by date.
+1. Interval commands, sorted by StartDateTime.
+2. Weekday commands, sorted by StartDate. Commands without a date range come first.
+3. Exception commands, sorted by Date or StartDate.
 
 This order makes the file easier to read. It does not change the meaning. A reader must accept `AA` commands in any order. An `AA EXCEPT` command applies to all weekday commands of the airspace, also to those that come after it.
 
