@@ -19,7 +19,10 @@ The OpenAir format, widely utilized in gliding, paragliding, and hang gliding ap
 - **File Extension:** Use `.openair`, with  `.txt` as legacy alternative
 - **Structure:** Text-based, with one command or data point per line
 - **Comment Syntax:** Begins with `*` and extends to the end of the line.
-- **Case:** Commands, keywords and units are not case sensitive. For example, `AC D` and `ac d` are the same. Writers are encouraged to use the case shown in this document.
+- **Case:** Write everything in upper case: commands, keywords, units and all other values. This includes weekdays, sun events, the letters `T` and `Z` in dates and times, and the letters `N`, `S`, `E` and `W` in coordinates. For example, write `AC D`, not `ac d`, and `1000 FT`, not `1000 ft`. Only these parts can use any case:
+  - the name after `AN`,
+  - the station name after `AG`,
+  - comments (`*`).
 - **Self-contained:** A file contains all the information needed to interpret it. See [Self-contained data](#self-contained-data).
 
 **Self-contained data**
@@ -69,11 +72,11 @@ Use a consistent format for each command or data point, either DMS  `45:40:30N 0
 
 ### Altitude
 
-Altitude is specified in feet `ft` (recommended) or in meters `m`. Example: `300ft` or `1500m`.
+Altitude is specified in feet `FT` (recommended) or in meters `M`. Write a space between the number and the unit. Example: `300 FT` or `1500 M`.
 
 ### Distance
 
-Distance is measured in nautical miles `nm` and is implied, meaning it is specified <u>without a unit.</u>  This applies to definitions such as radii, widths and segments, see: [DA](#da:-define-an-arc-between-start-and-end-bearing), [DB](#db:-define-an-arc-between-start-and-end-point), [DY](#dy:-define-an-airway-segment), or [V](#v:-variable-assignment) for more.
+Distance is measured in nautical miles `NM` and is implied, meaning it is specified <u>without a unit.</u>  This applies to definitions such as radii, widths and segments, see: [DA](#da:-define-an-arc-between-start-and-end-bearing), [DB](#db:-define-an-arc-between-start-and-end-point), [DY](#dy:-define-an-airway-segment), or [V](#v:-variable-assignment) for more.
 
 ### Time
 
@@ -459,11 +462,11 @@ Altitude references must be `AGL`, `FL`, `STD`, `AMSL` . For an undefined upper 
 Example:
 ```
 AH FL145
-AL 1000ft AMSL
+AL 1000 FT AMSL
 ```
 
 > [!IMPORTANT]
-> Each airspace definition must include only one upper altitude limit. Including multiple altitude references creates ambiguity and is considered invalid (e.g., ~~`100m AGL/423m AMSL`~~ is not permitted).
+> Each airspace definition must include only one upper altitude limit. Including multiple altitude references creates ambiguity and is considered invalid (e.g., ~~`100 M AGL/423 M AMSL`~~ is not permitted).
 
 #### AL: Lower Alitutde Limit
 
@@ -480,11 +483,11 @@ Altitude references are `AGL`, `FL`, `STD`, `AMSL`. For areas extending to the g
 Example:
 ```
 AH FL145
-AL 1000ft AGL
+AL 1000 FT AGL
 ```
 
 > [!IMPORTANT]
-> Each airspace definition must include only one lower altitude limit. Including multiple altitude references creates ambiguity and is considered invalid (e.g., ~~`100m AGL/423m AMSL`~~ is not permitted).
+> Each airspace definition must include only one lower altitude limit. Including multiple altitude references creates ambiguity and is considered invalid (e.g., ~~`100 M AGL/423 M AMSL`~~ is not permitted).
 
 #### Supported Altitude References
 
@@ -500,7 +503,7 @@ AL 1000ft AGL
 
 ### D: Geometric Definitions
 
-Geometric definition commands, often used with variable assignemnt `V`, define airspace geometry. Points are specified in degrees, minutes, seconds (DMS) or degrees and decimal minutes (DDM) notation. Radii are defined in nautical miles `nm` , with unit omitted.
+Geometric definition commands, often used with variable assignemnt `V`, define airspace geometry. Points are specified in degrees, minutes, seconds (DMS) or degrees and decimal minutes (DDM) notation. Radii are defined in nautical miles `NM`, with unit omitted.
 
 #### DP: Polygon point
 
@@ -611,7 +614,7 @@ Comand and Value options:
 | ------- | ---------- | ------------------------------------------------------------ |
 | D       | `+` or `-` | Sets the direction for `DA`and `DB`records. `+` is clockwise direction, which is also a default. |
 | X       | Point      | Sets the center of the `DA`, `DB`and `DC` records.           |
-| W       | Number     | Sets the width of an airway in `nm`                          |
+| W       | Number     | Sets the width of an airway in `NM`                          |
 
 Example:
 
