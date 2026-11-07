@@ -29,7 +29,8 @@ Every client must interpret an OpenAir file in the same way, using only the cont
 For this reason:
 
 * All times and dates are in UTC. Local time and time zone names are not supported.
-* Every activation time is written as an explicit date, weekday or time. A rule that needs outside knowledge, for example "except public holidays" or "sunrise to sunset", is not allowed. The software or person that writes the OpenAir file must do the calculation and write the result as explicit `AA` commands. For example, write each public holiday as an `AA EXCEPT` command, and calculate the sunrise and sunset times in UTC for each date.
+* Every activation time is written as an explicit date, weekday or time. A rule that needs outside knowledge, for example "except public holidays", is not allowed. The software or person that writes the OpenAir file must do the calculation and write the result as explicit `AA` commands. For example, write each public holiday as an `AA EXCEPT` command.
+* The only exception are the [sun events](#sun-events) `SR`, `SS`, `BCMT` and `EECT`. They do not need outside knowledge. Every client must calculate them from the date and the position of the airspace, which are both in the file.
 * Comments (`*`) are for humans only. A client must not need a comment to interpret the data.
 
 **Command Reference**
@@ -89,6 +90,30 @@ The [AA](#aa-airspace-activation-times) command uses three types of time values:
 Any other representation that ISO 8601 defines for the same type is also allowed. Examples are a time with seconds (`2026-07-04T08:00:00Z`) or the basic format without separators (`20260704T0800Z`). Writers should use the recommended form.
 
 `24:00Z` is allowed as an end time. It means the end of the day.
+
+#### Sun events
+
+*New in version 3.0.* A weekday `AA` command can use a sun event in place of a `Time` value. The sun events are the ICAO abbreviations from ICAO Doc 8400:
+
+| Keyword | Meaning | Definition |
+| --- | --- | --- |
+| `SR` | Sunrise | The upper edge of the sun appears at the horizon in the morning. |
+| `SS` | Sunset | The upper edge of the sun disappears below the horizon in the evening. |
+| `BCMT` | Beginning of Civil Morning Twilight | The centre of the sun is 6° below the horizon in the morning. |
+| `EECT` | End of Evening Civil Twilight | The centre of the sun is 6° below the horizon in the evening. |
+
+A sun event is not a fixed time. The client calculates it in UTC for each day, with these rules:
+
+* **Date:** the UTC day on which the window starts. See [Weekday activation](#weekday-activation).
+* **Position:** the centre of the airspace. This is the midpoint between the lowest and the highest latitude, and the midpoint between the westernmost and the easternmost longitude of the airspace boundary.
+* **Horizon:** a flat horizon at sea level. Terrain and the elevation of the airspace are not used.
+* **Refraction:** for `SR` and `SS`, the centre of the sun is 0°50′ below the horizon. This value includes the radius of the sun (0°16′) and the standard atmospheric refraction (0°34′). For `BCMT` and `EECT`, the 6° are measured to the geometric centre of the sun, without refraction.
+
+Different calculation methods can give results that differ by about one minute. This is acceptable.
+
+In polar regions a sun event does not happen on some days. For example, the sun does not set during the summer. If a weekday window uses a sun event that does not happen on that day, the airspace is active for the whole UTC day. This is the safe choice: it can show an inactive airspace as active, but never an active airspace as inactive.
+
+Sun events cannot be used in interval commands (`AA StartDateTime/EndDateTime`) or in dates. A client that does not support version 3.0 cannot parse an `AA` command with a sun event. See [AA commands a reader does not understand](#aa-commands-a-reader-does-not-understand).
 
 Some `AA` commands allow `NONE` in place of a value. The description of each command says where `NONE` is allowed.
 
@@ -324,7 +349,9 @@ AA [Weekdays] StartTime/EndTime [StartDate/EndDate]
   * If Weekdays is left out, the schedule applies to every day.
 * **StartTime/EndTime** *(required)*: two `Time` values in UTC, see [Time](#time). For example `09:00Z/11:30Z`. `NONE` is not allowed.
   * `24:00Z` is allowed as EndTime. It means the end of the day.
-  * If EndTime is earlier than or equal to StartTime, the window ends on the next day. For example, `FRI 22:00Z/02:00Z` starts on Friday at 22:00 UTC and ends on Saturday at 02:00 UTC.
+  * StartTime, EndTime or both can be a [sun event](#sun-events): `SR`, `SS`, `BCMT` or `EECT`. For example `SR/SS` or `07:00Z/SS`. The client first calculates the sun event for the day, and then applies the other rules.
+  * If EndTime is earlier than or equal to StartTime, the window ends on the next day. For example, `FRI 22:00Z/02:00Z` starts on Friday at 22:00 UTC and ends on Saturday at 02:00 UTC. With a sun event, the client compares the calculated times. For example, `SS/SR` starts at sunset and ends at sunrise on the next day.
+  * When a sun event is mixed with a fixed time, the writer must check that the order is correct on every day of the schedule. For example, `06:00Z/SR` is wrong on days when sunrise is before 06:00 UTC. On these days, the window would end on the next day.
 * **StartDate/EndDate** *(optional)*: two `Date` values, see [Time](#time). For example `2026-03-29/2026-10-24`. The schedule applies only between these dates, **including both dates**.
   * Use `NONE` for an open end: `2026-04-01/NONE` or `NONE/2026-10-31`.
   * If the date range is left out, the schedule repeats with no time limit.
@@ -339,6 +366,10 @@ AA SAT,SUN 08:00Z/18:00Z                       * Weekends, 08:00-18:00 UTC
 AA 06:00Z/20:00Z                               * Every day, 06:00-20:00 UTC
 AA FRI 22:00Z/02:00Z                           * Friday 22:00 to Saturday 02:00 UTC
 AA MON-FRI 06:00Z/14:00Z 2026-03-29/2026-10-24 * Working days in summer only
+AA SR/SS                                       * Every day, sunrise to sunset
+AA SS/SR                                       * Every night, sunset to sunrise of the next day
+AA SAT,SUN BCMT/EECT                           * Weekends, from morning civil twilight to evening civil twilight
+AA MON-FRI 07:00Z/SS 2026-04-01/2026-09-30     * Working days, 07:00 UTC to sunset, April to September
 ```
 
 **Schedules published in local time.** All times in OpenAir are UTC. Most AIPs publish schedules in local time, for example "MON-FRI 08:00-16:00 LT". The data maintainer must convert these times to UTC. If the date range includes a change between summer time and winter time, the same local time has a different UTC time before and after the change. In this case, write two weekday `AA` commands, one for each period. Each command has its own date range and its own UTC times:
