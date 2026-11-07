@@ -1,15 +1,18 @@
 ---
-title: Extended OpenAir file format specification
-description: SeeYou OpenAir specification with Naviter extensions, Copyright © 2025, Naviter d.o.o. All Rights Reserved
-date: 2026-11-03
-version: 3.0.0
+title: Extended OpenAir file format specification (Draft)
+description: SeeYou OpenAir specification with Naviter extensions, Copyright © 2026, Naviter d.o.o. All Rights Reserved
+date: 2026-11-07
+version: 3.0.0 Draft
 header: ${title} - Naviter d.o.o.
 footer: Page ${pageNo} of ${pageCount}
 ---
 
 # SeeYou OpenAir file format specification
 
-*Copyright © 2026-11-03, Naviter d.o.o. All Rights Reserved. Version 3.0.0*
+*Copyright © 2026-11-07, Naviter d.o.o. All Rights Reserved. Version 3.0.0 Draft*
+
+> [!WARNING]
+> This is a draft. It can change before the final 3.0.0 release. Do not use version 3.0 in production files yet.
 
 The OpenAir format, widely utilized in gliding, paragliding, and hang gliding applications, serves to disseminate airspace information and visualize it on maps. Originally developed by WinPilot in 1998, this format has since been embraced and extended by Naviter. This document outlines the OpenAir format alongside the extensions introduced by Naviter.
 
@@ -127,6 +130,9 @@ Header **must** contain a comment with the following information:
 
 * OpenAIR Version number: `*VERSION: 3.0`
 * Author (App/Person) of  file: `*WRITTEN_BY: SeeYou`
+
+> [!WARNING]
+> Version 3.0 is a draft. Writers must not write `*VERSION: 3.0` in files before the final 3.0.0 release of this specification.
 
 
 ## Airspace Definition
