@@ -36,7 +36,7 @@ For this reason:
 
 * All times and dates are in UTC. Local time and time zone names are not supported.
 * Every activation time is written as an explicit date, weekday or time. A rule that needs outside knowledge, for example "except public holidays", is not allowed. The software or person that writes the OpenAir file must do the calculation and write the result as explicit `AA` commands. For example, write each public holiday as an `AA EXCEPT` command.
-* The only exception are the [sun events](#sun-events) `SR`, `SS`, `BCMT` and `EECT`. They do not need outside knowledge. Every client must calculate them from the date and the position of the airspace, which are both in the file. A window with a sun event uses local solar time. Local solar time depends only on the longitude of the airspace, not on time zones.
+* The only exception are the [sun events](#sun-events) `SR`, `SS`, `BCMT` and `EECT`. They do not need outside knowledge. Every client must calculate them from the date and the position of the airspace, which are both in the file.
 * Comments (`*`) are for humans only. A client must not need a comment to interpret the data.
 
 ## Command reference
@@ -127,31 +127,17 @@ Other ISO 8601 forms are not allowed. Examples of forms that are not allowed: th
 | `BCMT` | Beginning of Civil Morning Twilight | The centre of the sun is 6° below the horizon in the morning. |
 | `EECT` | End of Evening Civil Twilight | The centre of the sun is 6° below the horizon in the evening. |
 
-A sun event is not a fixed time. Sunrise and sunset only make sense in the local time of the airspace. For this reason, a window that uses a sun event uses local solar time, not UTC days. The client calculates the sun event for each day, with these rules:
+A sun event is the time of that event at the airspace, on that day. The client calculates it for each day from the date and the position of the airspace. The weekday and the date mean the local day at the airspace.
 
-* **Position:** the centre of the airspace. This is the midpoint between the lowest and the highest latitude, and the midpoint between the westernmost and the easternmost longitude of the airspace boundary.
-* **Local solar time:** UTC plus the longitude of the centre divided by 15, in hours. East longitude is positive. For example, at 15° E local solar time is UTC + 1 hour, and at 120° W it is UTC − 8 hours. Local solar time does not use time zones or daylight saving time.
-* **Day:** a window with a sun event belongs to a local solar day, from 00:00 to 24:00 local solar time. The weekdays and the date range of the command refer to this local solar day. The dates of `AA EXCEPT` also refer to this local solar day for these windows.
-* **Event:** the client uses the sun event that happens on this local solar day.
-* **Fixed times:** a fixed time in the same window, for example `07:00Z` in `07:00Z/SS`, is still a UTC time. The client uses this UTC time inside the local solar day.
-* **Horizon:** a flat horizon at sea level. Terrain and the elevation of the airspace are not used.
-* **Refraction:** for `SR` and `SS`, the centre of the sun is 0°50′ below the horizon. This value includes the radius of the sun (0°16′) and the standard atmospheric refraction (0°34′). For `BCMT` and `EECT`, the 6° are measured to the geometric centre of the sun, without refraction.
+Examples:
 
-If EndTime is earlier than or equal to StartTime, the window ends on the next local solar day. For example, `SS/SR` starts at sunset and ends at sunrise of the next day.
+* `AA SR/SS` means: every day, from sunrise to sunset.
+* `AA SAT,SUN SR/SS` means: on Saturday and Sunday, from sunrise to sunset.
+* `AA SS/SR` means: every night, from sunset to sunrise of the next day.
 
-Example: for an airspace at 15° E, `AA SAT,SUN SR/SS` means: on Saturday and Sunday, local solar time, from sunrise to sunset.
+In polar regions the sun does not set on some summer days, and it does not rise on some winter days. On these days, `AA SR/SS` means active for the whole day in summer and not active in winter. `AA SS/SR` is the opposite.
 
-Different calculation methods can give results that differ by about one minute. This is acceptable.
-
-**Polar regions.** In polar regions a sun event does not happen on some days. For example, the sun does not set in the summer, and it does not rise in the winter. On these days the client uses the position of the sun during the whole local solar day. "Above the horizon" means above the horizon of the event: 0°50′ below the horizon for `SR` and `SS`, 6° below the horizon for `BCMT` and `EECT`.
-
-| Window | Sun above the horizon all day | Sun below the horizon all day |
-| --- | --- | --- |
-| From a morning event to an evening event, for example `SR/SS` or `BCMT/EECT` | Active for the whole local solar day | Not active |
-| From an evening event to a morning event, for example `SS/SR` | Not active | Active for the whole local solar day |
-| A sun event and a fixed time, for example `07:00Z/SS` | A missing morning event is the start of the local solar day. A missing evening event is the end of the local solar day. | Not active |
-
-For example, above the Arctic Circle `AA SR/SS` is active for the whole day in midsummer. In midwinter it is not active.
+Different calculation methods can give results that differ by a few minutes. This is acceptable.
 
 Sun events cannot be used in interval commands (`AA StartDateTime/EndDateTime`) or in dates. A client that does not support version 3.0 cannot parse an `AA` command with a sun event. See [AA commands a reader does not understand](#aa-commands-a-reader-does-not-understand).
 
@@ -351,7 +337,7 @@ AG Nordholz Radar
 > [!IMPORTANT]
 > All times and dates in `AA` commands are UTC (Zulu). Local time and time zones are not supported, in any form.
 >
-> Weekdays and dates are UTC calendar days. Each activation window belongs to the UTC day on which it starts. The only exception is a window with a sun event: it belongs to a local solar day. See [Sun events](#sun-events).
+> Weekdays and dates are UTC calendar days. Each activation window belongs to the UTC day on which it starts. The only exception is a window with a sun event: it belongs to the local day at the airspace. See [Sun events](#sun-events).
 
 ##### Interval activation
 
@@ -407,14 +393,14 @@ AA [Weekdays] StartTime/EndTime [StartDate/EndDate]
   * If Weekdays is left out, the schedule applies to every day.
 * **StartTime/EndTime** *(required)*: two `Time` values in UTC, see [Time](#time). For example `09:00Z/11:30Z`. `NONE` is not allowed.
   * `24:00Z` is allowed as EndTime. It means the end of the day.
-  * StartTime, EndTime or both can be a [sun event](#sun-events): `SR`, `SS`, `BCMT` or `EECT`. For example `SR/SS` or `07:00Z/SS`. A window with a sun event uses the local solar day, see [Sun events](#sun-events). The client first calculates the sun event for the day, and then applies the other rules.
+  * StartTime, EndTime or both can be a [sun event](#sun-events): `SR`, `SS`, `BCMT` or `EECT`. For example `SR/SS` or `07:00Z/SS`. The client first calculates the sun event for the day, and then applies the other rules.
   * If EndTime is earlier than or equal to StartTime, the window ends on the next day. For example, `FRI 22:00Z/02:00Z` starts on Friday at 22:00 UTC and ends on Saturday at 02:00 UTC. With a sun event, the client compares the calculated times. For example, `SS/SR` starts at sunset and ends at sunrise on the next day.
   * When a sun event is mixed with a fixed time, the writer must check that the order is correct on every day of the schedule. For example, `06:00Z/SR` is wrong on days when sunrise is before 06:00 UTC. On these days, the window would end on the next day.
 * **StartDate/EndDate** *(optional)*: two `Date` values, see [Time](#time). For example `2026-03-29/2026-10-24`. The schedule applies only between these dates, **including both dates**.
   * Use `NONE` for an open end: `2026-04-01/NONE` or `NONE/2026-10-31`.
   * If the date range is left out, the schedule repeats with no time limit.
 
-The weekday and the date range refer to the UTC day on which a window **starts**. A window that crosses midnight UTC belongs to the day on which it starts. A window with a sun event is different: its weekday and date range refer to the local solar day. See [Sun events](#sun-events).
+The weekday and the date range refer to the UTC day on which a window **starts**. A window that crosses midnight UTC belongs to the day on which it starts. A window with a sun event is different: its weekday and date range mean the local day at the airspace. See [Sun events](#sun-events).
 
 Example:
 ```
@@ -451,7 +437,7 @@ AA EXCEPT StartDate/EndDate
 
 * Date, StartDate and EndDate are `Date` values, see [Time](#time). `NONE` is not allowed.
 * The date range includes both dates.
-* The dates are UTC calendar days. A weekday window is removed when it **starts** on an excepted date. A window that starts on the day before and continues past midnight UTC is not removed. For a window with a sun event, the dates are local solar days. See [Sun events](#sun-events).
+* The dates are UTC calendar days. A weekday window is removed when it **starts** on an excepted date. A window that starts on the day before and continues past midnight UTC is not removed. For a window with a sun event, the dates mean the local day at the airspace. See [Sun events](#sun-events).
 * `AA EXCEPT` applies only to weekday `AA` commands. It does not change interval `AA` commands.
 * `AA EXCEPT` may only be used in an airspace definition that has at least one weekday `AA` command.
 
