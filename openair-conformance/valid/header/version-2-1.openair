@@ -1,0 +1,13 @@
+*VERSION: 2.1
+*WRITTEN_BY: openair-conformance
+* Tests: version 2.1 does not require upper case commands.
+
+ac D
+an Example CTR
+ah 4500 FT AMSL
+al GND
+dp 46:00:00N 014:00:00E
+dp 46:00:00N 014:10:00E
+dp 45:55:00N 014:10:00E
+dp 45:55:00N 014:00:00E
+dp 46:00:00N 014:00:00E

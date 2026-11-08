@@ -1,0 +1,14 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: a closed clockwise DP polygon in DDM notation, with fewer than 3 decimals in one point.
+
+AC D
+AY CTR
+AN Example CTR
+AH 4500 FT AMSL
+AL GND
+DP 46:00.000N 014:00.000E
+DP 46:00.000N 014:10.000E
+DP 45:55.5N 014:10.000E
+DP 45:55.000N 014:00.000E
+DP 46:00.000N 014:00.000E

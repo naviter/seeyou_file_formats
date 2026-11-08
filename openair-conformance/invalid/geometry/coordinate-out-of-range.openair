@@ -1,0 +1,14 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: seconds of 60 (line 11), minutes of 60 (line 12) and a latitude above 90 degrees (line 13).
+
+AC D
+AY CTR
+AN Example CTR
+AH 4500 FT AMSL
+AL GND
+DP 46:00:00N 014:00:00E
+DP 46:00:00N 014:09:60E
+DP 45:55:00N 013:60:00E
+DP 95:55:00N 014:00:00E
+DP 46:00:00N 014:00:00E

@@ -1,0 +1,4 @@
+# Keep the bytes of the test files exactly as they are (encoding and line
+# endings are part of some test cases).
+*.openair -text
+*.expected text eol=lf

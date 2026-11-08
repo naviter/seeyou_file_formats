@@ -1,0 +1,12 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: two DA arcs around one centre, without DP points: 5 NM on the east side and 2 NM on the west side.
+
+AC D
+AY CTR
+AN Example CTR
+AH 4500 FT AMSL
+AL GND
+V X=46:00:00N 014:00:00E
+DA 5, 0, 180
+DA 2, 180, 0

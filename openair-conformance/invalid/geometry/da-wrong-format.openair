@@ -1,0 +1,12 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: DA without commas (line 11) and DA with a unit (line 12).
+
+AC D
+AY CTR
+AN Example CTR
+AH 4500 FT AMSL
+AL GND
+V X=46:00:00N 014:00:00E
+DA 5 0 180
+DA 5NM, 0, 180

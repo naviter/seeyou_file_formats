@@ -1,0 +1,12 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: V D= with a value that is not + or -.
+
+AC D
+AY CTR
+AN Example CTR
+AH 4500 FT AMSL
+AL GND
+V D=CCW
+V X=46:00:00N 014:00:00E
+DC 2

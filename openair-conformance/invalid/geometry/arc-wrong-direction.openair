@@ -1,0 +1,17 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: a DB arc with V D=- that bulges into the polygon and crosses its north edge (line 11). The arc should go clockwise (V D=+).
+
+AC D
+AY CTR
+AN Example CTR
+AH 4500 FT AMSL
+AL GND
+DP 46:05:00N 014:00:00E
+DP 46:05:00N 014:20:00E
+DP 46:00:00N 014:20:00E
+V D=-
+V X=46:00:00N 014:10:00E
+DB 46:00:00N 014:20:00E, 46:00:00N 014:00:00E
+DP 46:00:00N 014:00:00E
+DP 46:05:00N 014:00:00E

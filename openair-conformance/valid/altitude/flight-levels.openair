@@ -1,0 +1,14 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: flight levels in AH and AL ("FL95", "FL65").
+
+AC D
+AY CTR
+AN Example CTR
+AH FL95
+AL FL65
+DP 46:00:00N 014:00:00E
+DP 46:00:00N 014:10:00E
+DP 45:55:00N 014:10:00E
+DP 45:55:00N 014:00:00E
+DP 46:00:00N 014:00:00E

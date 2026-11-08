@@ -1,0 +1,14 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: the lower limit is the same as the upper limit.
+
+AC D
+AY CTR
+AN Example CTR
+AH 1000 FT AMSL
+AL 1000 FT AMSL
+DP 46:00:00N 014:00:00E
+DP 46:00:00N 014:10:00E
+DP 45:55:00N 014:10:00E
+DP 45:55:00N 014:00:00E
+DP 46:00:00N 014:00:00E

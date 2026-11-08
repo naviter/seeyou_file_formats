@@ -1,0 +1,11 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: DA with a negative start bearing and an end bearing above 360.
+
+AC D
+AY CTR
+AN Example CTR
+AH 4500 FT AMSL
+AL GND
+V X=46:00:00N 014:00:00E
+DA 5, -90, 400

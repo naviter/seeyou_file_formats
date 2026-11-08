@@ -1,0 +1,14 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: a type that is not in the table (RESTRICTED in place of R).
+
+AC UNC
+AY RESTRICTED
+AN Example restricted area
+AH 4500 FT AMSL
+AL GND
+DP 46:00:00N 014:00:00E
+DP 46:00:00N 014:10:00E
+DP 45:55:00N 014:10:00E
+DP 45:55:00N 014:00:00E
+DP 46:00:00N 014:00:00E

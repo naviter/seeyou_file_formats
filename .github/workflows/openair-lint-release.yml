@@ -1,0 +1,562 @@
+# Release workflow for openair-lint.
+#
+# Start a release by pushing a tag "openair-lint-v<version>", for example
+# "openair-lint-v3.0.0". The version in the tag must be the same as the
+# "version" in openair-lint/pubspec.yaml. See "Releasing" in
+# openair-lint/README.md for all steps.
+#
+# What this workflow does:
+#   1. prepare:     checks the tag and the version, and runs the tests.
+#   2. build:       compiles the binary on 5 native runners, signs it (only
+#                   when the signing secrets exist), and tests it.
+#   3. release:     creates the GitHub release with the archives and
+#                   SHA256SUMS.txt.
+#   4. web-build,
+#      web-deploy:  builds the web page and deploys it to GitHub Pages.
+#   5. pub-dev:     publishes the package to pub.dev. This job is OFF by
+#                   default. It runs only when you start the workflow by hand
+#                   (see the job for details).
+#
+# IMPORTANT: linter releases must NOT become the "latest" release of this
+# repository. The main README.md links to the specification PDFs with
+# "releases/latest/download/<name>.pdf". These links always use the release
+# that GitHub marks as "latest". If a linter release becomes "latest", the
+# PDF links break, because a linter release has no PDF files. For this
+# reason the release job uses "--latest=false". Do not change this, and do
+# not click "Set as the latest release" for a linter release on GitHub.
+#
+# Optional code signing. Add these repository secrets to sign the binaries.
+# When a secret is missing, the signing step is skipped and the binary is
+# released without a signature.
+#
+#   Windows (signtool):
+#     WINDOWS_CERTIFICATE_BASE64    The code signing certificate (.pfx file),
+#                                   encoded with base64.
+#     WINDOWS_CERTIFICATE_PASSWORD  The password of the .pfx file.
+#   Note: new code signing certificates are usually stored in a hardware
+#   token or a cloud service, not in a .pfx file. In that case, replace the
+#   Windows signing step with the step of your certificate provider.
+#
+#   macOS (codesign and notarytool):
+#     MACOS_CERTIFICATE_BASE64      The "Developer ID Application" certificate
+#                                   with its private key (.p12 file), encoded
+#                                   with base64.
+#     MACOS_CERTIFICATE_PASSWORD    The password of the .p12 file.
+#     MACOS_SIGNING_IDENTITY        The name of the certificate, for example
+#                                   "Developer ID Application: Naviter d.o.o.
+#                                   (TEAMID1234)".
+#     MACOS_NOTARY_APPLE_ID         The Apple ID (e-mail) for notarization.
+#     MACOS_NOTARY_PASSWORD         An app-specific password of that Apple ID.
+#     MACOS_NOTARY_TEAM_ID          The Apple developer team ID.
+#   Notarization runs only when the signing secrets and all three notary
+#   secrets exist.
+
+name: openair-lint release
+
+on:
+  push:
+    tags:
+      - 'openair-lint-v*'
+  # Starting the workflow by hand only runs the "prepare" and "pub-dev" jobs.
+  # Select the release tag in "Use workflow from".
+  workflow_dispatch:
+    inputs:
+      publish_to_pub_dev:
+        description: >-
+          Publish the package to pub.dev. The repository variable
+          OPENAIR_LINT_PUB_DEV_PUBLISHING must also be "true".
+        type: boolean
+        default: false
+
+# Every job sets its own permissions. This line removes all other
+# permissions.
+permissions: {}
+
+# Two runs for the same tag never run at the same time.
+concurrency:
+  group: openair-lint-release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  # The Dart SDK version. Keep it the same in openair-lint-ci.yml.
+  DART_SDK: '3.9.2'
+  # The folder that tool/build_web.dart writes the web page to (relative to
+  # the openair-lint folder).
+  WEB_BUILD_DIR: build/web
+
+defaults:
+  run:
+    shell: bash
+    working-directory: openair-lint
+
+jobs:
+  prepare:
+    name: Check the version and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Check that the tag matches the version in pubspec.yaml
+        id: version
+        run: |
+          if [ "$GITHUB_REF_TYPE" != "tag" ] || [[ "$GITHUB_REF_NAME" != openair-lint-v* ]]; then
+            echo "::error::Run this workflow on a tag \"openair-lint-v<version>\". The current ref is \"$GITHUB_REF_NAME\"."
+            exit 1
+          fi
+          tag="$GITHUB_REF_NAME"
+          version="${tag#openair-lint-v}"
+          pubspec_version="$(sed -n 's/^version:[[:space:]]*//p' pubspec.yaml | tr -d "\r\"' ")"
+          code_version="$(sed -n "s/^const String packageVersion = '\(.*\)';.*/\1/p" lib/src/version.dart)"
+          echo "Tag: $tag"
+          echo "Version in the tag: $version"
+          echo "Version in pubspec.yaml: $pubspec_version"
+          echo "Version in lib/src/version.dart: $code_version"
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::The version \"$version\" in the tag is not a valid version, for example 3.0.0 or 3.0.0-dev.2."
+            exit 1
+          fi
+          if [ "$version" != "$pubspec_version" ]; then
+            echo "::error file=openair-lint/pubspec.yaml::The tag is \"$tag\", but the version in pubspec.yaml is \"$pubspec_version\". They must be the same."
+            exit 1
+          fi
+          if [ "$version" != "$code_version" ]; then
+            echo "::error file=openair-lint/lib/src/version.dart::The version in lib/src/version.dart is \"$code_version\". It must be \"$version\"."
+            exit 1
+          fi
+          if ! tr -d '\r' < CHANGELOG.md | grep -Fqx "## $version"; then
+            echo "::error file=openair-lint/CHANGELOG.md::CHANGELOG.md has no heading \"## $version\"."
+            exit 1
+          fi
+          # A version with "-" (for example 3.0.0-dev.2) is a pre-release.
+          if [[ "$version" == *-* ]]; then prerelease=true; else prerelease=false; fi
+          {
+            echo "version=$version"
+            echo "tag=$tag"
+            echo "prerelease=$prerelease"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d # v1
+        with:
+          sdk: ${{ env.DART_SDK }}
+
+      - name: Get packages
+        run: dart pub get
+
+      - name: Analyze
+        run: dart analyze --fatal-infos
+
+      - name: Run the tests
+        run: dart test
+
+      - name: Check that RULES.md is up to date
+        run: dart run tool/generate_rules_doc.dart --check
+
+  build:
+    name: Build (${{ matrix.os }}-${{ matrix.arch }})
+    if: github.event_name == 'push'
+    needs: prepare
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - runner: windows-latest
+            os: windows
+            arch: x64
+          - runner: macos-latest
+            os: macos
+            arch: arm64
+          # GitHub removed the macos-13 runner image in December 2025.
+          # macos-15-intel is the Intel (x64) runner that replaces it.
+          - runner: macos-15-intel
+            os: macos
+            arch: x64
+          - runner: ubuntu-latest
+            os: linux
+            arch: x64
+          - runner: ubuntu-24.04-arm
+            os: linux
+            arch: arm64
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+      EXE: ${{ matrix.os == 'windows' && 'openair-lint.exe' || 'openair-lint' }}
+      ASSET: openair-lint-${{ needs.prepare.outputs.version }}-${{ matrix.os }}-${{ matrix.arch }}
+      # "true" when the signing secrets exist. Step "if:" conditions cannot
+      # read secrets, so we test them here.
+      WINDOWS_SIGNING: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 != '' && secrets.WINDOWS_CERTIFICATE_PASSWORD != '' }}
+      MACOS_SIGNING: ${{ secrets.MACOS_CERTIFICATE_BASE64 != '' && secrets.MACOS_CERTIFICATE_PASSWORD != '' && secrets.MACOS_SIGNING_IDENTITY != '' }}
+      MACOS_NOTARIZATION: ${{ secrets.MACOS_NOTARY_APPLE_ID != '' && secrets.MACOS_NOTARY_PASSWORD != '' && secrets.MACOS_NOTARY_TEAM_ID != '' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d # v1
+        with:
+          sdk: ${{ env.DART_SDK }}
+
+      - name: Get packages
+        run: dart pub get
+
+      - name: Compile the binary
+        run: |
+          mkdir -p dist
+          dart compile exe bin/openair_lint.dart -o "dist/$EXE"
+
+      # Makes sure that the runner has the expected CPU type. GitHub can
+      # change what a runner label means.
+      - name: Check the CPU architecture
+        run: |
+          machine="$(uname -m)"
+          echo "uname -m: $machine"
+          case "${{ matrix.arch }}:$machine" in
+            x64:x86_64|arm64:arm64|arm64:aarch64) ;;
+            *)
+              echo "::error::The runner is \"$machine\", but this job builds for \"${{ matrix.arch }}\"."
+              exit 1
+              ;;
+          esac
+
+      - name: Sign the binary (Windows)
+        if: matrix.os == 'windows' && env.WINDOWS_SIGNING == 'true'
+        shell: pwsh
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $pfx = Join-Path $env:RUNNER_TEMP 'certificate.pfx'
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:CERTIFICATE_BASE64))
+          try {
+            # Use signtool.exe from the newest Windows SDK on the runner.
+            $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" |
+              Sort-Object FullName -Descending | Select-Object -First 1
+            if (-not $signtool) { throw 'signtool.exe was not found.' }
+            & $signtool.FullName sign /f $pfx /p $env:CERTIFICATE_PASSWORD /fd sha256 `
+              /tr http://timestamp.digicert.com /td sha256 /d openair-lint "dist\$env:EXE"
+            if ($LASTEXITCODE -ne 0) { throw "signtool sign failed with exit code $LASTEXITCODE." }
+            & $signtool.FullName verify /pa /v "dist\$env:EXE"
+            if ($LASTEXITCODE -ne 0) { throw "signtool verify failed with exit code $LASTEXITCODE." }
+          } finally {
+            Remove-Item $pfx -Force
+          }
+
+      - name: Sign the binary (macOS)
+        if: matrix.os == 'macos' && env.MACOS_SIGNING == 'true'
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.MACOS_CERTIFICATE_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          SIGNING_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
+        run: |
+          set -euo pipefail
+          keychain="$RUNNER_TEMP/openair-lint-signing.keychain-db"
+          keychain_password="$(openssl rand -hex 24)"
+          certificate="$RUNNER_TEMP/certificate.p12"
+          echo "$CERTIFICATE_BASE64" | base64 --decode > "$certificate"
+          security create-keychain -p "$keychain_password" "$keychain"
+          security set-keychain-settings -lut 3600 "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          security import "$certificate" -P "$CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$keychain"
+          rm -f "$certificate"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$keychain_password" "$keychain" > /dev/null
+          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+          codesign --force --options runtime --timestamp \
+            --sign "$SIGNING_IDENTITY" --keychain "$keychain" "dist/$EXE"
+          codesign --verify --strict --verbose=2 "dist/$EXE"
+
+      # Apple cannot staple a ticket to a single binary. Gatekeeper checks
+      # the notarization online when a user runs the binary.
+      - name: Notarize the binary (macOS)
+        if: matrix.os == 'macos' && env.MACOS_SIGNING == 'true' && env.MACOS_NOTARIZATION == 'true'
+        env:
+          NOTARY_APPLE_ID: ${{ secrets.MACOS_NOTARY_APPLE_ID }}
+          NOTARY_PASSWORD: ${{ secrets.MACOS_NOTARY_PASSWORD }}
+          NOTARY_TEAM_ID: ${{ secrets.MACOS_NOTARY_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          zip_file="$RUNNER_TEMP/notarize.zip"
+          result="$RUNNER_TEMP/notarize.json"
+          ditto -c -k --keepParent "dist/$EXE" "$zip_file"
+          xcrun notarytool submit "$zip_file" \
+            --apple-id "$NOTARY_APPLE_ID" --password "$NOTARY_PASSWORD" --team-id "$NOTARY_TEAM_ID" \
+            --wait --timeout 30m --output-format json > "$result"
+          cat "$result"
+          status="$(plutil -extract status raw "$result")"
+          if [ "$status" != "Accepted" ]; then
+            echo "::error::Notarization failed. The status is \"$status\"."
+            exit 1
+          fi
+
+      - name: Remove the signing keychain (macOS)
+        if: always() && matrix.os == 'macos' && env.MACOS_SIGNING == 'true'
+        run: security delete-keychain "$RUNNER_TEMP/openair-lint-signing.keychain-db" || true
+
+      # Runs after signing, so it also finds a binary that signing broke.
+      - name: Smoke test the binary
+        run: bash tool/smoke_test.sh "dist/$EXE" "$VERSION"
+
+      - name: Package the binary (Windows)
+        if: matrix.os == 'windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $stage = Join-Path $env:RUNNER_TEMP $env:ASSET
+          New-Item -ItemType Directory -Force -Path $stage, out | Out-Null
+          Copy-Item "dist\$env:EXE", LICENSE, README.md -Destination $stage
+          Compress-Archive -Path (Join-Path $stage '*') -DestinationPath "out\$env:ASSET.zip"
+
+      - name: Package the binary (macOS and Linux)
+        if: matrix.os != 'windows'
+        run: |
+          stage="$RUNNER_TEMP/$ASSET"
+          mkdir -p "$stage" out
+          cp "dist/$EXE" LICENSE README.md "$stage/"
+          chmod 755 "$stage/$EXE"
+          # COPYFILE_DISABLE stops macOS tar from adding "._" files.
+          COPYFILE_DISABLE=1 tar -C "$stage" -czf "out/$ASSET.tar.gz" "$EXE" LICENSE README.md
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: ${{ env.ASSET }}
+          path: openair-lint/out/*
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    name: Create the GitHub release
+    if: github.event_name == 'push'
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write      # create the release and upload the files
+      id-token: write      # sign the build provenance attestation
+      attestations: write  # store the build provenance attestation
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+      TAG: ${{ needs.prepare.outputs.tag }}
+      PRERELEASE: ${{ needs.prepare.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          pattern: openair-lint-${{ needs.prepare.outputs.version }}-*
+          path: openair-lint/dist
+          merge-multiple: true
+
+      - name: Write SHA256SUMS.txt
+        run: |
+          cd dist
+          ls -l
+          count="$(ls openair-lint-"$VERSION"-* | wc -l)"
+          if [ "$count" -ne 5 ]; then
+            echo "::error::Expected 5 archives, found $count."
+            exit 1
+          fi
+          sha256sum openair-lint-"$VERSION"-* > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      # Users can check where a file comes from with:
+      #   gh attestation verify <file> --repo naviter/seeyou_file_formats
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-checksums: openair-lint/dist/SHA256SUMS.txt
+
+      - name: Write the release notes
+        run: |
+          # The text under "## <version>" in CHANGELOG.md, up to the next "## ".
+          awk -v heading="## $VERSION" '
+            $0 == heading { found = 1; next }
+            found && /^## / { exit }
+            found { print }
+          ' CHANGELOG.md > "$RUNNER_TEMP/notes.md"
+          cat >> "$RUNNER_TEMP/notes.md" <<EOF
+
+          ## Download
+
+          Download the archive for your system, extract it, and run \`openair-lint --help\`.
+
+          | System | File |
+          | --- | --- |
+          | Windows (x64) | \`openair-lint-$VERSION-windows-x64.zip\` |
+          | macOS (Apple silicon) | \`openair-lint-$VERSION-macos-arm64.tar.gz\` |
+          | macOS (Intel) | \`openair-lint-$VERSION-macos-x64.tar.gz\` |
+          | Linux (x64) | \`openair-lint-$VERSION-linux-x64.tar.gz\` |
+          | Linux (arm64) | \`openair-lint-$VERSION-linux-arm64.tar.gz\` |
+
+          \`SHA256SUMS.txt\` has the SHA-256 checksum of each archive.
+
+          Dart users can also install the package: \`dart pub global activate openair_lint $VERSION\` (only when this version is on pub.dev).
+
+          See the [README](https://github.com/$GITHUB_REPOSITORY/tree/$TAG/openair-lint#readme) for the GitHub Action and all options.
+          EOF
+          cat "$RUNNER_TEMP/notes.md"
+
+      # "--latest=false" keeps the specification release as the "latest"
+      # release. See the comment at the top of this file.
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          flags=(--latest=false)
+          if [ "$PRERELEASE" = "true" ]; then flags+=(--prerelease); fi
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "The release $TAG exists. Uploading the files again."
+            gh release upload "$TAG" dist/* --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" dist/* \
+              --repo "$GITHUB_REPOSITORY" \
+              --verify-tag \
+              --title "openair-lint $VERSION" \
+              --notes-file "$RUNNER_TEMP/notes.md" \
+              "${flags[@]}"
+          fi
+
+      - name: Check that the release is not the latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          latest="$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name 2>/dev/null || true)"
+          echo "The latest release is \"$latest\"."
+          if [ "$latest" = "$TAG" ]; then
+            echo "::error::$TAG is the latest release. The PDF links in README.md now point to this release. Set another release as latest on GitHub."
+            exit 1
+          fi
+
+  web-build:
+    name: Build the web page
+    if: github.event_name == 'push'
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d # v1
+        with:
+          sdk: ${{ env.DART_SDK }}
+
+      - name: Get packages
+        run: dart pub get
+
+      - name: Build the web page
+        run: |
+          if [ ! -f tool/build_web.dart ]; then
+            echo "::error::tool/build_web.dart does not exist."
+            exit 1
+          fi
+          dart run tool/build_web.dart
+          if [ ! -f "$WEB_BUILD_DIR/index.html" ]; then
+            echo "::error::tool/build_web.dart did not write $WEB_BUILD_DIR/index.html."
+            exit 1
+          fi
+
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
+        with:
+          path: openair-lint/${{ env.WEB_BUILD_DIR }}
+
+  # Deploys the web page to https://<owner>.github.io/<repository>/.
+  # One-time setup (see "Releasing" in openair-lint/README.md):
+  #   - Settings > Pages > Source: "GitHub Actions".
+  #   - Settings > Environments > github-pages: allow the tag pattern
+  #     "openair-lint-v*". By default only the default branch can deploy.
+  # A deploy replaces the whole Pages site of this repository.
+  web-deploy:
+    name: Deploy the web page
+    if: github.event_name == 'push'
+    needs: [web-build, release]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      pages: write     # deploy to GitHub Pages
+      id-token: write  # prove that the deployment comes from this workflow
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5
+
+  # Publishes the package to pub.dev with automated publishing (OIDC). No
+  # pub.dev password or token is stored in GitHub.
+  #
+  # This job is OFF by default. It runs only when all of these are true:
+  #   - You start the workflow by hand ("Run workflow") on a release tag.
+  #   - You tick "Publish the package to pub.dev".
+  #   - The repository variable OPENAIR_LINT_PUB_DEV_PUBLISHING is "true".
+  #   - The GitHub release for the tag exists.
+  #
+  # One-time setup on pub.dev (package page > Admin > Automated publishing):
+  #   - Enable publishing from GitHub Actions.
+  #   - Repository: naviter/seeyou_file_formats
+  #   - Tag pattern: openair-lint-v{{version}}
+  #   - Enable publishing from workflow_dispatch events.
+  #   - Environment: pub.dev (recommended; then create a GitHub environment
+  #     "pub.dev" with required reviewers).
+  # The first version must be published by hand ("dart pub publish"), because
+  # the Admin page exists only after the first version.
+  #
+  # A version on pub.dev can never be deleted or changed. Check the release
+  # before you run this job.
+  pub-dev:
+    name: Publish to pub.dev
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      inputs.publish_to_pub_dev &&
+      vars.OPENAIR_LINT_PUB_DEV_PUBLISHING == 'true'
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: pub.dev
+    permissions:
+      contents: read  # read the code and the release
+      id-token: write # get the OIDC token for pub.dev
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Check that the GitHub release exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+        run: |
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null; then
+            echo "::error::There is no GitHub release for $TAG. Push the tag and wait for the release first."
+            exit 1
+          fi
+
+      # With "id-token: write", setup-dart gets an OIDC token for pub.dev.
+      # The token is valid only for a few minutes, so publish right after
+      # this step.
+      - uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d # v1
+        with:
+          sdk: ${{ env.DART_SDK }}
+
+      - name: Get packages
+        run: dart pub get
+
+      - name: Publish (dry run)
+        run: dart pub publish --dry-run
+
+      - name: Publish
+        run: dart pub publish --force

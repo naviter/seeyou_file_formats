@@ -1,0 +1,12 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: an airway with DY segments, which the specification does not recommend.
+
+AC D
+AY CTR
+AN Example CTR
+AH 4500 FT AMSL
+AL GND
+V W=4
+DY 46:00:00N 014:00:00E
+DY 46:00:00N 015:00:00E

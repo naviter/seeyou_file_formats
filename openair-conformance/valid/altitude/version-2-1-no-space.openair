@@ -1,0 +1,14 @@
+*VERSION: 2.1
+*WRITTEN_BY: openair-conformance
+* Tests: version 2.1 allows the form of its examples: no space and lower case units ("4500ft AMSL").
+
+AC D
+AY CTR
+AN Example CTR
+AH 4500ft AMSL
+AL 1000ft AMSL
+DP 46:00:00N 014:00:00E
+DP 46:00:00N 014:10:00E
+DP 45:55:00N 014:10:00E
+DP 45:55:00N 014:00:00E
+DP 46:00:00N 014:00:00E

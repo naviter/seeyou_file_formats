@@ -1,0 +1,14 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: version 3.0 requires upper case values: units, references and coordinate letters.
+
+AC D
+AY ctr
+AN Example CTR
+AH 4500 ft amsl
+AL GND
+DP 46:00:00n 014:00:00e
+DP 46:00:00N 014:10:00E
+DP 45:55:00N 014:10:00E
+DP 45:55:00N 014:00:00E
+DP 46:00:00N 014:00:00E

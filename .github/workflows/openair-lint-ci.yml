@@ -1,0 +1,124 @@
+# CI for openair-lint, the linter for the OpenAir 3.0 file format.
+#
+# This workflow runs when the linter, the conformance files or the OpenAir
+# specification change. It checks the format, runs the analyzer and the
+# tests, compiles the binary on Linux, macOS and Windows, and runs the binary
+# on the conformance files.
+#
+# The release workflow (openair-lint-release.yml) builds the binaries that
+# users download. This workflow does not publish anything.
+
+name: openair-lint CI
+
+on:
+  push:
+    # Only branches. Without this line, GitHub runs the workflow for every
+    # pushed tag, because path filters are not used for tags.
+    branches: ['**']
+    paths:
+      - 'openair-lint/**'
+      - 'openair-conformance/**'
+      - 'OpenAir_File_Format_Support.md'
+      - '.github/workflows/openair-lint-ci.yml'
+  pull_request:
+    paths:
+      - 'openair-lint/**'
+      - 'openair-conformance/**'
+      - 'OpenAir_File_Format_Support.md'
+      - '.github/workflows/openair-lint-ci.yml'
+  workflow_dispatch:
+
+# No job needs to write to the repository.
+permissions:
+  contents: read
+
+# A new push to the same branch or pull request cancels the old run.
+concurrency:
+  group: openair-lint-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # The Dart SDK version. Keep it the same in openair-lint-release.yml.
+  # "dart format" output can change between SDK versions, so we use a
+  # fixed version instead of "stable".
+  DART_SDK: '3.9.2'
+
+defaults:
+  run:
+    shell: bash
+    working-directory: openair-lint
+
+jobs:
+  check:
+    name: Format, analyze, RULES.md
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d # v1
+        with:
+          sdk: ${{ env.DART_SDK }}
+
+      - name: Get packages
+        run: dart pub get
+
+      - name: Check the format
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: Analyze
+        run: dart analyze --fatal-infos
+
+      - name: Check that RULES.md is up to date
+        run: |
+          dart run tool/generate_rules_doc.dart
+          if ! git diff --exit-code -- RULES.md; then
+            echo "::error file=openair-lint/RULES.md::RULES.md is not up to date. Run \"dart run tool/generate_rules_doc.dart\" in the openair-lint folder and commit the result."
+            exit 1
+          fi
+
+      - name: Build the web page
+        run: dart run tool/build_web.dart
+
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d # v1
+        with:
+          sdk: ${{ env.DART_SDK }}
+
+      - name: Get packages
+        run: dart pub get
+
+      - name: Run the tests
+        run: dart test
+
+      - name: Compile the binary
+        run: |
+          mkdir -p build/bin
+          dart compile exe bin/openair_lint.dart -o "build/bin/openair-lint${{ runner.os == 'Windows' && '.exe' || '' }}"
+
+      # Runs the binary on openair-conformance and checks the exit codes and
+      # the output formats.
+      - name: Smoke test the binary
+        run: |
+          version="$(sed -n 's/^version:[[:space:]]*//p' pubspec.yaml | tr -d "\r\"' ")"
+          bash tool/smoke_test.sh "build/bin/openair-lint${{ runner.os == 'Windows' && '.exe' || '' }}" "$version"
+
+      # Runs the shell code of the step "Run openair-lint" of action.yml with
+      # the binary from the step above. The step that downloads the binary
+      # needs a release, so it is not tested here.
+      - name: Test the GitHub Action step
+        run: bash tool/action_test.sh "build/bin/openair-lint${{ runner.os == 'Windows' && '.exe' || '' }}"

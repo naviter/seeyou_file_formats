@@ -1,0 +1,11 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: DC with a radius of 0.
+
+AC D
+AY CTR
+AN Example CTR
+AH 4500 FT AMSL
+AL GND
+V X=46:00:00N 014:00:00E
+DC 0

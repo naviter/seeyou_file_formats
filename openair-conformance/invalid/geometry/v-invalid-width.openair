@@ -1,0 +1,13 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: V W= with a unit and with 0.
+
+AC D
+AY CTR
+AN Example CTR
+AH 4500 FT AMSL
+AL GND
+V W=4NM
+V W=0
+DY 46:00:00N 014:00:00E
+DY 46:00:00N 015:00:00E

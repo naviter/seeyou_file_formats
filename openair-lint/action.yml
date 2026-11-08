@@ -1,0 +1,286 @@
+# GitHub Action for openair-lint.
+#
+# Usage:
+#
+#   - uses: actions/checkout@v7
+#   - uses: naviter/seeyou_file_formats/openair-lint@openair-lint-v3.0.0
+#     with:
+#       paths: airspace/
+#
+# The action downloads the openair-lint binary for the runner from the GitHub
+# release, checks its SHA-256 checksum, and runs it with "--format github".
+# GitHub then shows each problem as an annotation on the file and line.
+# See "GitHub Action" in README.md for all inputs.
+
+name: openair-lint
+description: Check OpenAir airspace files with the OpenAir 3.0 file format specification by Naviter.
+author: Naviter
+branding:
+  icon: check-circle
+  color: blue
+
+inputs:
+  paths:
+    description: >-
+      The files and directories to check. Write one path per line, or
+      separate the paths with spaces on one line. Directories are searched
+      for *.openair and *.txt files, also in sub-directories.
+    required: true
+  version:
+    description: >-
+      The openair-lint version to use, for example "3.0.0". The default is
+      the version of the action that you use (the version in the
+      "@openair-lint-v<version>" tag). "latest" uses the newest openair-lint
+      release, also if it is a pre-release.
+    required: false
+    default: ''
+  target:
+    description: >-
+      Check the files as this specification version: "3.0" or "2.1". This
+      overrides the *VERSION header of the files. Empty: use the header.
+    required: false
+    default: ''
+  fail-on:
+    description: >-
+      The step fails when there is a problem with this severity or higher:
+      "error" or "warning".
+    required: false
+    default: error
+  min-severity:
+    description: >-
+      Do not show problems with a lower severity: "info", "warning" or
+      "error".
+    required: false
+    default: info
+  disable:
+    description: >-
+      Rule IDs to turn off, separated by commas, spaces or new lines. Run
+      "openair-lint --list-rules" to see all rule IDs.
+    required: false
+    default: ''
+  repository:
+    description: >-
+      The GitHub repository that has the openair-lint releases. Change it
+      only if you use a fork.
+    required: false
+    default: naviter/seeyou_file_formats
+  token:
+    description: >-
+      A GitHub token. It is used only to find the newest release when
+      version is "latest".
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  version:
+    description: The openair-lint version that the action used.
+    value: ${{ steps.install.outputs.version }}
+  path:
+    description: The full path of the openair-lint binary.
+    value: ${{ steps.install.outputs.path }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install openair-lint
+      id: install
+      shell: bash
+      env:
+        INPUT_VERSION: ${{ inputs.version }}
+        INPUT_REPOSITORY: ${{ inputs.repository }}
+        INPUT_TOKEN: ${{ inputs.token }}
+      run: |
+        set -euo pipefail
+
+        repo="${INPUT_REPOSITORY:-naviter/seeyou_file_formats}"
+
+        # 1. Find the version.
+        version="$(printf '%s' "$INPUT_VERSION" | tr -d '[:space:]')"
+        version="${version#openair-lint-}"
+        version="${version#v}"
+        if [ -z "$version" ]; then
+          # The action files come from the tag that the workflow uses, so
+          # the version in pubspec.yaml is the version of that tag.
+          version="$(sed -n 's/^version:[[:space:]]*//p' "$GITHUB_ACTION_PATH/pubspec.yaml" | tr -d "\r\"' ")"
+          if [ -z "$version" ]; then
+            echo "::error title=openair-lint::Cannot read the version from pubspec.yaml. Set the \"version\" input."
+            exit 1
+          fi
+        elif [ "$version" = "latest" ]; then
+          auth=()
+          if [ -n "$INPUT_TOKEN" ]; then auth=(-H "Authorization: Bearer $INPUT_TOKEN"); fi
+          # ${auth[@]+...} also works with an empty array in bash 3.2.
+          releases="$(curl -fsSL --retry 3 ${auth[@]+"${auth[@]}"} \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$repo/releases?per_page=100")" || {
+            echo "::error title=openair-lint::Cannot read the list of releases of $repo."
+            exit 1
+          }
+          # GitHub lists the newest release first.
+          tag="$(printf '%s\n' "$releases" | grep -o '"tag_name": *"openair-lint-v[^"]*"' | head -n 1 | sed 's/.*"\(openair-lint-v[^"]*\)"$/\1/' || true)"
+          if [ -z "$tag" ]; then
+            echo "::error title=openair-lint::$repo has no openair-lint release."
+            exit 1
+          fi
+          version="${tag#openair-lint-v}"
+        fi
+        if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+          echo "::error title=openair-lint::\"$version\" is not a valid version. Use a version like \"3.0.0\", or \"latest\"."
+          exit 1
+        fi
+
+        # 2. Find the file for this runner.
+        case "$RUNNER_OS" in
+          Linux) os=linux; ext=tar.gz; exe=openair-lint ;;
+          macOS) os=macos; ext=tar.gz; exe=openair-lint ;;
+          Windows) os=windows; ext=zip; exe=openair-lint.exe ;;
+          *)
+            echo "::error title=openair-lint::The runner system \"$RUNNER_OS\" is not supported."
+            exit 1
+            ;;
+        esac
+        case "$RUNNER_ARCH" in
+          X64) arch=x64 ;;
+          ARM64)
+            if [ "$os" = "windows" ]; then
+              # There is no Windows arm64 build. Windows on arm64 runs x64
+              # programs with emulation.
+              echo "::notice title=openair-lint::Using the Windows x64 binary on an arm64 runner."
+              arch=x64
+            else
+              arch=arm64
+            fi
+            ;;
+          *)
+            echo "::error title=openair-lint::The runner architecture \"$RUNNER_ARCH\" is not supported. Use an x64 or arm64 runner."
+            exit 1
+            ;;
+        esac
+
+        asset="openair-lint-$version-$os-$arch.$ext"
+        dir="$RUNNER_TEMP/openair-lint-$version-$os-$arch"
+        bin="$dir/$exe"
+
+        # 3. Download, check and extract. Skip this when an earlier step of
+        # the same job installed this version already.
+        if [ ! -f "$bin" ]; then
+          base="https://github.com/$repo/releases/download/openair-lint-v$version"
+          download="$RUNNER_TEMP/openair-lint-download-$version-$os-$arch"
+          rm -rf "$download"
+          mkdir -p "$download"
+          echo "Downloading $base/$asset"
+          if ! curl -fsSL --retry 3 -o "$download/$asset" "$base/$asset" \
+            || ! curl -fsSL --retry 3 -o "$download/SHA256SUMS.txt" "$base/SHA256SUMS.txt"; then
+            echo "::error title=openair-lint::Cannot download openair-lint $version from $base. Check that the release openair-lint-v$version exists. If you use the action from a branch (for example @main), set the \"version\" input to a released version."
+            exit 1
+          fi
+
+          expected="$(tr -d '\r' < "$download/SHA256SUMS.txt" | awk -v f="$asset" '$2 == f || $2 == "*" f { print tolower($1) }')"
+          # Run the checksum tool inside the folder. With a Windows path
+          # (backslashes), sha256sum adds a "\" before the checksum.
+          if command -v sha256sum > /dev/null; then
+            actual="$(cd "$download" && sha256sum "$asset" | cut -d ' ' -f 1)"
+          else
+            actual="$(cd "$download" && shasum -a 256 "$asset" | cut -d ' ' -f 1)"
+          fi
+          actual="$(printf '%s' "$actual" | tr '[:upper:]' '[:lower:]')"
+          if [ -z "$expected" ]; then
+            echo "::error title=openair-lint::SHA256SUMS.txt has no checksum for $asset."
+            exit 1
+          fi
+          if [ "$expected" != "$actual" ]; then
+            echo "::error title=openair-lint::The SHA-256 checksum of $asset is wrong. Expected $expected, got $actual."
+            exit 1
+          fi
+          echo "The SHA-256 checksum is correct: $actual"
+
+          rm -rf "$dir"
+          mkdir -p "$dir"
+          if [ "$ext" = "zip" ]; then
+            powershell -NoProfile -NonInteractive -Command \
+              "\$ErrorActionPreference = 'Stop'; Expand-Archive -LiteralPath '$download/$asset' -DestinationPath '$dir' -Force"
+          else
+            tar -xzf "$download/$asset" -C "$dir"
+            chmod +x "$bin"
+          fi
+          rm -rf "$download"
+        fi
+
+        if [ ! -f "$bin" ]; then
+          echo "::error title=openair-lint::The archive $asset has no file $exe."
+          exit 1
+        fi
+        "$bin" --version
+        echo "$dir" >> "$GITHUB_PATH"
+        {
+          echo "version=$version"
+          echo "path=$bin"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Run openair-lint
+      shell: bash
+      env:
+        OPENAIR_LINT: ${{ steps.install.outputs.path }}
+        INPUT_PATHS: ${{ inputs.paths }}
+        INPUT_TARGET: ${{ inputs.target }}
+        INPUT_FAIL_ON: ${{ inputs.fail-on }}
+        INPUT_MIN_SEVERITY: ${{ inputs.min-severity }}
+        INPUT_DISABLE: ${{ inputs.disable }}
+      run: |
+        set -uo pipefail
+        # Do not expand "*" or "?" in the inputs.
+        set -f
+
+        args=(--format github --no-color)
+        target="$(printf '%s' "$INPUT_TARGET" | tr -d '[:space:]')"
+        fail_on="$(printf '%s' "$INPUT_FAIL_ON" | tr -d '[:space:]')"
+        min_severity="$(printf '%s' "$INPUT_MIN_SEVERITY" | tr -d '[:space:]')"
+        if [ -n "$target" ]; then args+=(--target "$target"); fi
+        if [ -n "$fail_on" ]; then args+=(--fail-on "$fail_on"); fi
+        if [ -n "$min_severity" ]; then args+=(--min-severity "$min_severity"); fi
+        for id in $(printf '%s' "$INPUT_DISABLE" | tr ',\r' '  '); do
+          args+=(--disable "$id")
+        done
+
+        # Paths: one per line, or separated by spaces on a single line.
+        lines=()
+        while IFS= read -r line || [ -n "$line" ]; do
+          line="${line%$'\r'}"
+          # Remove blanks at the start and the end.
+          line="${line#"${line%%[![:space:]]*}"}"
+          line="${line%"${line##*[![:space:]]}"}"
+          if [ -n "$line" ]; then lines+=("$line"); fi
+        done <<< "$INPUT_PATHS"
+        if [ ${#lines[@]} -eq 1 ]; then
+          read -r -a lines <<< "${lines[0]}"
+        fi
+        paths=()
+        for p in ${lines[@]+"${lines[@]}"}; do
+          # GitHub needs paths relative to the repository root to show the
+          # annotations on the files.
+          p="${p#"$GITHUB_WORKSPACE"/}"
+          while [ "${p#./}" != "$p" ]; do p="${p#./}"; done
+          if [ -z "$p" ]; then p="."; fi
+          paths+=("$p")
+        done
+        if [ ${#paths[@]} -eq 0 ]; then
+          echo "::error title=openair-lint::The \"paths\" input is empty. Give the files or directories to check."
+          exit 2
+        fi
+
+        output="$RUNNER_TEMP/openair-lint-output.txt"
+        "$OPENAIR_LINT" "${args[@]}" -- "${paths[@]}" | tee "$output"
+        code=${PIPESTATUS[0]}
+
+        # The last line is the summary, for example
+        # "Checked 3 files: 2 errors, 0 warnings, 0 info."
+        summary="$(tail -n 1 "$output")"
+        if [[ "$summary" == Checked* ]]; then
+          {
+            echo "### openair-lint"
+            echo
+            echo "$summary"
+          } >> "$GITHUB_STEP_SUMMARY"
+        fi
+        rm -f "$output"
+        exit "$code"

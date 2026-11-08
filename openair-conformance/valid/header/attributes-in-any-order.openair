@@ -1,0 +1,15 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: the A commands can be in any order, as long as they come before the geometry.
+
+AC D
+AL GND
+AH 4500 FT AMSL
+AF 118.480
+AN Example CTR
+AY CTR
+DP 46:00:00N 014:00:00E
+DP 46:00:00N 014:10:00E
+DP 45:55:00N 014:10:00E
+DP 45:55:00N 014:00:00E
+DP 46:00:00N 014:00:00E

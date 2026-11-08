@@ -1,0 +1,14 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: a polygon with decimal degrees, which the specification does not allow.
+
+AC D
+AY CTR
+AN Example CTR
+AH 4500 FT AMSL
+AL GND
+DP 46.0N 014.0E
+DP 46.0N 014.166667E
+DP 45.916667N 014.166667E
+DP 45.916667N 014.0E
+DP 46.0N 014.0E

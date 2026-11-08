@@ -1,0 +1,15 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: a space in place of T between the date and the time.
+
+AC D
+AY TRA
+AN Example TRA
+AA 2026-07-04 08:00Z/2026-07-04 16:00Z
+AH 4500 FT AMSL
+AL GND
+DP 46:00:00N 014:00:00E
+DP 46:00:00N 014:10:00E
+DP 45:55:00N 014:10:00E
+DP 45:55:00N 014:00:00E
+DP 46:00:00N 014:00:00E

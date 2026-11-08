@@ -1,0 +1,25 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: SP and SB of WinPilot are not part of the specification. Each is reported once.
+
+AC D
+AY CTR
+AN Example CTR
+SP 0,1,0,0,255
+SB 0,0,255
+AH 4500 FT AMSL
+AL GND
+DP 46:00:00N 014:00:00E
+DP 46:00:00N 014:10:00E
+DP 45:55:00N 014:10:00E
+DP 45:55:00N 014:00:00E
+DP 46:00:00N 014:00:00E
+
+AC C
+AY TMA
+AN Example TMA
+SP 0,1,0,0,255
+AH FL95
+AL 4500 FT AMSL
+V X=46:30:00N 014:30:00E
+DC 5

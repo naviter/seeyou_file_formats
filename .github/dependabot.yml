@@ -1,0 +1,15 @@
+# Dependabot keeps the GitHub Actions in the workflows up to date.
+#
+# The workflows pin each action to a full commit SHA, with the version tag
+# as a comment (for example "actions/checkout@<sha> # v7"). Dependabot
+# changes the SHA and the comment when a new version comes out.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      github-actions:
+        patterns:
+          - '*'

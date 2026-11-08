@@ -1,0 +1,4 @@
+# Shell scripts must keep LF line endings. Bash cannot run a script with
+# CRLF line endings. Without this line, Git on Windows (core.autocrlf=true,
+# also on the GitHub Windows runners) can check them out with CRLF.
+*.sh text eol=lf

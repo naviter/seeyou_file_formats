@@ -1,0 +1,17 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: AA EXCEPT with one date and with a date range.
+
+AC D
+AY TRA
+AN Example TRA
+AA MON-FRI 07:00Z/15:00Z                       * Every working day
+AA EXCEPT 2026-12-25                           * Not on Christmas Day
+AA EXCEPT 2026-12-31/2027-01-01                * Not on 31 December and 1 January
+AH 4500 FT AMSL
+AL GND
+DP 46:00:00N 014:00:00E
+DP 46:00:00N 014:10:00E
+DP 45:55:00N 014:10:00E
+DP 45:55:00N 014:00:00E
+DP 46:00:00N 014:00:00E

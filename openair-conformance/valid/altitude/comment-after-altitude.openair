@@ -1,0 +1,14 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: a comment after the altitude is not part of the value.
+
+AC D
+AY CTR
+AN Example CTR
+AH FL95 * upper limit
+AL 1000 FT AGL   * lower limit
+DP 46:00:00N 014:00:00E
+DP 46:00:00N 014:10:00E
+DP 45:55:00N 014:10:00E
+DP 45:55:00N 014:00:00E
+DP 46:00:00N 014:00:00E

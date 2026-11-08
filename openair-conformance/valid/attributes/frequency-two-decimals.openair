@@ -1,0 +1,15 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: a frequency with two decimals is allowed. openair-lint reports only an info hint.
+
+AC D
+AY CTR
+AN Example CTR
+AF 126.10
+AH 4500 FT AMSL
+AL GND
+DP 46:00:00N 014:00:00E
+DP 46:00:00N 014:10:00E
+DP 45:55:00N 014:10:00E
+DP 45:55:00N 014:00:00E
+DP 46:00:00N 014:00:00E

@@ -1,0 +1,16 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: interval ends without the year, or without the year and the month. ISO 8601 takes the missing parts from the start. A reader must accept them. Writers should use StartDateTime/EndDateTime, so a validator reports warnings.
+
+AC D
+AY TRA
+AN Example TRA
+AA 2026-07-04T08:00Z/05T16:00Z
+AA 2026-07-31T22:00Z/08-01T06:00Z
+AH 4500 FT AMSL
+AL GND
+DP 46:00:00N 014:00:00E
+DP 46:00:00N 014:10:00E
+DP 45:55:00N 014:10:00E
+DP 45:55:00N 014:00:00E
+DP 46:00:00N 014:00:00E

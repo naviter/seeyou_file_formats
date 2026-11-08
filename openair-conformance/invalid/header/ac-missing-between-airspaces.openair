@@ -1,0 +1,25 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: each airspace must begin with AC. The AC command of the second airspace is missing.
+* A reader joins both point lists into one polygon, so this polygon is not closed.
+
+AC D
+AY CTR
+AN First CTR
+AH 4500 FT AMSL
+AL GND
+DP 46:00:00N 014:00:00E
+DP 46:00:00N 014:10:00E
+DP 45:55:00N 014:10:00E
+DP 45:55:00N 014:00:00E
+DP 46:00:00N 014:00:00E
+
+AY CTR
+AN Second CTR
+AH FL95
+AL 4500 FT AMSL
+DP 46:30:00N 014:00:00E
+DP 46:30:00N 014:10:00E
+DP 46:25:00N 014:10:00E
+DP 46:25:00N 014:00:00E
+DP 46:30:00N 014:00:00E

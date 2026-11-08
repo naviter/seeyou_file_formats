@@ -1,0 +1,17 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: an airspace with all attribute commands: AC, AY, AN, AF, AG and AX.
+
+AC D
+AY CTR
+AN Example CTR
+AF 118.480
+AG Example Tower
+AX 7000
+AH 4500 FT AMSL
+AL GND
+DP 46:00:00N 014:00:00E
+DP 46:00:00N 014:10:00E
+DP 45:55:00N 014:10:00E
+DP 45:55:00N 014:00:00E
+DP 46:00:00N 014:00:00E

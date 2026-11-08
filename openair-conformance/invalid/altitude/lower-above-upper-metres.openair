@@ -1,0 +1,14 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: metres and feet are compared: 300 M is 984 FT, so 1000 FT AMSL is above it.
+
+AC D
+AY CTR
+AN Example CTR
+AH 300 M AMSL
+AL 1000 FT AMSL
+DP 46:00:00N 014:00:00E
+DP 46:00:00N 014:10:00E
+DP 45:55:00N 014:10:00E
+DP 45:55:00N 014:00:00E
+DP 46:00:00N 014:00:00E

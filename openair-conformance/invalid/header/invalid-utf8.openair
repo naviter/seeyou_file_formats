@@ -1,0 +1,14 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: a byte that is not valid UTF-8. The name on line 7 has the byte FC
+* (the letter u-umlaut in the Windows-1252 encoding). The file must be UTF-8.
+
+AC D
+AN München CTR
+AH 4500 FT AMSL
+AL GND
+DP 46:00:00N 014:00:00E
+DP 46:00:00N 014:10:00E
+DP 45:55:00N 014:10:00E
+DP 45:55:00N 014:00:00E
+DP 46:00:00N 014:00:00E

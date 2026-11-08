@@ -1,0 +1,18 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: comments after commands, comment lines and empty lines inside an airspace.
+
+AC D        * class d, lower case is allowed in comments
+AY CTR
+* the name can use any case
+AN Example ctr
+
+AG Example tower
+AH 4500 FT AMSL * upper limit
+AL GND
+*
+DP 46:00:00N 014:00:00E
+DP 46:00:00N 014:10:00E
+DP 45:55:00N 014:10:00E
+DP 45:55:00N 014:00:00E
+DP 46:00:00N 014:00:00E

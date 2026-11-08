@@ -1,0 +1,14 @@
+*VERSION: 2.0
+*WRITTEN_BY: openair-conformance
+* Tests: an old version (2.0) is checked as 2.1. This gives only an info diagnostic.
+
+AC D
+AY CTR
+AN Example CTR
+AH 4500 FT AMSL
+AL GND
+DP 46:00:00N 014:00:00E
+DP 46:00:00N 014:10:00E
+DP 45:55:00N 014:10:00E
+DP 45:55:00N 014:00:00E
+DP 46:00:00N 014:00:00E

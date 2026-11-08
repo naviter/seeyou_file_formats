@@ -1,0 +1,15 @@
+*VERSION: 2.1
+*WRITTEN_BY: openair-conformance
+* Tests: a weekday command in a version 2.1 file. Weekday commands are new in version 3.0.
+
+AC D
+AY TRA
+AN Example TRA
+AA MON-FRI 07:00Z/15:00Z
+AH 4500 FT AMSL
+AL GND
+DP 46:00:00N 014:00:00E
+DP 46:00:00N 014:10:00E
+DP 45:55:00N 014:10:00E
+DP 45:55:00N 014:00:00E
+DP 46:00:00N 014:00:00E

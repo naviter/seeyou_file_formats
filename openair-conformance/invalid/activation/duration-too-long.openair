@@ -1,0 +1,15 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: a duration with a very long number (PT99999999999999999999H). A parser must report it and must not crash.
+
+AC D
+AY TRA
+AN Example TRA
+AA 2026-07-04T08:00Z/PT99999999999999999999H
+AH 4500 FT AMSL
+AL GND
+DP 46:00:00N 014:00:00E
+DP 46:00:00N 014:10:00E
+DP 45:55:00N 014:10:00E
+DP 45:55:00N 014:00:00E
+DP 46:00:00N 014:00:00E

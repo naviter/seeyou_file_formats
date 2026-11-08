@@ -1,0 +1,15 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: a weekday date range that ends before it starts.
+
+AC D
+AY TRA
+AN Example TRA
+AA MON-FRI 06:00Z/14:00Z 2026-10-24/2026-03-29
+AH 4500 FT AMSL
+AL GND
+DP 46:00:00N 014:00:00E
+DP 46:00:00N 014:10:00E
+DP 45:55:00N 014:10:00E
+DP 45:55:00N 014:00:00E
+DP 46:00:00N 014:00:00E

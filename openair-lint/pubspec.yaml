@@ -1,0 +1,28 @@
+name: openair_lint
+description: >-
+  Linter for the OpenAir 3.0 file format specification by Naviter. It checks
+  OpenAir airspace files and reports errors, warnings and hints.
+version: 3.0.0-dev.1
+repository: https://github.com/naviter/seeyou_file_formats/tree/main/openair-lint
+issue_tracker: https://github.com/naviter/seeyou_file_formats/issues
+topics:
+  - openair
+  - airspace
+  - aviation
+  - linter
+
+environment:
+  sdk: '>=3.5.0 <4.0.0'
+
+dependencies:
+  args: ^2.5.0
+
+# "web" is used only by the web page (web/), not by the library. So it is
+# a dev dependency: users of the library do not need it.
+dev_dependencies:
+  lints: ^5.0.0
+  test: ^1.25.0
+  web: ^1.1.0
+
+executables:
+  openair-lint: openair_lint

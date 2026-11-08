@@ -1,0 +1,14 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: a pressure altitude in feet with STD. "9500 FT STD" is the same as FL95, so it is above FL65.
+
+AC D
+AY CTR
+AN Example CTR
+AH 9500 FT STD
+AL FL65
+DP 46:00:00N 014:00:00E
+DP 46:00:00N 014:10:00E
+DP 45:55:00N 014:10:00E
+DP 45:55:00N 014:00:00E
+DP 46:00:00N 014:00:00E

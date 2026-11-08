@@ -1,0 +1,16 @@
+* Version: MAR26
+*WRITTEN_BY: openair-conformance
+* Tests: the comment "* Version: MAR26" is not a *VERSION header, so the version is missing.
+
+AC D
+AY CTR
+AN Example CTR
+AF 118.480
+AG Example Tower
+AH 4500 FT AMSL
+AL GND
+DP 46:00:00N 014:00:00E
+DP 46:00:00N 014:10:00E
+DP 45:55:00N 014:10:00E
+DP 45:55:00N 014:00:00E
+DP 46:00:00N 014:00:00E

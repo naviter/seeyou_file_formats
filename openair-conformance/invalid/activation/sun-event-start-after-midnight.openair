@@ -1,0 +1,15 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: AA SR/SS at 20 degrees north, 96 degrees east. Sunrise is just after 00:00Z on some days and just before 24:00Z on other days. Then the window moves by about one day.
+
+AC D
+AY TRA
+AN Example TRA
+AA SR/SS
+AH 4500 FT AMSL
+AL GND
+DP 20:05:00N 095:55:00E
+DP 20:05:00N 096:05:00E
+DP 19:55:00N 096:05:00E
+DP 19:55:00N 095:55:00E
+DP 20:05:00N 095:55:00E

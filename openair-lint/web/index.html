@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- The page makes no network requests. The file is checked in the browser. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; worker-src 'self'; style-src 'self'; img-src data:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="Check OpenAir airspace files against the OpenAir 3.0 file format specification by Naviter. The file stays on your computer.">
+  <title>OpenAir Validator</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230b5cad'/%3E%3Cpath d='M8 17l5 5 11-12' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+  <script defer id="app-script" src="main.dart.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#results">Skip to the results</a>
+
+  <header class="page-header">
+    <div class="wrap">
+      <h1>OpenAir Validator</h1>
+      <p class="tagline">Checks OpenAir airspace files against the
+        <a href="https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md" rel="noopener noreferrer" target="_blank">OpenAir 3.0 file format specification by Naviter</a>.</p>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="intro" aria-labelledby="intro-title">
+      <h2 id="intro-title" class="visually-hidden">About this page</h2>
+      <p>This page checks the header, the airspace attributes (<code>AC</code>, <code>AY</code>, <code>AN</code>,
+        <code>AF</code>, <code>AG</code>, <code>AX</code>), the altitude limits (<code>AH</code>, <code>AL</code>),
+        the activation times (<code>AA</code>) and the geometry (<code>DP</code>, <code>DA</code>, <code>DB</code>,
+        <code>DC</code>, <code>DY</code>, <code>V</code>).
+        It shows each problem with the line, the column and a link to the rule in the specification.</p>
+      <ul class="legend">
+        <li><strong>Error:</strong> the file breaks a "must" rule of the specification.</li>
+        <li><strong>Warning:</strong> the file breaks a "should" rule.</li>
+        <li><strong>Info:</strong> a hint about style. The file is still valid.</li>
+      </ul>
+      <p class="privacy"><strong>Your file stays on your computer.</strong>
+        The check runs in your browser. The file is not uploaded anywhere.
+        This page makes no network requests and has no analytics.</p>
+      <p class="draft">OpenAir 3.0 is a draft, and this validator is a development version. Rules and messages can change.</p>
+    </section>
+
+    <section class="input" aria-labelledby="input-title">
+      <h2 id="input-title">Check a file</h2>
+
+      <div id="drop-zone" class="drop-zone">
+        <p class="drop-text">Drop an OpenAir file here (<code>.openair</code> or <code>.txt</code>), or</p>
+        <button type="button" id="choose-file" class="button primary" disabled>Choose a file</button>
+        <input type="file" id="file-input" accept=".openair,.txt,text/plain" hidden>
+      </div>
+
+      <details id="paste-panel" class="paste-panel">
+        <summary>Paste text</summary>
+        <label for="paste-text">OpenAir text</label>
+        <textarea id="paste-text" rows="12" spellcheck="false" autocomplete="off" autocapitalize="off" wrap="off"
+          aria-describedby="paste-help"></textarea>
+        <p id="paste-help" class="help">The text is checked while you type. Press Ctrl+Enter to check it now.</p>
+        <div class="row">
+          <button type="button" id="check-text" class="button primary" disabled>Check text</button>
+          <button type="button" id="clear-text" class="button">Clear</button>
+        </div>
+      </details>
+
+      <div class="options row">
+        <label for="target">Specification version</label>
+        <select id="target" aria-describedby="target-help">
+          <option value="auto" selected>From the file header</option>
+          <option value="3.0">3.0</option>
+          <option value="2.1">2.1</option>
+        </select>
+        <button type="button" id="example" class="button link-button" disabled>Load an example</button>
+      </div>
+      <p id="target-help" class="help">"From the file header" uses the <code>*VERSION:</code> line of the file.
+        A file without this line is checked as version 3.0. Files with version 2.0 or older are checked as version 2.1.</p>
+    </section>
+
+    <div id="status" class="status" role="status" aria-live="polite">
+      <noscript>This page needs JavaScript. The check runs in your browser.</noscript>
+      <span id="status-text">Loading the validator...</span>
+    </div>
+
+    <section id="results" class="results" aria-labelledby="results-title" hidden tabindex="-1">
+      <h2 id="results-title">Results</h2>
+      <p id="file-info" class="file-info"></p>
+
+      <fieldset id="filters" class="filters">
+        <legend>Show</legend>
+        <label class="filter filter-error"><input type="checkbox" id="show-error" checked> <span id="count-error">0 errors</span></label>
+        <label class="filter filter-warning"><input type="checkbox" id="show-warning" checked> <span id="count-warning">0 warnings</span></label>
+        <label class="filter filter-info"><input type="checkbox" id="show-info" checked> <span id="count-info">0 info</span></label>
+        <span class="rule-filter">
+          <label for="rule-filter">Rule</label>
+          <select id="rule-filter">
+            <option value="">All rules</option>
+          </select>
+        </span>
+      </fieldset>
+
+      <p id="list-info" class="list-info"></p>
+      <ol id="list" class="diagnostics" aria-label="Problems"></ol>
+      <div class="row list-actions">
+        <button type="button" id="more" class="button" hidden>Show more</button>
+        <button type="button" id="download" class="button" hidden>Download as text</button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="page-footer">
+    <div class="wrap">
+      <p><span id="linter-version">openair-lint</span>.
+        <a href="https://github.com/naviter/seeyou_file_formats/tree/main/openair-lint" rel="noopener noreferrer" target="_blank">Source code and the command line tool on GitHub</a>.
+        <a href="https://github.com/naviter/seeyou_file_formats/blob/main/openair-lint/RULES.md" rel="noopener noreferrer" target="_blank">All rules</a>.
+        MIT License.</p>
+    </div>
+  </footer>
+</body>
+</html>

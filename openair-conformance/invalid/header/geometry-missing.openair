@@ -1,0 +1,10 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: every airspace must have a geometry. A V command alone is not a geometry.
+
+AC D
+AY CTR
+AN Example CTR
+AH 4500 FT AMSL
+AL GND
+V X=46:00:00N 014:00:00E
