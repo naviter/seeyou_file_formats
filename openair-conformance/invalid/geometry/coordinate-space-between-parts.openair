@@ -1,6 +1,6 @@
 *VERSION: 3.0
 *WRITTEN_BY: openair-conformance
-* Tests: no space (line 11) and two spaces (line 12) between the latitude and the longitude.
+* Tests: no space (line 11) and two spaces (line 12) between the latitude and the longitude, two spaces before the letter N (line 13) and a tab before the letter E (line 14).
 
 AC D
 AY CTR
@@ -10,5 +10,5 @@ AL GND
 DP 46:00:00N 014:00:00E
 DP 46:00:00N014:10:00E
 DP 45:55:00N  014:10:00E
-DP 45:55:00N 014:00:00E
-DP 46:00:00N 014:00:00E
+DP 45:55:00  N 014:00:00E
+DP 46:00:00N 014:00:00	E

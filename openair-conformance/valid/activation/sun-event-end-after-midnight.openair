@@ -1,6 +1,6 @@
 *VERSION: 3.0
 *WRITTEN_BY: openair-conformance
-* Tests: AA SR/SS at 30 degrees north, 97 degrees west. Sunset is before 00:00Z in winter and after 00:00Z in summer. The window always ends at sunset, so this is correct.
+* Tests: AA SR/SS at 30 degrees north, 97 degrees west. Sunset is before 00:00Z in winter and after 00:00Z in summer. Both are on the same local solar day (local solar time is UTC - 6:28 here), so this is correct.
 
 AC D
 AY TRA

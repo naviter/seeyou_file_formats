@@ -18,14 +18,14 @@ final List<Rule> attributeRules = [
   _anNameEmpty,
   _anNameTooLong,
   _anNonAscii,
-  _anNameCutByComment,
+  _anContainsAsterisk,
   _afInvalidFormat,
   _afOutsideAirBand,
   _afInvalidChannel,
   _afNotThreeDecimals,
   _agStationEmpty,
   _agStationIsFrequency,
-  _agStationCutByComment,
+  _agContainsAsterisk,
   _axNotFourDigits,
   _axNotOctal,
   _axEmergencyCode,
@@ -339,66 +339,98 @@ String _showChar(int rune) {
   return '"${String.fromCharCode(rune)}"';
 }
 
-const String _cutExplanation = 'The "*" character starts a comment, and the '
-    'comment runs to the end of the line. This is also true after AN and AG. '
-    'A reader shows only the text before the "*". If the "*" is part of the '
-    'text, the rest of the text is lost.\n'
+String _asteriskExplanation(String keyword, String what) =>
+    'The "*" character always starts a comment, and the comment runs to the '
+    'end of the line. For this reason, the $what after $keyword cannot '
+    'contain "*", and a comment is not allowed on the same line as '
+    '$keyword. A reader shows only the text before the "*" as the $what.\n'
     '\n'
-    'openair-lint reports a comment that looks like a part of the text: a '
-    'pair of "*" around words (for example "(*NOTAM*)" or "*TWR HRS*"), a '
-    '"*" without a blank before it (for example "ALPHA* MTA ALPHAVILLE"), or '
-    'text before the "*" with a bracket that is not closed. Remove the "*" '
-    'characters from the text. A real comment needs a blank before the "*". '
-    'A real comment can contain more "*" characters, for example "AN Wien '
-    'CTR * source: AIP *AMDT 3*".';
+    'If the "*" is part of the $what, remove the "*" characters. If the '
+    'text after the "*" is a comment, put the comment on its own line, '
+    'before or after the $keyword line.\n'
+    '\n'
+    'Version 2.1 allowed a comment after $keyword, so this rule applies only '
+    'to version 3.0.';
 
-final Rule _anNameCutByComment = Rule(
-  id: 'an-name-cut-by-comment',
-  severity: Severity.warning,
-  versions: SpecVersion.all,
-  specAnchor: 'seeyou-openair-file-format-specification',
-  description: 'The AN name should not contain "*". The "*" starts a comment '
-      'and cuts the name.',
-  explanation: _cutExplanation,
-  correctExample: 'AN EKR664 ZONE 1 (NOTAM)',
-  incorrectExample: 'AN EKR664 ZONE 1 (*NOTAM*)',
+final Rule _anContainsAsterisk = Rule(
+  id: 'an-contains-asterisk',
+  severity: Severity.error,
+  versions: SpecVersion.only3,
+  specAnchor: 'an-airspace-name',
+  description: 'An AN line must not contain "*". The "*" starts a comment, '
+      'and a comment is not allowed on the same line as AN.',
+  explanation: _asteriskExplanation('AN', 'name'),
+  correctExample: '* part in France\n'
+      'AN EKR664 ZONE 1 (NOTAM)',
+  incorrectExample: 'AN EKR664 ZONE 1 (*NOTAM*) * part in France',
   keywords: {'AN'},
-  checkCommand: (ctx, c, a) => _checkCutByComment(ctx, c, 'name'),
+  checkCommand: (ctx, c, a) => _checkAsterisk(ctx, c, 'name'),
 );
 
-/// Reports [c] if its comment probably cuts the text of AN or AG in two.
-/// [what] is the word for the text in the message ("name" or
-/// "station name").
-void _checkCutByComment(LintContext ctx, Command c, String what) {
+final Rule _agContainsAsterisk = Rule(
+  id: 'ag-contains-asterisk',
+  severity: Severity.error,
+  versions: SpecVersion.only3,
+  specAnchor: 'ag-station-name',
+  description: 'An AG line must not contain "*". The "*" starts a comment, '
+      'and a comment is not allowed on the same line as AG.',
+  explanation: _asteriskExplanation('AG', 'station name'),
+  correctExample: '* only in summer\n'
+      'AG Langen Information (FIS)',
+  incorrectExample: 'AG Langen Information (*FIS*) * only in summer',
+  keywords: {'AG'},
+  checkCommand: (ctx, c, a) => _checkAsterisk(ctx, c, 'station name'),
+);
+
+/// Reports [c] (an AN or AG command) if its line contains "*". [what] is
+/// the word for the text in the message ("name" or "station name").
+void _checkAsterisk(LintContext ctx, Command c, String what) {
   final comment = c.comment;
   final starColumn = c.commentColumn;
-  if (comment == null || starColumn == null || c.argument.isEmpty) return;
-  final rest = comment.trim();
-  // "AN Name *" and decoration such as "AN Name ** note" are real comments.
-  if (rest.isEmpty || rest.startsWith('*')) return;
-  final starIndex = starColumn - 1;
-  final before = starIndex > 0 ? c.text[starIndex - 1] : ' ';
-  final noBlankBefore = before != ' ' && before != '\t';
-  // A pair of "*" around a word or words, as in "*TWR HRS*" or "(*NOTAM*)":
-  // the first "*" is directly before a word, and the second "*" is
-  // directly after a word. A comment such as "* source: AIP *AMDT 3*" is a
-  // real comment that only contains a "*".
-  final starPair = _starPair.hasMatch(comment);
-  final unclosed = _hasUnclosedBracket(c.argument);
-  if (!noBlankBefore && !starPair && !unclosed) return;
-  final fixed = c.text
-      .substring(c.argumentColumn - 1)
-      .replaceAll('*', '')
-      .replaceAll(RegExp(r'\s+'), ' ')
-      .trim();
-  ctx.report(
-      'The "*" starts a comment, so readers show only the $what '
-      '"${c.argument}". The text after the "*" is lost. If this text is '
-      'part of the $what, remove the "*" characters: '
-      '"${c.upperKeyword} $fixed".',
+  if (comment == null || starColumn == null) return;
+  final keyword = c.upperKeyword;
+  final shown = c.argument.isEmpty
+      ? 'readers show an empty $what'
+      : 'readers show only the $what "${c.argument}"';
+  final buffer = StringBuffer('The "*" starts a comment, so the $what ends '
+      'before the "*", and $shown. A comment is not allowed on the same line '
+      'as $keyword.');
+  if (_looksLikePartOfText(c, comment, starColumn)) {
+    final fixed = c.text
+        .substring(c.argumentColumn - 1)
+        .replaceAll('*', '')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    buffer.write(' If the text after the "*" is part of the $what, remove '
+        'the "*" characters: "$keyword $fixed".');
+  } else {
+    final rest = comment.replaceFirst(RegExp(r'^[\s*]+'), '').trimRight();
+    buffer.write(rest.isEmpty
+        ? ' Remove the "*".'
+        : ' Remove the "*", or put the comment on its own line: "* $rest".');
+  }
+  ctx.report(buffer.toString(),
       line: c.line,
       column: starColumn,
       endColumn: c.text.trimRight().length + 1);
+}
+
+/// True if the text after the first "*" of [c] probably belongs to the
+/// name or the station name. This only selects the advice in the message.
+///
+/// Such text is: a pair of "*" around words (for example "(*NOTAM*)" or
+/// "*TWR HRS*"), a "*" without a blank before it (for example
+/// "ALPHA* MTA ALPHAVILLE"), or a name before the "*" with a bracket that
+/// is not closed.
+bool _looksLikePartOfText(Command c, String comment, int starColumn) {
+  final rest = comment.trim();
+  // "AN Name *" and decoration such as "AN Name ** note" are comments.
+  if (rest.isEmpty || rest.startsWith('*')) return false;
+  if (_starPair.hasMatch(comment)) return true;
+  if (c.argument.isEmpty) return false;
+  final starIndex = starColumn - 1;
+  final before = starIndex > 0 ? c.text[starIndex - 1] : ' ';
+  return (before != ' ' && before != '\t') || _hasUnclosedBracket(c.argument);
 }
 
 /// The text of a comment (after its "*") that starts directly with a word
@@ -423,14 +455,16 @@ final Rule _afInvalidFormat = Rule(
   versions: SpecVersion.all,
   specAnchor: 'af-airspace-frequency',
   description: 'The AF frequency must be one number in MHz, with a dot as '
-      'the decimal separator.',
+      'the decimal separator and without a unit.',
   explanation: 'AF gives the radio frequency that pilots use for this '
       'airspace. Write one frequency in MHz, with a dot as the decimal '
       'separator and without a unit, for example "AF 123.300". A reader '
       'cannot use a value with a comma, a unit, letters or more than one '
       'frequency.\n'
       '\n'
-      'Put the name of the radio station in AG, not in AF.',
+      'If the airspace has more than one frequency, write one AF command '
+      'for each frequency. Put the name of the radio station in AG, not '
+      'in AF.',
   correctExample: 'AF 123.300\nAG Example Information',
   incorrectExample: 'AF 123,300 MHz',
   keywords: {'AF'},
@@ -447,18 +481,16 @@ final Rule _afInvalidFormat = Rule(
 
 final Rule _afOutsideAirBand = Rule(
   id: 'af-outside-air-band',
-  severity: Severity.warning,
+  severity: Severity.error,
   versions: SpecVersion.all,
   specAnchor: 'af-airspace-frequency',
-  description: 'The AF frequency should be in the VHF air band '
+  description: 'The AF frequency must be in the VHF air band '
       '($_bandText).',
-  explanation: 'Glider pilots use VHF radios. The VHF air band for voice '
-      'is from 118.000 to 136.990 MHz. A frequency outside this band is '
-      'usually a mistake, for example a navigation frequency (VOR) or a '
-      'military UHF frequency, or the value is in kHz and not in MHz.\n'
-      '\n'
-      'The specification does not define the frequency band. openair-lint '
-      'reports a warning because such a value is almost always a mistake.',
+  explanation: 'The specification requires a channel in the VHF air band, '
+      'from 118.000 to 136.990 MHz. Glider pilots use VHF radios. A '
+      'frequency outside this band is usually a mistake, for example a '
+      'navigation frequency (VOR) or a military UHF frequency, or the value '
+      'is in kHz and not in MHz.',
   correctExample: 'AF 123.300',
   incorrectExample: 'AF 114.880',
   keywords: {'AF'},
@@ -482,27 +514,26 @@ final Rule _afOutsideAirBand = Rule(
 
 final Rule _afInvalidChannel = Rule(
   id: 'af-invalid-channel',
-  severity: Severity.warning,
+  severity: Severity.error,
   versions: SpecVersion.all,
   specAnchor: 'af-airspace-frequency',
-  description: 'The AF frequency should be a valid 25 kHz or 8.33 kHz '
+  description: 'The AF frequency must be a valid 25 kHz or 8.33 kHz '
       'channel name.',
   explanation: 'Pilots set a channel name on the radio, for example 118.005 '
-      'or 123.455. With 25 kHz and 8.33 kHz channel spacing, the last two '
-      'digits of a channel name are 00, 05, 10, 15, 25, 30, 35, 40, 50, 55, '
-      '60, 65, 75, 80, 85 or 90. Other values, for example 118.020 or '
-      '123.456, are not channels that a radio can use.\n'
+      'or 123.455. With 25 kHz and 8.33 kHz channel spacing, not every '
+      'value is a channel. The last two digits of a channel name are 00, '
+      '05, 10, 15, 25, 30, 35, 40, 50, 55, 60, 65, 75, 80, 85 or 90. Other '
+      'values, for example 118.020 or 123.456, are not channels that a '
+      'radio can use.\n'
       '\n'
       'A value with two decimals that ends in 2 or 7, for example 122.47, is '
       'often a 25 kHz frequency with the last digit cut off (122.475).\n'
       '\n'
-      'A value with more than three decimals is accepted if it is the radio '
+      'A value with more than three decimals that is the exact radio '
       'frequency of a channel (within 1 kHz), for example 118.0083 for the '
-      'channel 118.010. af-not-three-decimals then asks for the channel '
-      'name. Other values, for example 123.4567, are reported here.\n'
-      '\n'
-      'The specification does not define the channels. openair-lint reports '
-      'a warning because such a value is almost always a mistake.',
+      'channel 118.010, is reported by af-not-three-decimals. Other values '
+      'with more than three decimals, for example 123.4567, are reported '
+      'here.',
   correctExample: 'AF 122.475',
   incorrectExample: 'AF 122.47',
   keywords: {'AF'},
@@ -535,19 +566,20 @@ final Rule _afInvalidChannel = Rule(
 
 final Rule _afNotThreeDecimals = Rule(
   id: 'af-not-three-decimals',
-  severity: Severity.info,
-  versions: SpecVersion.all,
+  severity: Severity.error,
+  versions: SpecVersion.only3,
   specAnchor: 'af-airspace-frequency',
-  description: 'Write the AF frequency with three decimals.',
-  explanation: 'The example in the specification uses three decimals: '
-      '"AF 123.300". With 8.33 kHz channel spacing, three decimals are '
-      'necessary to show the channel, for example 118.005. Write every '
-      'frequency with three decimals, so that all frequencies look the same '
-      'and pilots can set the exact channel.\n'
+  description: 'The AF frequency must have exactly three decimals.',
+  explanation: 'The specification requires one number with a dot and '
+      'exactly three decimals, for example "AF 123.300" or "AF 118.005". '
+      'With 8.33 kHz channel spacing, three decimals are necessary to show '
+      'the channel. Write "AF 126.100", not "AF 126.1" or "AF 126.1000".\n'
       '\n'
-      'Write the channel name that pilots set on the radio. Do not write '
-      'the exact 8.33 kHz frequency, for example write 118.010, '
-      'not 118.0083.',
+      'Write the channel name that pilots set on the radio, not the exact '
+      'radio frequency. For example, write 118.010, not 118.0083.\n'
+      '\n'
+      'Version 2.1 did not define the number of decimals, so this rule '
+      'applies only to version 3.0.',
   correctExample: 'AF 126.100',
   incorrectExample: 'AF 126.1',
   keywords: {'AF'},
@@ -624,20 +656,6 @@ final Rule _agStationIsFrequency = Rule(
   },
 );
 
-final Rule _agStationCutByComment = Rule(
-  id: 'ag-station-cut-by-comment',
-  severity: Severity.warning,
-  versions: SpecVersion.all,
-  specAnchor: 'seeyou-openair-file-format-specification',
-  description: 'The AG station name should not contain "*". The "*" starts a '
-      'comment and cuts the name.',
-  explanation: _cutExplanation,
-  correctExample: 'AG Langen Information (FIS)',
-  incorrectExample: 'AG Langen Information (*FIS*)',
-  keywords: {'AG'},
-  checkCommand: (ctx, c, a) => _checkCutByComment(ctx, c, 'station name'),
-);
-
 // ---------------------------------------------------------------------------
 // AX
 // ---------------------------------------------------------------------------
@@ -649,8 +667,8 @@ final Rule _axNotFourDigits = Rule(
   specAnchor: 'ax-transponder-code',
   description: 'The AX transponder code must have exactly 4 digits.',
   explanation: 'AX gives the transponder code (squawk) for the airspace. '
-      'The specification requires a code with 4 digits, for example '
-      '"AX 7000". Write all 4 digits, also a zero at the start: write '
+      'The specification requires a code with exactly 4 digits, for example '
+      '"AX 7000". Write all 4 digits, also the zeros at the start: write '
       '"AX 0424", not "AX 424". Do not add other text.',
   correctExample: 'AX 0424',
   incorrectExample: 'AX 424',
@@ -683,18 +701,14 @@ final Rule _axNotFourDigits = Rule(
 
 final Rule _axNotOctal = Rule(
   id: 'ax-not-octal',
-  severity: Severity.warning,
+  severity: Severity.error,
   versions: SpecVersion.all,
   specAnchor: 'ax-transponder-code',
-  description: 'The AX transponder code should use only the digits 0 to 7.',
-  explanation: 'A transponder code has 4 octal digits. Each digit is '
-      'from 0 to 7, so there are 4096 codes, from 0000 to 7777. A '
-      'transponder cannot be set to a code with the digit 8 or 9. Such a '
-      'code is almost always a mistake.\n'
-      '\n'
-      'The specification only requires 4 digits. It does not say that the '
-      'digits must be from 0 to 7. For this reason, openair-lint reports a '
-      'warning and not an error.',
+  description: 'The AX transponder code must use only the digits 0 to 7.',
+  explanation: 'Transponder codes are octal. Each of the 4 digits is from 0 '
+      'to 7, so there are 4096 codes, from 0000 to 7777. The digits 8 and 9 '
+      'are not allowed. A transponder cannot be set to a code with the '
+      'digit 8 or 9.',
   correctExample: 'AX 4410',
   incorrectExample: 'AX 4810',
   keywords: {'AX'},

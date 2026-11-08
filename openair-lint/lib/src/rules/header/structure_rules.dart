@@ -52,7 +52,7 @@ final Rule _commandUnknown = Rule(
   id: 'command-unknown',
   severity: Severity.error,
   versions: SpecVersion.all,
-  specAnchor: 'seeyou-openair-file-format-specification',
+  specAnchor: 'command-reference',
   description: 'Every line must be a command of the specification, a '
       'comment or an empty line.',
   explanation: 'The first word of each line is the command. This line '
@@ -162,7 +162,7 @@ final Rule _commandNotInSpec = Rule(
   id: 'command-not-in-spec',
   severity: Severity.warning,
   versions: SpecVersion.all,
-  specAnchor: 'seeyou-openair-file-format-specification',
+  specAnchor: 'command-reference',
   description: 'Commands of other programs (SP, SB, AT, AI, AR, TO, TC) are '
       'not part of the specification.',
   explanation: 'Some files use commands that other programs defined, for '
@@ -253,8 +253,8 @@ Rule _limitMissing(String keyword, String anchor) {
   );
 }
 
-final Rule _airspaceAhMissing = _limitMissing('AH', 'ah-upper-alitutde-limit');
-final Rule _airspaceAlMissing = _limitMissing('AL', 'al-lower-alitutde-limit');
+final Rule _airspaceAhMissing = _limitMissing('AH', 'ah-upper-altitude-limit');
+final Rule _airspaceAlMissing = _limitMissing('AL', 'al-lower-altitude-limit');
 
 // ---------------------------------------------------------------------------
 // airspace-ah-duplicate, airspace-al-duplicate
@@ -304,9 +304,9 @@ Rule _limitDuplicate(String keyword, String anchor) {
 }
 
 final Rule _airspaceAhDuplicate =
-    _limitDuplicate('AH', 'ah-upper-alitutde-limit');
+    _limitDuplicate('AH', 'ah-upper-altitude-limit');
 final Rule _airspaceAlDuplicate =
-    _limitDuplicate('AL', 'al-lower-alitutde-limit');
+    _limitDuplicate('AL', 'al-lower-altitude-limit');
 
 // ---------------------------------------------------------------------------
 // airspace-geometry-missing
@@ -316,13 +316,13 @@ final Rule _airspaceGeometryMissing = Rule(
   id: 'airspace-geometry-missing',
   severity: Severity.error,
   versions: SpecVersion.all,
-  specAnchor: 'd-geometric-definitions',
+  specAnchor: 'command-reference',
   description: 'Every airspace must have a geometry (DP, DA, DB, DC or DY '
       'commands).',
-  explanation: 'An airspace definition is followed by the geometric '
-      'definition of the airspace. This airspace has no "DP", "DA", "DB", '
-      '"DC" or "DY" command, so it has no shape. Readers cannot show it, and '
-      'most of them ignore it.\n'
+  explanation: 'Each airspace must have at least one geometry command: '
+      '"DP", "DA", "DB", "DC" or "DY". A "V" command alone is not a '
+      'geometry. This airspace has no geometry command, so it has no shape. '
+      'Readers cannot show it, and most of them ignore it.\n'
       '\n'
       'Add the geometry, or remove the airspace.',
   correctExample: 'AC D\n'
@@ -352,8 +352,13 @@ final Rule _airspaceGeometryMissing = Rule(
 // airspace-attribute-duplicate
 // ---------------------------------------------------------------------------
 
-/// The attribute commands that an airspace can have only once.
-const List<String> _singleAttributes = ['AN', 'AY', 'AF', 'AG', 'AX'];
+/// The attribute commands that an airspace can have only once, other than
+/// `AC` (it always starts a new airspace) and `AH` and `AL` (they have their
+/// own rules).
+const List<String> _singleAttributes = ['AN', 'AY', 'AG', 'AX'];
+
+/// The `A` commands that an airspace can have more than once.
+const Set<String> _repeatableAttributes = {'AA', 'AF'};
 
 /// The commands in [part] that repeat an earlier command of
 /// [_singleAttributes], `AH` or `AL`. Other rules report them.
@@ -362,7 +367,9 @@ Set<Command> _repeatedCommands(List<Command> part) {
   final result = <Command>{};
   for (final c in part) {
     final k = c.upperKeyword;
-    if (k == 'AA' || !_attributeKeywords.contains(k)) continue;
+    if (_repeatableAttributes.contains(k) || !_attributeKeywords.contains(k)) {
+      continue;
+    }
     if (!seen.add(k)) result.add(c);
   }
   return result;
@@ -370,28 +377,31 @@ Set<Command> _repeatedCommands(List<Command> part) {
 
 final Rule _airspaceAttributeDuplicate = Rule(
   id: 'airspace-attribute-duplicate',
-  severity: Severity.warning,
+  severity: Severity.error,
   versions: SpecVersion.all,
-  specAnchor: 'a-general-definitions',
-  description: 'An airspace should have only one AN, AY, AF, AG and AX '
+  specAnchor: 'command-reference',
+  description: 'An airspace must have at most one AN, AY, AG and AX '
       'command.',
-  explanation: 'Each of the commands "AN" (name), "AY" (type), "AF" '
-      '(frequency), "AG" (station) and "AX" (transponder code) gives one '
-      'value of the airspace. When a command is in the same airspace two '
-      'times, readers use only one of the values, and different readers use '
-      'different ones. Some readers even start a new airspace at the second '
-      '"AN".\n'
+  explanation: 'Each airspace can have at most one "AN" (name), "AY" '
+      '(type), "AG" (station) and "AX" (transponder code) command. When a '
+      'command is in the same airspace two times, readers use only one of '
+      'the values, and different readers use different ones. Some readers '
+      'even start a new airspace at the second "AN".\n'
       '\n'
-      'Keep one command. If the airspace has two frequencies, write the '
-      'second one in a comment. If the lines are two airspaces, start the '
-      'second one with its own "AC" command.',
+      'Keep one command. If the lines are two airspaces, start the second '
+      'one with its own "AC" command.\n'
+      '\n'
+      '"AF" can be used more than once: write one "AF" command for each '
+      'frequency. "AH" and "AL" have their own rules '
+      '(airspace-ah-duplicate and airspace-al-duplicate).',
   correctExample: 'AC D\n'
-      'AN Example CTR\n'
-      'AF 118.480     * also 120.500',
-  incorrectExample: 'AC D\n'
       'AN Example CTR\n'
       'AF 118.480\n'
       'AF 120.500',
+  incorrectExample: 'AC D\n'
+      'AN Example CTR\n'
+      'AN Example TMA\n'
+      'AF 118.480',
   checkAirspace: (ctx, a) {
     if (_inStrepla(ctx, a.startLine)) return;
     // When an AC command is missing, the rule airspace-ac-missing reports
@@ -410,7 +420,7 @@ final Rule _airspaceAttributeDuplicate = Rule(
         ctx.reportCommand(
             c,
             'This airspace already has an "$k" command on line ${first.line}. '
-            'Readers use only one of them. '
+            'An airspace can have at most one "$k" command. '
             '${next ?? 'Keep one "$k" command, or start a new airspace with "AC".'}');
       }
     }
@@ -521,7 +531,10 @@ List<List<Command>> _airspaceParts(LintContext ctx, Airspace a) =>
           lastGeometry = i;
           continue;
         }
-        if (k == 'AA' || !_attributeKeywords.contains(k)) continue;
+        if (_repeatableAttributes.contains(k) ||
+            !_attributeKeywords.contains(k)) {
+          continue;
+        }
         // A new part starts only if the keyword is repeated from the group
         // before the last geometry. A keyword that is repeated after the
         // geometry (for example "AH" two times after the first "DP") is a
@@ -608,7 +621,10 @@ final Rule _airspaceAcMissing = Rule(
       final repeated = <String>[];
       for (final c in part) {
         final k = c.upperKeyword;
-        if (k == 'AA' || !_attributeKeywords.contains(k)) continue;
+        if (_repeatableAttributes.contains(k) ||
+            !_attributeKeywords.contains(k)) {
+          continue;
+        }
         if (before.contains(k) && !repeated.contains(k)) repeated.add(k);
       }
       if (repeated.isEmpty) continue;

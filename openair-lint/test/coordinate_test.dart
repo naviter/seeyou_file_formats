@@ -42,12 +42,20 @@ void main() {
   });
 
   group('deviations (value is still computed)', () {
-    test('space before the hemisphere letter', () {
+    test('one space before the hemisphere letter is valid', () {
       final r = parseCoordinate('45:40:30 N 014:18:20 E');
+      expect(r.isClean, isTrue);
+      expect(r.value, parseCoordinate('45:40:30N 014:18:20E').value);
+      expect(parseCoordinate('45:40.500 N 014:18.333E').isClean, isTrue);
+      expect(parseCoordinate('33:56:00 S 151:10:00 W').value!.lon, lessThan(0));
+    });
+
+    test('two blanks or a tab before the hemisphere letter', () {
+      final r = parseCoordinate('45:40:30  N 014:18:20\tE');
       expect(r.isValid, isTrue);
       expect(r.issues.map((i) => (i.kind, i.offset, i.length)), [
-        (CoordinateIssueKind.spaceBeforeHemisphere, 8, 1),
-        (CoordinateIssueKind.spaceBeforeHemisphere, 20, 1),
+        (CoordinateIssueKind.extraSpaceBeforeHemisphere, 8, 2),
+        (CoordinateIssueKind.extraSpaceBeforeHemisphere, 21, 1),
       ]);
       expect(r.issues.first.part, CoordinatePart.latitude);
       expect(r.issues.last.part, CoordinatePart.longitude);
@@ -136,9 +144,9 @@ void main() {
     });
 
     test('a typical messy corpus line', () {
-      expect(kinds('45:40:30.5 n 14:18:20E'), [
+      expect(kinds('45:40:30.5  n 14:18:20E'), [
         CoordinateIssueKind.decimalSeconds,
-        CoordinateIssueKind.spaceBeforeHemisphere,
+        CoordinateIssueKind.extraSpaceBeforeHemisphere,
         CoordinateIssueKind.lowerCaseHemisphere,
         CoordinateIssueKind.missingLeadingZero,
       ]);

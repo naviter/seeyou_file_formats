@@ -1,12 +1,15 @@
 *VERSION: 3.0
 *WRITTEN_BY: openair-conformance
-* Tests: an airspace should have only one AF command.
+* Tests: channel names from the specification and the edges of the air band. AF can be used more than once.
 
 AC D
 AY CTR
 AN Example CTR
-AF 118.480
-AF 120.500
+AF 118.000
+AF 118.005
+AF 123.300
+AF 123.505
+AF 136.990
 AH 4500 FT AMSL
 AL GND
 DP 46:00:00N 014:00:00E

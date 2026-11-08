@@ -1,11 +1,12 @@
 *VERSION: 3.0
 *WRITTEN_BY: openair-conformance
-* Tests: an interval that ends before it starts.
+* Tests: an interval that ends before it starts, and an interval with the same start and end.
 
 AC D
 AY TRA
 AN Example TRA
 AA 2026-07-04T16:00Z/2026-07-04T08:00Z
+AA 2026-07-05T08:00Z/2026-07-05T08:00Z
 AH 4500 FT AMSL
 AL GND
 DP 46:00:00N 014:00:00E

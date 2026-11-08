@@ -1,0 +1,18 @@
+*VERSION: 2.1
+*WRITTEN_BY: openair-conformance
+* Tests: a version 2.1 file with ISO 8601 forms that version 2.1 allows, but version 3.0 does not: the basic format, a duration and an end with only the time. A validator reports warnings. P8H is not a valid ISO 8601 duration, so it is an error.
+
+AC D
+AY TRA
+AN Example TRA
+AA 20260705T0800Z/20260705T1000Z
+AA 2026-07-07T08:00Z/PT8H
+AA 2026-07-08T08:00Z/12:00Z
+AA 2026-07-09T08:00Z/P8H
+AH 4500 FT AMSL
+AL GND
+DP 46:00:00N 014:00:00E
+DP 46:00:00N 014:10:00E
+DP 45:55:00N 014:10:00E
+DP 45:55:00N 014:00:00E
+DP 46:00:00N 014:00:00E

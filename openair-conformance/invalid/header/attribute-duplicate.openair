@@ -1,0 +1,20 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: an airspace can have at most one AN, AY, AG and AX command.
+
+AC D
+AY CTR
+AY TMZ
+AN Example CTR
+AN Example TMZ
+AG Example Tower
+AG Example Radar
+AX 7000
+AX 0424
+AH 4500 FT AMSL
+AL GND
+DP 46:00:00N 014:00:00E
+DP 46:00:00N 014:10:00E
+DP 45:55:00N 014:10:00E
+DP 45:55:00N 014:00:00E
+DP 46:00:00N 014:00:00E

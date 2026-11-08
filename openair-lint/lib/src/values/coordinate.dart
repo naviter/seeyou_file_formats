@@ -67,9 +67,10 @@ enum CoordinateIssueKind {
   /// The hemisphere letter is lower case (`n` in place of `N`).
   lowerCaseHemisphere(),
 
-  /// There is a space between the number and the hemisphere letter
-  /// (`45:40:30 N`).
-  spaceBeforeHemisphere(),
+  /// There is more than one blank, or a tab, between the number and the
+  /// hemisphere letter (`45:40:30  N`). One space is valid (`45:40:30 N`)
+  /// and is not an issue.
+  extraSpaceBeforeHemisphere(),
 
   /// There is no space between the latitude and the longitude
   /// (`45:40:30N014:18:20E`).
@@ -191,9 +192,11 @@ bool _isBlank(int c) => c == 0x20 || c == 0x09;
 /// Examples of accepted input:
 ///
 /// - `45:40:30N 014:18:20E` (DMS, no issues)
+/// - `45:40:30 N 014:18:20 E` (DMS with one space before the letters, no
+///   issues)
 /// - `45:40.500N 014:18.333E` (DDM, no issues)
-/// - `45:40:30.5 n 14:18:20E` (issues: decimalSeconds, spaceBeforeHemisphere,
-///   lowerCaseHemisphere, missingLeadingZero)
+/// - `45:40:30.5  n 14:18:20E` (issues: decimalSeconds,
+///   extraSpaceBeforeHemisphere, lowerCaseHemisphere, missingLeadingZero)
 /// - `45:40:30N014:18:20E` (issue: missingSpace)
 /// - `45.675N 14.305E` (issues: decimalDegrees)
 ///
@@ -372,13 +375,14 @@ _Part _parsePart(
     }
   }
   if (hemisphere != null) {
-    if (hPos > numberEnd) {
+    // One space before the letter is valid: `45:40:30 N`.
+    if (hPos > numberEnd && text.substring(numberEnd, hPos) != ' ') {
       issues.add(CoordinateIssue(
-          CoordinateIssueKind.spaceBeforeHemisphere,
+          CoordinateIssueKind.extraSpaceBeforeHemisphere,
           cp,
           numberEnd,
           hPos - numberEnd,
-          'Do not write a space between the $partName and its letter '
+          'Write no space or one space between the $partName and its letter '
           '"${hemisphere.toUpperCase()}".'));
     }
     part.end = hPos + 1;

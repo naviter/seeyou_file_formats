@@ -6,9 +6,8 @@
 /// warning. Info diagnostics are allowed.
 ///
 /// Blocks that only show the format of a command (for example `AC Class`)
-/// are skipped. Known problems in the specification are listed in
-/// [_knownSpecProblems]. When the specification is fixed, the test fails
-/// and the entry must be removed.
+/// are skipped. Examples that are expected to give an error or a warning
+/// are listed in [_knownSpecProblems].
 @TestOn('vm')
 library;
 
@@ -22,16 +21,16 @@ import 'support/example_wrapper.dart';
 /// The specification file, relative to the package folder.
 const String _specPath = '../OpenAir_File_Format_Support.md';
 
-/// Examples of the specification that are known to produce errors or
+/// Examples of the specification that are expected to produce errors or
 /// warnings. The key is the first line of the example. The value is the set
 /// of rule ids that the example produces.
+///
+/// When a known problem in the specification is fixed, the test fails and
+/// the entry must be removed.
 const Map<String, Set<String>> _knownSpecProblems = {
-  // The DC example uses "AC Q". Q is an airspace type (danger area), not a
-  // class. It should be "AC UNC" (or the real class) and "AY Q".
-  'AC Q': {'ac-unknown-class'},
-  // The centre of the DB example is not the centre of the arc. The first
-  // point is 75.8 NM and the second point is 66.4 NM from the centre.
-  'V X=39:13:00N 118:13:00W|DB': {'db-radius-mismatch'},
+  // The DY example. The specification says that DY "is not recommended",
+  // so the dy-deprecated warning is correct.
+  'V W=5': {'dy-deprecated'},
 };
 
 /// One code block of the specification.
@@ -192,13 +191,33 @@ void main() {
           'DP 45:30:30N 014:28:20E|DP 45:40:30N 014:18:20E',
       'DP 45:40.500N 014:18.333E|DP 45:40.500N 014:28.333E|'
           'DP 45:30.500N 014:28.333E|DP 45:40.500N 014:18.333E',
+      // Geographic position: one space before the hemisphere letter.
+      'DP 45:40:30 N 014:18:20 E|DP 45:40:30 N 014:28:20 E|'
+          'DP 45:30:30 N 014:28:20 E|DP 45:40:30 N 014:18:20 E',
+      'V X=46:00:00 N 014:00:00 E|DC 2',
+      // Altitude and Supported Altitude References.
       'AH 300 FT AGL',
       'AH 1500 M AMSL',
+      'AH 1500 FT AMSL',
+      'AH 4500 FT AMSL|AL 300 M AGL',
+      'AH 9500 FT STD',
+      'AH FL95',
       'AH FL145|AL 1000 FT AMSL',
+      'AH FL145|AL 1000 FT AGL',
+      'AH FL145|AL 9500 FT STD',
       'AH UNL',
       'AL GND',
+      // "A client can only compare the two limits when they use the same
+      // kind of reference."
+      'AH 1000 FT AGL|AL 2000 FT AMSL',
+      // Time: the allowed forms.
       'AA 2026-07-04T08:00Z/2026-07-04T16:00Z',
+      'AA 2026-07-04T08:00:00Z/2026-07-04T16:00:00Z',
       'AA 2026-12-25T00:00Z/2026-12-25T24:00Z',
+      'AA 2026-12-25T00:00Z/2026-12-25T24:00:00Z',
+      'AA 09:00:00Z/11:30:00Z',
+      'AA 09:00Z/24:00:00Z',
+      'AA MON 09:00Z/11:30Z 2026-12-25/2026-12-31',
       'AA MON 09:00Z/11:30Z',
       'AA MON-FRI 07:00Z/15:00Z',
       'AA FRI-MON 09:00Z/11:30Z',
@@ -210,6 +229,8 @@ void main() {
       'AA SR/SS',
       'AA 07:00Z/SS',
       'AA SS/SR',
+      'AA BCMT/EECT',
+      'AA SAT,SUN SR/SS',
       'AA MON 09:00Z/11:30Z 2026-03-29/2026-10-24',
       'AA MON 09:00Z/11:30Z 2026-04-01/NONE',
       'AA MON 09:00Z/11:30Z NONE/2026-10-31',
@@ -221,6 +242,22 @@ void main() {
       'AC UNC|AY Q',
       'AN CTR Muenchen',
       'AX 7000',
+      'AX 0424',
+      // AF: channel names, and more than one AF.
+      'AF 123.300',
+      'AF 118.005',
+      'AF 118.000',
+      'AF 136.990',
+      'AF 123.505',
+      'AF 118.010',
+      'AF 123.300|AF 118.005',
+      // Comment syntax: a comment on its own line or after a command.
+      '* A comment on its own line',
+      'AH 4500 FT AMSL * comment after a command',
+      // V: the values are reset at every AC, so each airspace sets X.
+      'AC D|AN First|AH 4500 FT AMSL|AL GND|V X=46:00:00N 014:00:00E|DC 2|'
+          'AC D|AN Second|AH 4500 FT AMSL|AL GND|'
+          'V X=46:10:00N 014:00:00E|DC 2',
     ];
     for (final example in valid) {
       test(example, () {
@@ -229,7 +266,8 @@ void main() {
       });
     }
 
-    // The specification says that these examples are wrong.
+    // The specification says that these examples are wrong. The value is
+    // the rule id, or several rule ids separated by commas.
     const invalid = <String, String>{
       'AH 100 M AGL/423 M AMSL': 'altitude-multiple-values',
       'AL 100 M AGL/423 M AMSL': 'altitude-multiple-values',
@@ -245,18 +283,70 @@ void main() {
       'AH 1000 ft AMSL': 'case-not-upper-case',
       'AH 1000FT AMSL': 'altitude-unit-no-space',
       'AA MON,WED, FRI 09:00Z/11:30Z': 'aa-weekday-list-has-spaces',
-      // These forms are allowed, but "Writers should use the recommended
-      // form" (Time) and "the StartDateTime/EndDateTime form" (Interval
-      // activation). So they are warnings.
-      'AA 2026-07-04T08:00Z/PT8H': 'aa-interval-not-recommended-form',
-      'AA 2026-07-04T08:00:00Z/2026-07-04T16:00:00Z':
-          'aa-value-not-recommended-form',
-      'AA 20260704T0800Z/20260704T1600Z': 'aa-value-not-recommended-form',
+      'AA mon 09:00Z/11:30Z': 'case-not-upper-case',
+      'AA sr/SS': 'case-not-upper-case',
+      'AA 2026-07-04t08:00z/2026-07-04T16:00Z': 'case-not-upper-case',
+      'V X=46:00:00n 014:00:00e|DC 2': 'case-not-upper-case',
+      // Altitude: "1000 AMSL and 1000 FT are not valid."
+      'AH 1000 AMSL': 'altitude-unit-missing',
+      'AH 1000 FT': 'altitude-reference-missing',
+      // "MSL is an alias of AMSL. Writers should write AMSL."
+      'AH 1500 FT MSL': 'altitude-msl-alias',
+      // "FL 95 has the same meaning as FL95. Writers should write FL95."
+      'AH FL 95': 'altitude-flight-level-space',
+      // "The lower limit must be below the upper limit. A lower limit equal
+      // to the upper limit is not valid." 9500 FT STD is the same as FL95.
+      'AH 1000 FT AMSL|AL 1000 FT AMSL': 'altitude-lower-not-below-upper',
+      'AH FL95|AL 9500 FT STD': 'altitude-lower-not-below-upper',
+      // FL 95 is compared like FL95.
+      'AH FL 95|AL FL95':
+          'altitude-flight-level-space,altitude-lower-not-below-upper',
+      // Time: "Only the forms in this table are allowed."
+      'AA 20260704T0800Z/20260704T1600Z': 'aa-value-form-not-allowed',
+      'AA MON 09:00Z/11:30Z 2026-W27-6/2026-W30-1': 'aa-value-form-not-allowed',
+      'AA MON 09:00Z/11:30Z 2026-185/2026-200': 'aa-value-form-not-allowed',
+      'AA 08:00:00.5Z/11:30Z': 'aa-value-form-not-allowed',
+      'AA 08Z/11:30Z': 'aa-value-form-not-allowed',
+      // Interval activation: "No other ISO 8601 interval form is allowed."
+      'AA 2026-07-04T08:00Z/PT8H': 'aa-interval-form-not-allowed',
+      // "An interval with the same start and end is not valid."
+      'AA 2026-07-04T08:00Z/2026-07-04T08:00Z': 'aa-interval-end-before-start',
+      // "24:00Z is allowed as an end time. It is not allowed as a start
+      // time."
+      'AA 24:00Z/02:00Z': 'aa-time-24-as-start',
+      // V: "A value from an earlier airspace is not used."
+      'AC D|AN First|AH 4500 FT AMSL|AL GND|V X=46:00:00N 014:00:00E|DC 2|'
+              'AC D|AN Second|AH 4500 FT AMSL|AL GND|DC 2':
+          'geometry-center-missing',
+      // Comment syntax: "the text after AN and AG cannot contain *".
+      'AN ED-R6 Brokdorf * comment': 'an-contains-asterisk',
+      'AG Nordholz Radar * comment': 'ag-contains-asterisk',
+      // "An airspace can have at most one AN command" (also AY, AG, AX).
+      'AN First|AN Second': 'airspace-attribute-duplicate',
+      'AY RMZ|AY TMZ': 'airspace-attribute-duplicate',
+      'AG Nordholz Radar|AG Bremen Radar': 'airspace-attribute-duplicate',
+      'AX 7000|AX 0424': 'airspace-attribute-duplicate',
+      // AX: "The digits 8 and 9 are not allowed."
+      'AX 7080': 'ax-not-octal',
+      // AF: "123.520 and 123.456 are not" channels.
+      'AF 123.520': 'af-invalid-channel',
+      'AF 123.456': 'af-invalid-channel',
+      // AF: "Write the channel name, not the exact radio frequency."
+      'AF 118.0083': 'af-not-three-decimals',
+      'AF 123.3': 'af-not-three-decimals',
+      'AF 117.950': 'af-outside-air-band',
+      'AF 123.300 MHZ': 'af-invalid-format',
+      // DC: "DC must be the only geometry command of its airspace."
+      'V X=46:00:00N 014:00:00E|DC 2|DC 3': 'dc-mixed-with-other-geometry',
+      // DB: "Both points must be at the same distance from the centre."
+      'DP 46:00:00N 014:00:00E|V X=46:00:00N 014:00:00E|'
+          'DB 46:10:00N 014:00:00E, 46:00:00N 014:16:00E|'
+          'DP 46:00:00N 014:00:00E': 'db-radius-mismatch',
     };
-    invalid.forEach((example, ruleId) {
-      test('$example is reported as $ruleId', () {
+    invalid.forEach((example, ruleIds) {
+      test('$example is reported as $ruleIds', () {
         final text = wrapExample(example.split('|'));
-        expect(_ruleIds(text), {ruleId}, reason: text);
+        expect(_ruleIds(text), ruleIds.split(',').toSet(), reason: text);
       });
     });
   });
@@ -289,11 +379,19 @@ void main() {
       'AA 2024-12-17T00:00Z/2024-12-17T10:00Z|'
               'AA 2023-12-16T12:00Z/2023-12-16T13:00Z':
           'aa-intervals-not-sorted-v21',
+      // Version 2.1 did not limit the ISO 8601 forms. Version 3.0 allows
+      // only some forms, so the other forms are warnings in version 2.1.
+      'AA 2026-07-04T08:00Z/PT8H': 'aa-interval-form-not-allowed-v21',
+      'AA 20260704T0800Z/20260704T1600Z': 'aa-value-form-not-allowed-v21',
+      // Version 2.1 only says that the DB arc is over-defined.
+      'DP 46:00:00N 014:00:00E|V X=46:00:00N 014:00:00E|'
+          'DB 46:10:00N 014:00:00E, 46:00:00N 014:16:00E|'
+          'DP 46:00:00N 014:00:00E': 'db-radius-mismatch-v21',
     };
-    invalid.forEach((example, ruleId) {
-      test('$example is reported as $ruleId', () {
+    invalid.forEach((example, ruleIds) {
+      test('$example is reported as $ruleIds', () {
         final text = wrapExample(example.split('|'), version: '2.1');
-        expect(_ruleIds(text), {ruleId}, reason: text);
+        expect(_ruleIds(text), ruleIds.split(',').toSet(), reason: text);
       });
     });
   });

@@ -1,0 +1,17 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: a ring-shaped airspace made of DB arcs. The outer circle (20 NM, clockwise), a connecting line, the inner circle (10 NM, counter-clockwise) and the same connecting line back.
+
+AC UNC
+AY CUSTOM
+AN Outside competition circle
+AH FL95
+AL GND
+V X=46:10:00N 014:10:00E
+DB 46:30:00N 014:10:00E, 45:50:00N 014:10:00E
+DB 45:50:00N 014:10:00E, 46:30:00N 014:10:00E
+DP 46:20:00N 014:10:00E
+V D=-
+DB 46:20:00N 014:10:00E, 46:00:00N 014:10:00E
+DB 46:00:00N 014:10:00E, 46:20:00N 014:10:00E
+DP 46:30:00N 014:10:00E

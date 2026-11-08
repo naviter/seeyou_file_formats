@@ -94,7 +94,7 @@ openair-lint austria.openair
 openair-lint airspace/
 openair-lint --format json airspace/ > report.json
 openair-lint --target 2.1 old_file.txt
-openair-lint --disable coordinate-space-before-hemisphere airspace/
+openair-lint --disable coordinate-decimal-seconds airspace/
 openair-lint --min-severity warning airspace/
 openair-lint --explain header-version-missing
 ```
@@ -167,10 +167,21 @@ Differences between the versions:
   unit of an altitude (`1000 FT`). Version 2.1 allows `1000ft`.
 - Version 2.1 requires that interval `AA` commands are sorted (error).
   In version 3.0 this is a recommendation (warning).
-- Version 3.0 recommends one form for `AA` dates, times and intervals (for
-  example `2026-07-04T08:00Z`, not `20260704T0800Z`). Other ISO 8601 forms
-  are warnings in 3.0. Version 2.1 has no recommended form, so they are not
-  reported in 2.1 files.
+- Version 3.0 allows only some ISO 8601 forms in `AA` commands:
+  `YYYY-MM-DD`, `hh:mmZ`, `hh:mm:ssZ`, `YYYY-MM-DDThh:mmZ`,
+  `YYYY-MM-DDThh:mm:ssZ`, and intervals of the form
+  `StartDateTime/EndDateTime`. Other forms (for example `20260704T0800Z` or
+  a duration such as `PT8H`) are errors in 3.0 (`aa-value-form-not-allowed`,
+  `aa-interval-form-not-allowed`). Version 2.1 did not limit the forms, so
+  in a 2.1 file they are warnings (`aa-value-form-not-allowed-v21`,
+  `aa-interval-form-not-allowed-v21`).
+- Version 3.0 says that `AN` and `AG` cannot contain `*`
+  (`an-contains-asterisk`, `ag-contains-asterisk`) and that `AF` has exactly
+  three decimals (`af-not-three-decimals`). Version 2.1 does not say this, so
+  these rules do not check 2.1 files.
+- Version 3.0 says that both points of a `DB` arc must be at the same
+  distance from the centre (error, `db-radius-mismatch`). In a 2.1 file this
+  is a warning (`db-radius-mismatch-v21`).
 - Rules that check a statement of the 2.1 text link to that text (tag
   `v2.1.5`), not to the current specification.
 
@@ -183,8 +194,11 @@ true on every line, also after a command:
 AA MON-FRI 07:00Z/15:00Z   * every working day
 ```
 
-So the name `AN TMA *TWR* 118.7` is only `TMA`. The rule
-`an-name-cut-by-comment` reports this.
+For this reason, the text after `AN` and `AG` cannot contain `*`. A comment
+is also not allowed on the same line as `AN` or `AG`. In version 3.0 the
+rules `an-contains-asterisk` and `ag-contains-asterisk` report every `*` on
+these lines. For example, the name `AN TMA *TWR* 118.7` is only `TMA`.
+Put the comment on its own line.
 
 ### Exit codes
 
@@ -257,10 +271,10 @@ notices.
 ### Speed
 
 A test with real airspace files of about 60 countries (102 files, 37 MB,
-1.3 million lines, 36,000 airspaces) takes about 7 seconds with the text
-output, on a normal PC. The checks take about 5 seconds. Most of this time
-is the check of the coordinates. The rest is the output of 1.9 million
-problems.
+1.3 million lines, 36,000 airspaces) takes about 5 seconds for the checks,
+on a normal PC. Most of this time is the check of the coordinates. These
+files give about 950,000 problems. Writing all of them as text takes more
+time, depending on the terminal or the file system.
 
 ## GitHub Action
 
@@ -482,8 +496,10 @@ The tests include:
 - `test/conformance_test.dart`: runs all conformance files.
 - `test/spec_examples_test.dart`: reads every code block of the
   specification, puts it into a small airspace and lints it. An example of
-  the specification must not produce an error or a warning. Known problems
-  of the specification are listed in the test.
+  the specification must not produce an error or a warning. The exceptions
+  are listed in the test: examples that the specification marks as wrong,
+  and the `DY` example, which gives the `dy-deprecated` warning because the
+  specification does not recommend `DY`.
 - `test/rule_examples_test.dart`: the correct example of each rule passes
   the rule, and the incorrect example is reported by the rule.
 - `test/registry_test.dart`: rule IDs are unique, every rule has complete

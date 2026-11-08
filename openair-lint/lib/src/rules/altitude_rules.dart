@@ -20,6 +20,7 @@ final List<Rule> altitudeRules = [
   _unknownUnit,
   _referenceMissing,
   _unknownReference,
+  _mslAlias,
   _multipleValues,
   _flightLevelInvalid,
   _flightLevelSpace,
@@ -244,10 +245,12 @@ final Rule _unitMissing = Rule(
   severity: Severity.error,
   specAnchor: 'altitude',
   description: 'An altitude must have the unit FT or M.',
-  explanation: 'An altitude is a number with a unit: FT (feet) or M '
-      '(metres). Feet are recommended. Without the unit, a reader does not '
-      'know if the number is in feet or in metres. The meaning of a file '
-      'must not depend on the settings of the reader.\n'
+  explanation: 'An altitude has a number, a unit and a reference. The unit '
+      'is required: FT (feet) or M (metres). Feet are recommended. An '
+      'altitude without a unit is not valid, for example "1000 AMSL". '
+      'Without the unit, a reader does not know if the number is in feet or '
+      'in metres. The meaning of a file must not depend on the settings of '
+      'the reader.\n'
       '\n'
       'A flight level ("FL95") has no unit. A value of 0 also needs a '
       'unit. For "AL 0 AGL", the message says to write "AL GND", because '
@@ -317,19 +320,21 @@ final Rule _unknownUnit = _issueRule(
 final Rule _referenceMissing = _issueRule(
   id: 'altitude-reference-missing',
   severity: Severity.error,
-  specAnchor: 'supported-altitude-references',
+  specAnchor: 'altitude',
   description: 'An altitude must have the reference AMSL, AGL or STD.',
-  explanation: 'The format of AH and AL is "Altitude AltRef": the number, '
-      'the unit and the altitude reference. The reference says what the '
-      'altitude is measured from:\n'
+  explanation: 'The format of AH and AL is "Altitude Unit AltRef": the '
+      'number, the unit and the altitude reference. The reference is '
+      'required. It says what the altitude is measured from:\n'
       '\n'
       '- AMSL: above mean sea level,\n'
       '- AGL: above ground level,\n'
       '- STD: standard pressure (a pressure altitude, like a flight '
       'level).\n'
       '\n'
-      'Without the reference, readers guess. Most of them use AMSL, but '
-      'this is not certain.',
+      'An altitude without a reference is not valid, for example '
+      '"1000 FT". Without the reference, readers guess. Most of them use '
+      'AMSL, but this is not certain. A flight level ("FL95"), "GND" and '
+      '"UNL" have no reference.',
   correctExample: 'AH 3500 FT AMSL',
   incorrectExample: 'AH 3500 FT',
   kind: AltitudeIssueKind.referenceMissing,
@@ -356,22 +361,39 @@ final Rule _unknownReference = Rule(
   description: 'The altitude reference must be AMSL, AGL or STD.',
   explanation: 'The specification defines the altitude references AMSL, '
       'AGL and STD, and the flight level form "FL95". Old files use other '
-      'words, for example "MSL" or "ALT" for AMSL, and "GND" or "SFC" for '
+      'words, for example "ASL" or "ALT" for AMSL, and "GND" or "SFC" for '
       'AGL. Some readers do not understand them.\n'
       '\n'
       'Note: "1000 FT GND" is a height above the ground. Write it as "1000 '
       'FT AGL". "GND" alone (without a number) is the correct form for a '
-      'lower limit at the ground.',
+      'lower limit at the ground.\n'
+      '\n'
+      '"MSL" is an alias of AMSL that the specification allows. The rule '
+      'altitude-msl-alias reports it.',
   correctExample: 'AH 3500 FT AMSL\n'
       'AL 1000 FT AGL',
-  incorrectExample: 'AH 3500 FT MSL\n'
+  incorrectExample: 'AH 3500 FT ASL\n'
       'AL 1000 FT GND',
+);
+
+final Rule _mslAlias = _issueRule(
+  id: 'altitude-msl-alias',
+  severity: Severity.warning,
+  specAnchor: 'supported-altitude-references',
+  description: 'Write "AMSL", not "MSL".',
+  explanation: '"MSL" is an alias of "AMSL" (above mean sea level). A reader '
+      'must read "MSL" as "AMSL", so the meaning is the same. But writers '
+      'should write "AMSL". openair-lint reads "MSL" as AMSL for all other '
+      'checks, for example to compare the lower and the upper limit.',
+  correctExample: 'AH 3500 FT AMSL',
+  incorrectExample: 'AH 3500 FT MSL',
+  kind: AltitudeIssueKind.mslAlias,
 );
 
 final Rule _multipleValues = _issueRule(
   id: 'altitude-multiple-values',
   severity: Severity.error,
-  specAnchor: 'ah-upper-alitutde-limit',
+  specAnchor: 'ah-upper-altitude-limit',
   description: 'AH and AL must have only one altitude.',
   explanation: 'Each airspace definition must include only one upper limit '
       'and only one lower limit. A value with two altitudes, for example '
@@ -406,10 +428,10 @@ final Rule _flightLevelInvalid = _issueRule(
 final Rule _flightLevelSpace = _issueRule(
   id: 'altitude-flight-level-space',
   severity: Severity.warning,
-  description: 'Write a flight level without a space: "FL95".',
-  explanation: 'The specification writes flight levels as "FL" and the '
-      'number without a space, for example "FL145". Some readers do not '
-      'understand "FL 145".',
+  description: 'Write a flight level without a space: "FL95", not "FL 95".',
+  explanation: '"FL 145" (with a space) has the same meaning as "FL145". A '
+      'reader must accept it, but writers should write "FL145", without a '
+      'space. openair-lint reads "FL 145" as FL145 for all other checks.',
   correctExample: 'AH FL145',
   incorrectExample: 'AH FL 145',
   kind: AltitudeIssueKind.flightLevelSpace,
@@ -560,7 +582,7 @@ void _checkOutOfRange(LintContext ctx, Command c, Airspace? a) {
 final Rule _zeroAgl = Rule(
   id: 'altitude-zero-agl',
   severity: Severity.warning,
-  specAnchor: 'al-lower-alitutde-limit',
+  specAnchor: 'al-lower-altitude-limit',
   description: 'For a lower limit at the ground, write "AL GND".',
   explanation: 'The specification says: for areas that extend to the '
       'ground, use GND, without an altitude. "AL 0 FT AGL" means the same, '
@@ -593,17 +615,18 @@ final Rule _zeroAgl = Rule(
 final Rule _lowerNotBelowUpper = Rule(
   id: 'altitude-lower-not-below-upper',
   severity: Severity.error,
-  specAnchor: 'a-altitude-definitions',
+  specAnchor: 'al-lower-altitude-limit',
   description: 'The lower limit (AL) must be below the upper limit (AH).',
   explanation: 'AH is the ceiling and AL is the floor of the airspace. The '
-      'floor must be below the ceiling. If they are equal, or if the floor '
-      'is above the ceiling, the airspace has no height. Often the AH and AL '
-      'values are swapped.\n'
+      'floor must be below the ceiling. A lower limit equal to the upper '
+      'limit is not valid, because the airspace then has no height. Often '
+      'the AH and AL values are swapped.\n'
       '\n'
-      'openair-lint compares the limits only when they use the same '
-      'reference: both AMSL, both AGL (GND counts as 0 FT AGL), or both '
-      'standard pressure (FL and STD, with 100 ft per flight level). It '
-      'converts metres to feet. It does not compare AMSL with AGL or with '
+      'The limits can only be compared when they use the same kind of '
+      'reference. openair-lint compares them when both are AMSL (MSL counts '
+      'as AMSL), both are AGL (GND counts as 0 FT AGL), or both are '
+      'standard pressure (FL and STD: "9500 FT STD" is the same as FL95). '
+      'It converts metres to feet. It does not compare AMSL with AGL or with '
       'flight levels, because the difference depends on the terrain and on '
       'the air pressure.',
   correctExample: 'AH FL95\n'

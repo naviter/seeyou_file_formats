@@ -1,0 +1,15 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: AA 23:00Z/SS at 15 degrees east. The local solar day starts at 23:00Z here, so the start is exactly at the start of the local solar day. A small difference in the centre of the airspace moves the window by one day.
+
+AC D
+AY TRA
+AN Example TRA
+AA 23:00Z/SS
+AH 4500 FT AMSL
+AL GND
+DP 46:05:00N 014:55:00E
+DP 46:05:00N 015:05:00E
+DP 45:55:00N 015:05:00E
+DP 45:55:00N 014:55:00E
+DP 46:05:00N 014:55:00E

@@ -1,6 +1,6 @@
 *VERSION: 3.0
 *WRITTEN_BY: openair-conformance
-* Tests: a duration with a very long number (PT99999999999999999999H). A parser must report it and must not crash.
+* Tests: a duration with a very long number (PT99999999999999999999H). Durations are not allowed in an interval. A parser must report it and must not crash.
 
 AC D
 AY TRA

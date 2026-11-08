@@ -1,0 +1,17 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: ISO 8601 interval forms that the specification does not allow: a start and a duration, a duration and an end, and an end with only the time. Only StartDateTime/EndDateTime is allowed.
+
+AC D
+AY TRA
+AN Example TRA
+AA 2026-07-07T08:00Z/PT8H
+AA PT8H/2026-07-09T16:00Z
+AA 2026-07-10T08:00Z/12:00Z
+AH 4500 FT AMSL
+AL GND
+DP 46:00:00N 014:00:00E
+DP 46:00:00N 014:10:00E
+DP 45:55:00N 014:10:00E
+DP 45:55:00N 014:00:00E
+DP 46:00:00N 014:00:00E

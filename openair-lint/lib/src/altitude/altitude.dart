@@ -18,8 +18,15 @@
 /// FL95              flight level
 /// 1000 FT AMSL      above mean sea level
 /// 300 M AGL         above ground level
-/// 9500 FT STD       pressure altitude (standard pressure, 1013.25 hPa)
+/// 9500 FT STD       pressure altitude (standard pressure, 1013.25 hPa),
+///                   the same as FL95
 /// ```
+///
+/// The specification also defines two forms that readers must accept, but
+/// that writers should not use: `MSL` (an alias of `AMSL`) and `FL 95`
+/// (the same as `FL95`). The parser reads them with their meaning and adds
+/// a [AltitudeIssueKind.mslAlias] or [AltitudeIssueKind.flightLevelSpace]
+/// issue.
 library;
 
 import '../values/text_parts.dart';
@@ -94,8 +101,12 @@ enum AltitudeIssueKind {
   /// A number and unit without a reference such as `AMSL`.
   referenceMissing,
 
-  /// A reference that the specification does not define, for example `MSL`.
+  /// A reference that the specification does not define, for example `ALT`.
   unknownReference,
+
+  /// `MSL`: an alias of `AMSL`. Readers read it as `AMSL`, but writers
+  /// should write `AMSL`.
+  mslAlias,
 
   /// More than one altitude, for example `100 M AGL/423 M AMSL`.
   multipleValues,
@@ -271,9 +282,13 @@ const Map<String, AltitudeUnit> _legacyUnits = {
   'METRES': AltitudeUnit.meters,
 };
 
-/// Old reference words and the reference that they mean.
+/// `MSL`, the alias of `AMSL` that the specification defines.
+const String mslAlias = 'MSL';
+
+/// Old reference words and the reference that they mean. `MSL` is an alias
+/// that the specification defines. The other words are not valid.
 const Map<String, AltitudeReference> _legacyReferences = {
-  'MSL': AltitudeReference.amsl,
+  mslAlias: AltitudeReference.amsl,
   'ASL': AltitudeReference.amsl,
   'ALT': AltitudeReference.amsl,
   'QNH': AltitudeReference.amsl,
@@ -849,7 +864,15 @@ class _Parser {
         refSeg = s;
         reference = ref;
         refText = ref.label;
-        if (ref.label != up) {
+        if (up == mslAlias) {
+          _add(
+              AltitudeIssueKind.mslAlias,
+              s.offset,
+              s.text.length,
+              '"${s.text}" is an alias of "AMSL" (above mean sea level). '
+              'Readers read it as AMSL, but writers should write "AMSL".',
+              replacement: 'AMSL');
+        } else if (ref.label != up) {
           final groundNote =
               up == 'GND' ? ' Use "GND" only alone, as "AL GND".' : '';
           _add(

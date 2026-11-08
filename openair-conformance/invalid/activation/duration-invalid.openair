@@ -1,6 +1,6 @@
 *VERSION: 3.0
 *WRITTEN_BY: openair-conformance
-* Tests: a duration without T before the hours (P8H).
+* Tests: a duration without T before the hours (P8H). Durations are not allowed in an interval, and this one is also not a valid ISO 8601 duration.
 
 AC D
 AY TRA

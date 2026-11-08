@@ -1,12 +1,12 @@
 *VERSION: 3.0
 *WRITTEN_BY: openair-conformance
-* Tests: MSL is not a reference. Write AMSL.
+* Tests: "9500 FT STD" and FL95 have the same meaning, so the lower limit is equal to the upper limit.
 
 AC D
 AY CTR
 AN Example CTR
-AH 4500 FT MSL
-AL GND
+AH FL95
+AL 9500 FT STD
 DP 46:00:00N 014:00:00E
 DP 46:00:00N 014:10:00E
 DP 45:55:00N 014:10:00E

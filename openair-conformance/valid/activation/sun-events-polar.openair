@@ -1,0 +1,51 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: sun events at 69.6 degrees north (Tromso). Sunrise and sunset do not happen in midsummer and in midwinter. The specification defines what each window means on these days, so these commands are valid. A validator can report info diagnostics.
+
+AC D
+AY TRA
+AN Example TRA 1
+AA SR/SS
+AH 4500 FT AMSL
+AL GND
+DP 69:42:00N 018:50:00E
+DP 69:42:00N 019:05:00E
+DP 69:36:00N 019:05:00E
+DP 69:36:00N 018:50:00E
+DP 69:42:00N 018:50:00E
+
+AC D
+AY TRA
+AN Example TRA 2
+AA SS/SR
+AH 4500 FT AMSL
+AL GND
+DP 69:42:00N 018:50:00E
+DP 69:42:00N 019:05:00E
+DP 69:36:00N 019:05:00E
+DP 69:36:00N 018:50:00E
+DP 69:42:00N 018:50:00E
+
+AC D
+AY TRA
+AN Example TRA 3
+AA MON-FRI 07:00Z/SS
+AH 4500 FT AMSL
+AL GND
+DP 69:42:00N 018:50:00E
+DP 69:42:00N 019:05:00E
+DP 69:36:00N 019:05:00E
+DP 69:36:00N 018:50:00E
+DP 69:42:00N 018:50:00E
+
+AC D
+AY TRA
+AN Example TRA 4
+AA BCMT/EECT
+AH 4500 FT AMSL
+AL GND
+DP 69:42:00N 018:50:00E
+DP 69:42:00N 019:05:00E
+DP 69:36:00N 019:05:00E
+DP 69:36:00N 018:50:00E
+DP 69:42:00N 018:50:00E

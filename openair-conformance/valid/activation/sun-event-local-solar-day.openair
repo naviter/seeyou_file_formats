@@ -1,0 +1,15 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: a fixed time and a sun event at 178.5 degrees east. The local solar day starts at about 12:06Z of the UTC day before. AA SUN 20:00Z/SS starts on Saturday at 20:00Z (UTC) and ends at sunset on Sunday (local solar time). The weekday refers to the local solar day.
+
+AC D
+AY TRA
+AN Example TRA
+AA SUN 20:00Z/SS 2026-06-01/2026-08-31
+AH 4500 FT AMSL
+AL GND
+DP 18:05:00S 178:25:00E
+DP 18:05:00S 178:35:00E
+DP 18:15:00S 178:35:00E
+DP 18:15:00S 178:25:00E
+DP 18:05:00S 178:25:00E

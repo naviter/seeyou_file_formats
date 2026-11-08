@@ -260,21 +260,37 @@ void main() {
     });
   });
 
-  group('an-name-cut-by-comment', () {
-    const id = 'an-name-cut-by-comment';
-    test('a name without a comment', () {
+  group('an-contains-asterisk', () {
+    const id = 'an-contains-asterisk';
+    test('a name without "*"', () {
       expect(lintRule(id, airspace('AN EKR664 ZONE 1 (NOTAM)\n')), isEmpty);
     });
-    test('a real comment after the name', () {
-      expect(lintRule(id, airspace('AN TRA AREA * part in France\n')), isEmpty);
-      expect(lintRule(id, airspace('AN TRA AREA   ** note\n')), isEmpty);
-      expect(lintRule(id, airspace('AN TRA AREA *\n')), isEmpty);
-      expect(lintRule(id, airspace('AN TRA AREA (EAST) * note\n')), isEmpty);
+    test('a comment on its own line is allowed', () {
+      expect(
+          lintRule(id, airspace('* part in France\nAN TRA AREA\n')), isEmpty);
     });
-    test('a word in stars', () {
-      final d = single(id, airspace('AN EKR664 ZONE 1 (*NOTAM*)\n'));
-      expect(d.severity, Severity.warning);
+    test('a comment after the name is an error', () {
+      final d = single(id, airspace('AN TRA AREA * part in France\n'));
+      expect(d.severity, Severity.error);
       expect(d.line, 4);
+      expect(d.column, 4 + 'TRA AREA '.length);
+      expect(d.endColumn, 4 + 'TRA AREA * part in France'.length);
+      expect(d.message, contains('the name ends before the "*"'));
+      expect(d.message, contains('only the name "TRA AREA"'));
+      expect(d.message, contains('not allowed on the same line as AN'));
+      expect(d.message, contains('own line: "* part in France"'));
+    });
+    test('every "*" is reported, also decoration and a "*" alone', () {
+      expect(linesOf(id, airspace('AN TRA AREA   ** note\n')), [4]);
+      expect(linesOf(id, airspace('AN TRA AREA *\n')), [4]);
+      expect(single(id, airspace('AN TRA AREA *\n')).message,
+          endsWith('Remove the "*".'));
+      expect(linesOf(id, airspace('AN TRA AREA (EAST) * note\n')), [4]);
+      expect(
+          linesOf(id, airspace('AN Wien CTR * source: AIP *AMDT 3*\n')), [4]);
+    });
+    test('a word in stars: the fix removes the stars', () {
+      final d = single(id, airspace('AN EKR664 ZONE 1 (*NOTAM*)\n'));
       expect(d.column, 4 + 'EKR664 ZONE 1 ('.length);
       expect(d.endColumn, 4 + 'EKR664 ZONE 1 (*NOTAM*)'.length);
       expect(d.message, contains('only the name "EKR664 ZONE 1 ("'));
@@ -297,28 +313,35 @@ void main() {
           contains('"AN EXAMPLE/FIELD 118.7 TWR HRS-SEE AIP XX (XXXX) '
               'CERT"'));
     });
-    test('a real comment with a "*" inside it is not reported', () {
-      expect(linesOf(id, airspace('AN Wien CTR * source: AIP *AMDT 3*\n')),
-          isEmpty);
-      expect(
-          linesOf(id, airspace('AN Wien CTR * main control zone\n')), isEmpty);
-    });
     test('an unclosed bracket before the star', () {
-      expect(linesOf(id, airspace('AN TRA AREA (* NOTAM)\n')), [4]);
+      expect(single(id, airspace('AN TRA AREA (* NOTAM)\n')).message,
+          contains('"AN TRA AREA ( NOTAM)"'));
       expect(linesOf(id, airspace('AN TRA AREA [ * EAST]\n')), [4]);
     });
-    test('an empty name is left to an-name-empty', () {
-      expect(lintRule(id, airspace('AN *NOTAM*\n')), isEmpty);
+    test('an empty name', () {
+      final d = single(id, airspace('AN *NOTAM*\n'));
+      expect(d.message, contains('readers show an empty name'));
+      expect(d.message, contains('"AN NOTAM"'));
+      expect(linesOf('an-name-empty', airspace('AN *NOTAM*\n')), [4]);
     });
-    test('applies to version 2.1', () {
-      expect(linesOf(id, airspace('AN A (*B*)\n', version: '2.1')), [4]);
+    test('applies only to version 3.0', () {
+      expect(linesOf(id, airspace('AN A * B\n', version: '2.1')), isEmpty);
+      expect(linesOf(id, airspace('AN A * B\n'), target: SpecVersion.v2_1),
+          isEmpty);
     });
   });
 
-  group('ag-station-cut-by-comment', () {
-    const id = 'ag-station-cut-by-comment';
-    test('a real comment', () {
-      expect(lintRule(id, airspace('AG Langen Information * FIS\n')), isEmpty);
+  group('ag-contains-asterisk', () {
+    const id = 'ag-contains-asterisk';
+    test('a station name without "*"', () {
+      expect(lintRule(id, airspace('AG Langen Information\n')), isEmpty);
+    });
+    test('a comment after the station name is an error', () {
+      final d = single(id, airspace('AG Langen Information * FIS\n'));
+      expect(d.severity, Severity.error);
+      expect(d.message, contains('only the station name "Langen Information"'));
+      expect(d.message, contains('not allowed on the same line as AG'));
+      expect(d.message, contains('own line: "* FIS"'));
     });
     test('a word in stars', () {
       final d = single(id, airspace('AG Langen Information (*FIS*)\n'));
@@ -384,7 +407,7 @@ void main() {
     });
     test('below', () {
       final d = single(id, airspace('AF 114.880\n'));
-      expect(d.severity, Severity.warning);
+      expect(d.severity, Severity.error);
       expect(d.message, contains('outside the VHF air band'));
     });
     test('above', () {
@@ -422,6 +445,13 @@ void main() {
       expect(d.message, contains('123.455 and 123.460'));
     });
     test('ending 20', () => expect(linesOf(id, airspace('AF 118.020\n')), [4]));
+    test('the examples of the specification', () {
+      expect(lintRule(id, airspace('AF 123.505\n')), isEmpty);
+      expect(lintRule(id, airspace('AF 123.300\n')), isEmpty);
+      expect(lintRule(id, airspace('AF 118.005\n')), isEmpty);
+      expect(linesOf(id, airspace('AF 123.520\n')), [4]);
+      expect(linesOf(id, airspace('AF 123.456\n')), [4]);
+    });
     test('two decimals that lost the last digit', () {
       expect(single(id, airspace('AF 122.47\n')).message,
           contains('"AF 122.475"'));
@@ -441,7 +471,7 @@ void main() {
     });
     test('more than three decimals: not near a channel', () {
       final d = single(id, airspace('AF 123.4567\n'));
-      expect(d.severity, Severity.warning);
+      expect(d.severity, Severity.error);
       expect(d.message, contains('The nearest channel name is 123.460'));
     });
   });
@@ -453,7 +483,7 @@ void main() {
     });
     test('one decimal', () {
       final d = single(id, airspace('AF 126.1\n'));
-      expect(d.severity, Severity.info);
+      expect(d.severity, Severity.error);
       expect(d.message, contains('"AF 126.100"'));
     });
     test('no decimals', () {
@@ -470,7 +500,7 @@ void main() {
           contains('"AF 122.475"'));
     });
     test('a value that is not a channel is left to af-invalid-channel', () {
-      // The padded value 122.470 is not a channel name, so the info would
+      // The padded value 122.470 is not a channel name, so this rule would
       // suggest a wrong fix.
       expect(lintRule(id, airspace('AF 122.47\n')), isEmpty);
       expect(lintRule(id, airspace('AF 122.42\n')), isEmpty);
@@ -482,7 +512,11 @@ void main() {
             .where((d) => d.ruleId.startsWith('af-'))
             .toList();
         expect(d, hasLength(1), reason: '$v: ${d.join('\n')}');
+        expect(d.single.severity, Severity.error, reason: v);
       }
+    });
+    test('applies only to version 3.0', () {
+      expect(lintRule(id, airspace('AF 126.1\n', version: '2.1')), isEmpty);
     });
   });
 
@@ -535,8 +569,8 @@ void main() {
       expect(linesOf(id, airspace('AX 4810\n')), [4]);
       expect(linesOf(id, airspace('AX 0009\n')), [4]);
     });
-    test('is a warning: the specification only requires 4 digits', () {
-      expect(single(id, airspace('AX 4810\n')).severity, Severity.warning);
+    test('is an error: transponder codes are octal', () {
+      expect(single(id, airspace('AX 4810\n')).severity, Severity.error);
     });
     test('wrong length is left to ax-not-four-digits', () {
       expect(lintRule(id, airspace('AX 89\n')), isEmpty);

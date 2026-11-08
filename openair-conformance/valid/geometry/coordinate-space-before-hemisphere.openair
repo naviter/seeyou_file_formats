@@ -1,0 +1,21 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: one space between the number and the letter N, S, E or W is valid. It has the same meaning as no space.
+
+AC D
+AY CTR
+AN Example CTR
+AH 4500 FT AMSL
+AL GND
+DP 46:00:00 N 014:00:00 E
+DP 46:00:00 N 014:10:00 E
+DP 45:55:00N 014:10:00 E
+DP 45:55:00 N 014:00:00E
+DP 46:00:00N 014:00:00E
+AC D
+AY CTR
+AN Example circle
+AH 4500 FT AMSL
+AL GND
+V X=46:30:00 N 014:30:00 E
+DC 2.5

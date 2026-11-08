@@ -1,0 +1,27 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: AA SR/SS and AA SS/SR at 20 degrees north, 96 degrees east. Sunrise is just after 00:00Z on some days and just before 00:00Z on other days. A window with a sun event belongs to a local solar day (local solar time is UTC + 6:24 here), so the window does not move to another day.
+
+AC D
+AY TRA
+AN Example TRA 1
+AA SR/SS
+AH 4500 FT AMSL
+AL GND
+DP 20:05:00N 095:55:00E
+DP 20:05:00N 096:05:00E
+DP 19:55:00N 096:05:00E
+DP 19:55:00N 095:55:00E
+DP 20:05:00N 095:55:00E
+
+AC D
+AY TRA
+AN Example TRA 2
+AA SAT,SUN SS/SR
+AH 4500 FT AMSL
+AL GND
+DP 20:05:00N 095:55:00E
+DP 20:05:00N 096:05:00E
+DP 19:55:00N 096:05:00E
+DP 19:55:00N 095:55:00E
+DP 20:05:00N 095:55:00E

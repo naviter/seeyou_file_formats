@@ -473,16 +473,22 @@ bool allOnOneLine(List<LatLng> points) {
 
 /// Two edges of a ring that cross each other.
 class EdgeCrossing {
-  const EdgeCrossing(this.first, this.second, this.point);
+  const EdgeCrossing(this.first, this.second, this.point, {this.corners});
 
-  /// The edge with the smaller index.
+  /// The edge with the smaller index. For a crossing at a corner (see
+  /// [corners]), the edge that ends at the first corner.
   final int first;
 
-  /// The edge with the larger index.
+  /// The edge with the larger index. For a crossing at a corner, the edge
+  /// that ends at the second corner.
   final int second;
 
   /// The approximate crossing point.
   final LatLng point;
+
+  /// For a crossing at a point that the boundary passes twice: the two
+  /// corners (i < j) at this point. Null for a crossing inside two edges.
+  final (int, int)? corners;
 }
 
 /// The result of [findCrossings].
@@ -534,10 +540,19 @@ const double minLoopWidthMetres = 25;
 /// Then the result has the crossings found so far and [CrossingResult.limitReached]
 /// is true. This keeps the time short on the web page and in other hosts.
 ///
-/// Only proper crossings count: the two edges cross each other at one point
-/// that is inside both edges. Edges that only touch, and neighbour edges,
-/// do not count. Longitudes are unwrapped, so rings across the antimeridian
-/// work.
+/// Only real crossings count: the boundary goes from one side of itself to
+/// the other side. There are two kinds:
+///
+/// - Two edges cross each other at one point that is inside both edges.
+/// - The boundary passes the same corner twice, and the second pass goes
+///   from one side of the first pass to the other side. See
+///   [_cornerCrossings].
+///
+/// The boundary can touch itself. Edges that only touch, neighbour edges,
+/// collinear edges that overlap (for example a line that is drawn twice,
+/// once in each direction) and a corner that the boundary passes twice
+/// without crossing do not count. Longitudes are unwrapped, so rings across
+/// the antimeridian work.
 ///
 /// A crossing cuts a loop out of the boundary. If the smaller loop is very
 /// thin (its average width, 2 x area / perimeter, is less than
@@ -613,7 +628,109 @@ CrossingResult findCrossings(PolygonRing ring,
     }
     active.add(e);
   }
+  for (final c in _cornerCrossings(ring, xs, ys)) {
+    work += c.loopCorners;
+    if (work > workLimit) return CrossingResult(count, best, true);
+    if (_loopWidthMetres(xs, ys, c.i - 1, c.j - 1, (xs[c.i], ys[c.i])) <
+        minLoopWidthMetres) {
+      continue;
+    }
+    count++;
+    final second = c.j - 1;
+    final first = c.i == 0 ? n - 1 : c.i - 1;
+    if (best == null ||
+        second < best.second ||
+        (second == best.second && first < best.first)) {
+      best = EdgeCrossing(first, second, ring.points[c.i], corners: (c.i, c.j));
+    }
+    if (count >= limit) return CrossingResult(count, best, true);
+  }
   return CrossingResult(count, best, false);
+}
+
+/// Two corners `i < j` of a ring at the same point, where the boundary
+/// crosses itself. [loopCorners] is the number of corners of the smaller
+/// loop between the two passes.
+typedef _CornerCrossing = ({int i, int j, int loopCorners});
+
+/// The crossings at points that the ring passes more than once.
+///
+/// At such a point, each pass has an incoming and an outgoing direction.
+/// The two directions of the first pass divide the area around the point
+/// into two sides. The second pass crosses the first pass if it comes from
+/// one side and goes to the other side.
+///
+/// If two of the four directions are the same, the two passes share an
+/// edge. This is how a ring-shaped airspace is drawn: the connecting line
+/// is used twice. The boundary touches itself there, so it is not a
+/// crossing.
+///
+/// [xs] are the unwrapped longitudes and [ys] the latitudes of the corners.
+List<_CornerCrossing> _cornerCrossings(
+    PolygonRing ring, List<double> xs, List<double> ys) {
+  final n = ring.length;
+  const scale = 1 / samePointToleranceDeg;
+  final byPoint = <(int, int), List<int>>{};
+  var repeated = false;
+  for (var k = 0; k < n; k++) {
+    final p = ring.points[k];
+    final key =
+        ((p.lat * scale).round(), (normalizeLongitude(p.lon) * scale).round());
+    final list = byPoint.putIfAbsent(key, () => <int>[])..add(k);
+    if (list.length > 1) repeated = true;
+  }
+  if (!repeated) return const [];
+  // The direction from corner [k] to corner [m], as an angle.
+  double direction(int k, int m) =>
+      math.atan2(ys[m] - ys[k], normalizeLongitude(xs[m] - xs[k]));
+  const twoPi = 2 * math.pi;
+  double turn(double from, double to) {
+    final d = (to - from) % twoPi;
+    return d < 0 ? d + twoPi : d;
+  }
+
+  bool same(double a, double b) {
+    final d = turn(a, b);
+    return d < 1e-9 || twoPi - d < 1e-9;
+  }
+
+  final result = <_CornerCrossing>[];
+  for (final corners in byPoint.values) {
+    // A point that the boundary passes very often is not normal input.
+    // Check only the first passes, so the time stays short.
+    if (corners.length < 2) continue;
+    if (corners.length > 16) corners.length = 16;
+    for (var x = 0; x < corners.length; x++) {
+      for (var y = x + 1; y < corners.length; y++) {
+        final i = corners[x];
+        final j = corners[y];
+        if (j - i == 1 || (i == 0 && j == n - 1)) continue; // neighbours
+        final in1 = direction(i, (i - 1 + n) % n);
+        final out1 = direction(i, (i + 1) % n);
+        final in2 = direction(j, j - 1);
+        final out2 = direction(j, (j + 1) % n);
+        final all = [in1, out1, in2, out2];
+        var shared = false;
+        for (var a = 0; a < 4 && !shared; a++) {
+          for (var b = a + 1; b < 4; b++) {
+            if (same(all[a], all[b])) {
+              shared = true;
+              break;
+            }
+          }
+        }
+        if (shared) continue;
+        // The side of each direction of the second pass: is it in the turn
+        // from in1 to out1?
+        final width = turn(in1, out1);
+        final side2In = turn(in1, in2) < width;
+        final side2Out = turn(in1, out2) < width;
+        if (side2In == side2Out) continue; // The passes touch.
+        result.add((i: i, j: j, loopCorners: math.min(j - i, n - (j - i))));
+      }
+    }
+  }
+  return result;
 }
 
 /// The average width in metres (2 x area / perimeter) of the smaller loop

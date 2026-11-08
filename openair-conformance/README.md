@@ -63,6 +63,54 @@ Files in the `header` group can break rule 1, because they test the header.
 All files use UTF-8 and LF line endings, unless the case tests the encoding or
 the line endings.
 
+## What the files cover
+
+The files test only rules that the specification states. Each case follows
+one sentence or one table of the specification.
+
+Covered:
+
+- **Header and general requirements:** `*VERSION` and `*WRITTEN_BY`, UTF-8,
+  line endings, upper case, unknown commands, and comments. `*` always starts
+  a comment, so `AN` and `AG` cannot contain `*`, and a comment is not
+  allowed on the same line as `AN` or `AG`.
+- **Airspace structure:** every airspace starts with `AC`, has `AH`, `AL` and
+  a geometry (`V` alone is not a geometry). An airspace has at most one `AC`,
+  `AN`, `AY`, `AG`, `AX`, `AH` and `AL`. `AF` can be used more than once.
+- **Attributes:** the classes of `AC`, the types of `AY`, and `AX` with
+  exactly 4 octal digits. `AF` with exactly three decimals and no unit, in
+  the VHF air band (118.000 to 136.990), as a 25 kHz or 8.33 kHz channel
+  name and not as the exact radio frequency.
+- **Altitude:** the unit and the reference are required, `FL`, `GND` and
+  `UNL`, `MSL` as an alias of `AMSL`, `FL 95` with a space, `9500 FT STD` as
+  the same altitude as `FL95`, and the lower limit below the upper limit.
+- **Activation times (`AA`):** only the allowed ISO 8601 forms (also times
+  with seconds), intervals, `NONE`, weekday commands, `AA EXCEPT`, 24:00Z as
+  an end time only, and sun events. Sun event cases use local solar time and
+  test the polar rules of the specification.
+- **Geometry:** DMS and DDM coordinates (also with one space before the
+  letter `N`, `S`, `E` or `W`), polygons, a boundary that crosses itself and
+  a boundary that only touches itself (for example a ring-shaped airspace),
+  `DA`, `DB` (both points at the same distance from the centre), `DC` as the
+  only geometry of its airspace, `DY`, and `V` (the values are reset at every
+  `AC`).
+- **Version 2.1:** some cases use `*VERSION: 2.1`. They test what is
+  different in version 2.1, for example that weekday commands, `AA EXCEPT`
+  and sun events are new in version 3.0.
+
+Not covered:
+
+- Checks that the specification does not state. openair-lint reports them as
+  warnings or info, but another validator does not have to report them. For
+  example: emergency transponder codes (`7500`, `7600`, `7700`), a station
+  name that is a frequency, an altitude that is not plausible, two airspaces
+  that are the same, two `AA` commands that are the same, an `AA EXCEPT` that
+  removes nothing, a fixed time that is very close to a sun event, and text
+  that was garbled by a wrong encoding.
+- The file name extension (`.openair` or `.txt`). A conformance case is a
+  file with the extension `.openair`.
+- Info diagnostics. The `.expected` files list only errors and warnings.
+
 ## License
 
 MIT License. See [LICENSE](../LICENSE).

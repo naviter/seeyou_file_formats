@@ -1,7 +1,7 @@
 part of '../header_rules.dart';
 
 /// The anchor of the general requirements (encoding, case, comments).
-const String _generalAnchor = 'seeyou-openair-file-format-specification';
+const String _generalAnchor = 'general-requirements';
 
 /// All commands that the specification defines (upper case).
 const Set<String> _specKeywords = {

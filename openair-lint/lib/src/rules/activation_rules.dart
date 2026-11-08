@@ -2,6 +2,7 @@ import '../activation/aa_command.dart';
 import '../activation/aa_issue.dart';
 import '../activation/civil_date.dart';
 import '../activation/sun.dart';
+import '../activation/sun_window.dart';
 import '../diagnostic.dart';
 import '../geometry/lat_lng.dart';
 import '../lint_context.dart';
@@ -25,12 +26,14 @@ final List<Rule> activationRules = [
   _timeMissingZ,
   _timeZoneNotZ,
   _time24AsStart,
-  _valueNotRecommendedForm,
+  _valueFormNotAllowed,
+  _valueFormNotAllowedV21,
   _noneNotAllowed,
   _noneNone,
   // Intervals.
   _intervalEndBeforeStart,
-  _intervalNotRecommendedForm,
+  _intervalFormNotAllowed,
+  _intervalFormNotAllowedV21,
   _intervalsOverlap,
   _intervalsAdjacent,
   _intervalsNotSorted,
@@ -51,8 +54,8 @@ final List<Rule> activationRules = [
   // Sun events.
   _sunEventNotAllowed,
   _sunEventOrderChanges,
-  _sunEventStartCrossesMidnight,
   _sunEventNearFixedTime,
+  _sunEventFixedStartNearDayStart,
   _sunEventMissingDay,
   _sunEventNoPosition,
   // Combining AA commands.
@@ -81,30 +84,40 @@ List<(Command, AaCommand)> _aaOf(LintContext ctx, Airspace a) =>
     });
 
 /// A rule that reports the parser issues of one kind.
+///
+/// [id] is the rule ID, by default [AaIssueKind.ruleId]. A rule for
+/// version 2.1 only ([SpecVersion.only21]) uses [AaIssue.v21Message] when
+/// the issue has one.
 Rule _issueRule(
   AaIssueKind kind, {
+  String? id,
   required Severity severity,
   Set<SpecVersion> versions = SpecVersion.all,
   required String specAnchor,
+  bool anchorInVersion21Text = false,
   required String description,
   required String explanation,
   required String correctExample,
   required String incorrectExample,
 }) =>
     Rule(
-      id: kind.ruleId,
+      id: id ?? kind.ruleId,
       severity: severity,
       versions: versions,
       specAnchor: specAnchor,
+      anchorInVersion21Text: anchorInVersion21Text,
       description: description,
       explanation: explanation,
       correctExample: correctExample,
       incorrectExample: incorrectExample,
       keywords: const {'AA'},
       checkCommand: (ctx, c, a) {
+        final v21 = versions.length == 1 && versions.contains(SpecVersion.v2_1);
         for (final issue in _aa(ctx, c).issues) {
           if (issue.kind != kind) continue;
-          ctx.reportArgument(c, issue.message,
+          final message =
+              v21 ? (issue.v21Message ?? issue.message) : issue.message;
+          ctx.reportArgument(c, message,
               offset: issue.offset, length: issue.length);
         }
       },
@@ -310,20 +323,29 @@ final Rule _invalidTime = _issueRule(
 final Rule _invalidDuration = _issueRule(
   AaIssueKind.invalidDuration,
   severity: Severity.error,
-  specAnchor: 'interval-activation',
-  description: 'A duration in an interval must be a valid ISO 8601 '
-      'duration.',
-  explanation: 'An interval can have a start and a duration, for example '
-      '2026-07-04T08:00Z/PT8H. The duration has the form PnYnMnDTnHnMnS, '
-      'for example PT8H (8 hours), P1D (1 day) or P1DT12H. Only the last '
-      'value can have a decimal fraction. The alternative format of ISO '
-      '8601, for example P0000-00-01T00:00:00, is also read.\n'
+  versions: SpecVersion.only21,
+  specAnchor: 'aa-airspace-activation-times',
+  anchorInVersion21Text: true,
+  description: 'In version 2.1, a duration in an interval must be a valid '
+      'ISO 8601 duration.',
+  explanation: 'Version 2.1 of the specification allows the ISO 8601 time '
+      'interval format. This format allows a start and a duration, for '
+      'example 2026-07-04T08:00Z/PT8H. The duration has the form '
+      'PnYnMnDTnHnMnS, for example PT8H (8 hours), P1D (1 day) or P1DT12H. '
+      'Only the last value can have a decimal fraction. The alternative '
+      'format of ISO 8601, for example P0000-00-01T00:00:00, is also read. A '
+      'duration must be shorter than 10 000 years, and the interval must '
+      'stay between the years 0000 and 9999.\n'
       '\n'
-      'A duration must be shorter than 10 000 years, and the interval must '
-      'stay between the years 0000 and 9999. The recommended form is '
-      'StartDateTime/EndDateTime.',
-  correctExample: 'AA 2026-07-04T08:00Z/PT8H',
-  incorrectExample: 'AA 2026-07-04T08:00Z/P8H',
+      'Version 3.0 does not allow durations. For version 3.0 files, the rule '
+      'aa-interval-form-not-allowed reports every duration. Write the '
+      'interval as StartDateTime/EndDateTime.',
+  correctExample: '*VERSION: 2.1\n'
+      '...\n'
+      'AA 2026-07-04T08:00Z/2026-07-04T16:00Z',
+  incorrectExample: '*VERSION: 2.1\n'
+      '...\n'
+      'AA 2026-07-04T08:00Z/P8H',
 );
 
 final Rule _timeMissingZ = _issueRule(
@@ -364,22 +386,57 @@ final Rule _time24AsStart = _issueRule(
   incorrectExample: 'AA 2026-07-04T24:00Z/2026-07-05T06:00Z',
 );
 
-final Rule _valueNotRecommendedForm = _issueRule(
-  AaIssueKind.valueNotRecommendedForm,
-  severity: Severity.warning,
+const String _allowedValueForms = 'The specification allows only these '
+    'forms of dates and times:\n'
+    '\n'
+    'DateTime: YYYY-MM-DDThh:mmZ or YYYY-MM-DDThh:mm:ssZ, for example '
+    '2026-07-04T08:00Z\n'
+    'Date: YYYY-MM-DD, for example 2026-12-25\n'
+    'Time: hh:mmZ or hh:mm:ssZ, for example 09:00Z\n'
+    '\n'
+    'Other ISO 8601 forms are not allowed: the basic format without '
+    'separators (20260704T0800Z), week dates (2026-W27-6), ordinal dates '
+    '(2026-185), decimal fractions (08:00:00.5Z), a time with only the hour '
+    '(08Z) and a time with the letter T in front (T08:00Z). The message '
+    'shows the value in an allowed form.';
+
+final Rule _valueFormNotAllowed = _issueRule(
+  AaIssueKind.valueFormNotAllowed,
+  severity: Severity.error,
   versions: SpecVersion.only3,
   specAnchor: 'time',
-  description: 'Dates and times should use the recommended form.',
-  explanation: 'The specification allows every ISO 8601 form of a date '
-      'and a time, for example seconds, the basic format without separators, '
-      'week dates (2026-W27-6) and ordinal dates (2026-185). Writers should '
-      'use the recommended forms: YYYY-MM-DD, hh:mmZ and '
-      'YYYY-MM-DDThh:mmZ. Some readers can read only these forms.\n'
+  description: 'Dates and times must use one of the allowed forms.',
+  explanation: '$_allowedValueForms\n'
       '\n'
-      'Version 2.1 of the specification has no recommended form. So this '
-      'rule checks only files of version 3.0.',
-  correctExample: 'AA 2026-07-04T08:00Z/2026-07-04T16:00Z',
+      'Version 2.1 of the specification allows every ISO 8601 form. For '
+      'version 2.1 files, the rule aa-value-form-not-allowed-v21 reports '
+      'these forms as a warning.',
+  correctExample: 'AA 2026-07-04T08:00Z/2026-07-04T16:00:30Z',
   incorrectExample: 'AA 20260704T0800Z/20260704T1600Z',
+);
+
+final Rule _valueFormNotAllowedV21 = _issueRule(
+  AaIssueKind.valueFormNotAllowed,
+  id: 'aa-value-form-not-allowed-v21',
+  severity: Severity.warning,
+  versions: SpecVersion.only21,
+  specAnchor: 'time',
+  description: 'In version 2.1, dates and times should use a form that '
+      'version 3.0 allows.',
+  explanation: 'Version 2.1 of the specification says that times use the '
+      'ISO 8601 format. It does not limit the forms. Version 3.0 allows only '
+      'some forms. $_allowedValueForms\n'
+      '\n'
+      'A file of version 2.1 with other forms is valid, but it cannot become '
+      'a version 3.0 file without changes. Readers of version 3.0 do not '
+      'have to read the other forms. For version 3.0 files, the rule '
+      'aa-value-form-not-allowed reports these forms as an error.',
+  correctExample: '*VERSION: 2.1\n'
+      '...\n'
+      'AA 2026-07-04T08:00Z/2026-07-04T16:00Z',
+  incorrectExample: '*VERSION: 2.1\n'
+      '...\n'
+      'AA 20260704T0800Z/20260704T1600Z',
 );
 
 final Rule _noneNotAllowed = _issueRule(
@@ -425,24 +482,52 @@ final Rule _intervalEndBeforeStart = _issueRule(
   incorrectExample: 'AA 2026-07-04T16:00Z/2026-07-04T08:00Z',
 );
 
-final Rule _intervalNotRecommendedForm = _issueRule(
-  AaIssueKind.intervalNotRecommendedForm,
-  severity: Severity.warning,
+const String _allowedIntervalForms = 'An interval AA command must have the '
+    'form StartDateTime/EndDateTime. NONE can replace the start or the end '
+    '(AA StartDateTime/NONE, AA NONE/EndDateTime). Other ISO 8601 interval '
+    'forms are not allowed: a start and a duration '
+    '(2026-07-04T08:00Z/PT8H), a duration and an end (PT8H/2026-07-04T16:00Z), '
+    'an end with only the time (2026-07-04T08:00Z/16:00Z) and an end without '
+    'the year or the month (2026-07-04T08:00Z/07-05T16:00Z). When the values '
+    'are valid, the message shows the interval in the allowed form.';
+
+final Rule _intervalFormNotAllowed = _issueRule(
+  AaIssueKind.intervalFormNotAllowed,
+  severity: Severity.error,
   versions: SpecVersion.only3,
   specAnchor: 'interval-activation',
-  description: 'Intervals should use the form StartDateTime/EndDateTime.',
-  explanation: 'The specification allows every ISO 8601 interval form, for '
-      'example a start and a duration (2026-07-04T08:00Z/PT8H), an end '
-      'with only the time (2026-07-04T08:00Z/16:00Z) or an end without the '
-      'year (2026-07-04T08:00Z/07-05T16:00Z). In a short end, the missing '
-      'parts of the date are the same as in the start. Writers should use '
-      'the form StartDateTime/EndDateTime. Some readers can read only this '
-      'form.\n'
+  description: 'Intervals must have the form StartDateTime/EndDateTime.',
+  explanation: '$_allowedIntervalForms\n'
       '\n'
-      'Version 2.1 of the specification has no recommended form. So this '
-      'rule checks only files of version 3.0.',
+      'Version 2.1 of the specification allows every ISO 8601 interval form. '
+      'For version 2.1 files, the rule aa-interval-form-not-allowed-v21 '
+      'reports these forms as a warning.',
   correctExample: 'AA 2026-07-04T08:00Z/2026-07-04T16:00Z',
   incorrectExample: 'AA 2026-07-04T08:00Z/PT8H',
+);
+
+final Rule _intervalFormNotAllowedV21 = _issueRule(
+  AaIssueKind.intervalFormNotAllowed,
+  id: 'aa-interval-form-not-allowed-v21',
+  severity: Severity.warning,
+  versions: SpecVersion.only21,
+  specAnchor: 'interval-activation',
+  description: 'In version 2.1, intervals should have the form '
+      'StartDateTime/EndDateTime.',
+  explanation: 'Version 2.1 of the specification says that AA uses the ISO '
+      '8601 time interval format. It does not limit the forms. Version 3.0 '
+      'allows only one form. $_allowedIntervalForms\n'
+      '\n'
+      'A file of version 2.1 with other forms is valid, but it cannot become '
+      'a version 3.0 file without changes. Readers of version 3.0 do not '
+      'have to read the other forms. For version 3.0 files, the rule '
+      'aa-interval-form-not-allowed reports these forms as an error.',
+  correctExample: '*VERSION: 2.1\n'
+      '...\n'
+      'AA 2026-07-04T08:00Z/2026-07-04T16:00Z',
+  incorrectExample: '*VERSION: 2.1\n'
+      '...\n'
+      'AA 2026-07-04T08:00Z/PT8H',
 );
 
 final Rule _intervalsOverlap = Rule(
@@ -700,7 +785,14 @@ final Rule _weekdayNeverActive = Rule(
   explanation: 'A weekday command with a date range has no effect when none '
       'of its weekdays is in the date range, or when AA EXCEPT commands '
       'remove every day of it. This is usually a mistake in the weekdays or '
-      'in the dates.',
+      'in the dates.\n'
+      '\n'
+      'For a window without a sun event, the weekdays and the dates are UTC '
+      'days. For a window with a sun event, they are local solar days (see '
+      'the section "Sun events" of the specification). In polar regions, a '
+      'window with a sun event can be not active on every day of its date '
+      'range, for example SR/SS during the polar night. This rule reports '
+      'that case too, when the date range is not longer than four years.',
   correctExample: 'AA SAT,SUN 08:00Z/18:00Z 2026-07-04/2026-07-05',
   incorrectExample: 'AA SAT,SUN 08:00Z/18:00Z 2026-07-06/2026-07-10',
   checkAirspace: (ctx, a) {
@@ -737,6 +829,15 @@ final Rule _weekdayNeverActive = Rule(
             c,
             'AA EXCEPT commands remove every day of this command in the date '
             'range $from/$to. The command has no effect.');
+      } else if (aa.usesSunEvent && _sunCheckCoversRange(aa)) {
+        final r = _sunCheck(ctx, a, aa);
+        if (r.noPosition || r.checkedDays == 0 || r.activeDays > 0) continue;
+        ctx.reportCommand(
+            c,
+            'The window is not active on any local solar day of the date '
+            'range $from/$to, because a sun event of the window does not '
+            'happen at the centre of the airspace (see '
+            'aa-sun-event-missing-day). The command has no effect.');
       }
     }
   },
@@ -752,10 +853,12 @@ final Rule _exceptEndBeforeStart = _issueRule(
   specAnchor: 'exceptions',
   description: 'The end date of an AA EXCEPT range must not be before the '
       'start date.',
-  explanation: 'AA EXCEPT StartDate/EndDate removes the weekday windows that '
-      'start on the dates from StartDate to EndDate. Both dates are '
-      'included. If the end date is before the start date, the command '
-      'removes nothing.',
+  explanation: 'AA EXCEPT StartDate/EndDate removes the weekday windows of '
+      'the dates from StartDate to EndDate. Both dates are included. For a '
+      'window without a sun event, the dates are the UTC days on which the '
+      'window starts. For a window with a sun event, they are local solar '
+      'days. If the end date is before the start date, the command removes '
+      'nothing.',
   correctExample: 'AA MON-FRI 07:00Z/15:00Z\n'
       'AA EXCEPT 2026-12-31/2027-01-01',
   incorrectExample: 'AA MON-FRI 07:00Z/15:00Z\n'
@@ -799,7 +902,12 @@ final Rule _exceptNoEffect = Rule(
       'dates. If no weekday command has a window that starts on these dates, '
       'the exception has no effect. For example, the date is outside the '
       'date ranges of all weekday commands, or the date is a Saturday and '
-      'the weekday commands are for MON-FRI only.',
+      'the weekday commands are for MON-FRI only.\n'
+      '\n'
+      'The dates of AA EXCEPT are UTC days for windows without a sun event. '
+      'For windows with a sun event, they are local solar days (see the '
+      'section "Sun events" of the specification). In both cases, the date '
+      'removes the window of the day with this date.',
   correctExample: 'AA MON-FRI 07:00Z/15:00Z\n'
       'AA EXCEPT 2026-12-25',
   incorrectExample: 'AA MON-FRI 07:00Z/15:00Z\n'
@@ -869,68 +977,52 @@ final Rule _sunEventNotAllowed = _issueRule(
   incorrectExample: 'AA 2026-07-04T08:00Z/SS',
 );
 
-/// One scheduled day of a weekday command with a sun event.
-class _SunDay {
-  _SunDay(this.dayNumber, this.start, this.end);
+/// One group of polar days of one command: the days on which a sun event
+/// does not happen, with the same position of the sun and the same meaning
+/// of the window.
+class _PolarGroup {
+  _PolarGroup(this.first);
 
-  /// The UTC day on which the window starts, as a day number (see
-  /// [CivilDate.dayNumber]).
-  final int dayNumber;
+  /// The first day of the group.
+  final SunWindowDay first;
 
-  /// The UTC day on which the window starts.
-  CivilDate get day => CivilDate.fromDayNumber(dayNumber);
+  /// The number of days in the group.
+  int count = 0;
 
-  /// The start in minutes after 00:00Z of [day]. A sun event can be below 0
-  /// or at or above 1440 on a day without this event (see
-  /// [sunEventMinutes]).
-  final double start;
-
-  /// The end as calculated for [day], in minutes after 00:00Z of [day].
-  final double end;
-
-  /// True if the window ends on the next day: the end is not after the
-  /// start.
-  bool get endsNextDay => end <= start;
-
-  /// The length of the window in minutes.
-  double get length => endsNextDay ? end + 1440 - start : end - start;
+  /// The sun events that do not happen on the days of the group.
+  final Set<SunEvent> events = {};
 }
 
 /// What the sun check found for one weekday command.
 class _SunCheck {
-  /// The scheduled days that are not removed by AA EXCEPT.
+  /// The scheduled local solar days that are not removed by AA EXCEPT.
   int checkedDays = 0;
 
-  /// The checked days on which both times could be calculated.
-  int calculatedDays = 0;
+  /// The checked days on which both times happen.
+  int normalDays = 0;
 
-  /// The calculated days on which the window ends on the next day.
+  /// The normal days on which the window ends on the next local solar day.
   int nextDay = 0;
 
-  /// The number of times the length of the window changes by more than
-  /// [_jumpMinutes] from one scheduled day to the next, and the first time.
-  int lengthJumps = 0;
-  (_SunDay, _SunDay)? firstLengthJump;
+  /// The checked days on which the window is active.
+  int activeDays = 0;
 
-  /// The number of times the start changes by more than [_jumpMinutes]
-  /// from one scheduled day to the next, and the first time.
-  int startJumps = 0;
-  (_SunDay, _SunDay)? firstStartJump;
+  /// The number of times the order of the start and the end changes from
+  /// one normal day to the next, and the first time.
+  int orderChanges = 0;
+  (SunWindowDay, SunWindowDay)? firstOrderChange;
 
-  /// The first day on which a fixed time and a sun event are less than
-  /// 2 minutes apart.
-  _SunDay? firstNear;
+  /// The first normal day on which a fixed time and a sun event are less
+  /// than 2 minutes apart.
+  SunWindowDay? firstNear;
 
-  int missing = 0;
-  CivilDate? firstMissing;
-  SunEvent? missingEvent;
+  /// The days on which a sun event does not happen, grouped by the
+  /// position of the sun and the meaning of the window.
+  final Map<(SunAllDay, SunPolarOutcome), _PolarGroup> polar = {};
+
+  /// True if the airspace has no position.
   bool noPosition = false;
 }
-
-/// A change of more than this many minutes between two scheduled days is a
-/// jump of about one day. The normal movement of a sun event is much
-/// smaller.
-const double _jumpMinutes = 720;
 
 /// The first day of the fixed period that the sun check uses when the date
 /// range does not limit the days. A fixed period makes the result the same
@@ -965,27 +1057,26 @@ const int _sunCheckMaxDays = 1461;
   return (start, start.addDays(last));
 }
 
-/// A function that gives the time of [t] on a day (a day number, see
-/// [CivilDate.dayNumber]), in minutes after 00:00Z of that day, or null if a
-/// sun event does not happen on that day. Sun events are calculated at
-/// [centre] and cached per airspace and event, because several commands of
-/// one airspace often use the same event.
-double? Function(int) _timeOnDay(
-    LintContext ctx, Airspace a, AaTimeOfDay t, LatLng centre) {
-  final event = t.sunEvent;
-  if (event == null) {
-    final fixed = t.ms! / msPerMinute;
-    return (_) => fixed;
-  }
-  final cache = ctx.memo(('aa-sun-cache', a, event), () => <int, double?>{});
-  return (n) {
-    if (cache.containsKey(n)) return cache[n];
-    return cache[n] =
-        sunEventMinutes(event, CivilDate.fromDayNumber(n), centre);
-  };
+/// True if the sun check uses the whole date range of [w].
+bool _sunCheckCoversRange(AaWeekdayCommand w) {
+  final from = w.fromDate;
+  final to = w.toDate;
+  return from != null &&
+      to != null &&
+      to.dayNumber - from.dayNumber < _sunCheckMaxDays;
 }
 
-/// A time of a window as a date and a time, for example
+/// A function that gives a sun event on a local solar day at [centre].
+/// The events are cached per airspace and event, because several commands
+/// of one airspace often use the same event.
+SunEventOn _eventOn(LintContext ctx, Airspace a, LatLng centre) =>
+    (event, day) {
+      final cache =
+          ctx.memo(('aa-sun-cache', a, event), () => <int, LocalSunEvent>{});
+      return cache[day.dayNumber] ??= sunEventOnLocalDay(event, day, centre);
+    };
+
+/// A time of a window as a UTC date and time, for example
 /// `SR (sunrise) at 2026-03-15T05:59Z` or `2026-03-15T06:00Z`.
 /// [minutes] counts from 00:00Z of [day] and can be below 0 or above 1440.
 /// With [seconds], the time has seconds, for example `06:00:20Z`.
@@ -1002,15 +1093,33 @@ String _describeAt(AaTimeOfDay t, CivilDate day, double minutes,
   return '${e.keyword} (${e.description}) at $at';
 }
 
-/// The window of [w] on one day, for example
+/// The window of [w] on one normal day, for example
 /// `from 2026-03-15T06:00Z to SR (sunrise) at 2026-03-16T05:59Z`. If the
 /// start and the end show the same time of day, the times have seconds.
-String _window(AaWeekdayCommand w, _SunDay d) {
-  final end = d.endsNextDay ? d.end + 1440 : d.end;
-  final seconds = (d.start.round() - end.round()) % 1440 == 0;
-  return 'from ${_describeAt(w.startTime!, d.day, d.start, seconds: seconds)} '
-      'to ${_describeAt(w.endTime!, d.day, end, seconds: seconds)}';
+String _window(AaWeekdayCommand w, SunWindowDay d) {
+  final seconds = (d.start!.round() - d.end!.round()) % 1440 == 0;
+  return 'from ${_describeAt(w.startTime!, d.day, d.start!, seconds: seconds)} '
+      'to ${_describeAt(w.endTime!, d.day, d.end!, seconds: seconds)}';
 }
+
+/// The start and the end of [w] as calculated on one normal day, and the
+/// result of their order. For example `the start is 2026-03-08T17:00Z and
+/// the end is SS (sunset) at 2026-03-08T16:59:40Z, so the window ends on
+/// the next local solar day`. If the two times show the same minute, they
+/// have seconds.
+String _order(AaWeekdayCommand w, SunWindowDay d) {
+  final s = d.startOnDay!;
+  final e = d.endOnDay!;
+  final seconds = s.round() == e.round();
+  return 'the start is ${_describeAt(w.startTime!, d.day, s, seconds: seconds)}'
+      ' and the end is ${_describeAt(w.endTime!, d.day, e, seconds: seconds)},'
+      ' so the window ends on '
+      '${d.endsNextDay ? 'the next' : 'the same'} local solar day';
+}
+
+/// The longitude for messages, for example `14.50° E`.
+String _longitude(double lon) =>
+    '${lon.abs().toStringAsFixed(2)}° ${lon < 0 ? 'W' : 'E'}';
 
 _SunCheck _sunCheck(LintContext ctx, Airspace a, AaWeekdayCommand w) =>
     ctx.memo(('aa-sun', w), () {
@@ -1022,10 +1131,8 @@ _SunCheck _sunCheck(LintContext ctx, Airspace a, AaWeekdayCommand w) =>
       }
       final start = w.startTime!;
       final end = w.endTime!;
-      final mixed = start.isSunEvent != end.isSunEvent;
+      final eventOn = _eventOn(ctx, a, centre);
       final excepts = _excepts(ctx, a);
-      final startOn = _timeOnDay(ctx, a, start, centre);
-      final endOn = _timeOnDay(ctx, a, end, centre);
       final (from, to) = _sunCheckPeriod(w);
       // The ISO weekday (1 = Monday) of each day of the week, starting with
       // the weekday of the first day.
@@ -1033,39 +1140,33 @@ _SunCheck _sunCheck(LintContext ctx, Airspace a, AaWeekdayCommand w) =>
         for (var i = 0; i < 7; i++) from.addDays(i).weekday,
       ];
       final last = to.dayNumber;
-      _SunDay? previous;
+      SunWindowDay? previous;
       for (var n = from.dayNumber, i = 0; n <= last; n++, i++) {
+        // The weekdays, the date range and AA EXCEPT refer to the local
+        // solar day.
         if (!w.weekdays.contains(weekdayOf[i % 7])) continue;
         if (excepts.containsDay(n)) continue;
         r.checkedDays++;
-        final s = startOn(n);
-        final e = endOn(n);
-        if (s == null || e == null) {
-          r.missing++;
-          if (r.firstMissing == null) {
-            r.firstMissing = CivilDate.fromDayNumber(n);
-            r.missingEvent = s == null ? start.sunEvent : end.sunEvent;
-          }
+        final day = sunWindowOnDay(
+            start, end, CivilDate.fromDayNumber(n), centre.lon, eventOn);
+        if (day.isActive) r.activeDays++;
+        if (!day.isNormal) {
+          final group = r.polar
+              .putIfAbsent((day.allDay!, day.polar!), () => _PolarGroup(day));
+          group.count++;
+          group.events.addAll(day.missingEvents);
           continue;
         }
-        final day = _SunDay(n, s, e);
-        r.calculatedDays++;
+        r.normalDays++;
         if (day.endsNextDay) r.nextDay++;
-        // An end that crosses 00:00Z (sunset in Texas, for example) does not
-        // change the window: the length stays about the same. Only a jump of
-        // about one day in the length or in the start changes the window.
-        if (previous != null) {
-          if ((day.length - previous.length).abs() > _jumpMinutes) {
-            r.lengthJumps++;
-            r.firstLengthJump ??= (previous, day);
-          } else if ((day.start - previous.start).abs() > _jumpMinutes) {
-            r.startJumps++;
-            r.firstStartJump ??= (previous, day);
-          }
+        if (previous != null && previous.endsNextDay != day.endsNextDay) {
+          r.orderChanges++;
+          r.firstOrderChange ??= (previous, day);
         }
-        if (mixed && r.firstNear == null) {
-          final gap = (e - s) % 1440;
-          if (gap < 2 || gap > 1438) r.firstNear = day;
+        if (r.firstNear == null &&
+            start.isSunEvent != end.isSunEvent &&
+            (day.endOnDay! - day.startOnDay!).abs() < 2) {
+          r.firstNear = day;
         }
         previous = day;
       }
@@ -1087,14 +1188,29 @@ Iterable<(Command, AaWeekdayCommand)> _sunCommands(
   }
 }
 
-/// The text that the sun event rules use for the days that they check.
-const String _sunCheckPeriodText = 'Without a date range, openair-lint '
-    'checks the four years 2026 to 2029. With an open end, it checks four '
-    'years from the start date, but not before 2026. It checks at most four '
-    'years. The sun times repeat almost exactly every four years. Days '
-    'removed by AA EXCEPT are not checked.';
+/// The weekday commands of an airspace with one sun event and one fixed
+/// time.
+Iterable<(Command, AaWeekdayCommand)> _mixedSunCommands(
+        LintContext ctx, Airspace a) =>
+    _sunCommands(ctx, a)
+        .where((e) => e.$2.startTime!.isSunEvent != e.$2.endTime!.isSunEvent);
 
-String _hours(double minutes) => '${(minutes.abs() / 60).round()}';
+/// The text that the sun event rules use for the local solar day.
+const String _localSolarDayText = 'A window with a sun event belongs to a '
+    'local solar day, from 00:00 to 24:00 local solar time. Local solar time '
+    'is UTC plus the longitude of the centre of the airspace divided by 15, '
+    'in hours (east is positive). The client calculates the sun event that '
+    'happens on this local solar day. A fixed time in the same window, for '
+    'example 07:00Z in 07:00Z/SS, is a UTC time inside this local solar '
+    'day.';
+
+/// The text that the sun event rules use for the days that they check.
+const String _sunCheckPeriodText = 'openair-lint calculates the sun events '
+    'at the centre of the airspace for every scheduled local solar day. '
+    'Without a date range, it checks the four years 2026 to 2029. With an '
+    'open end, it checks four years from the start date, but not before '
+    '2026. It checks at most four years. The sun times repeat almost '
+    'exactly every four years. Days removed by AA EXCEPT are not checked.';
 
 String _times(int n) =>
     n > 1 ? ' This happens $n times in the checked days.' : '';
@@ -1106,28 +1222,20 @@ final Rule _sunEventOrderChanges = Rule(
   description: 'The order of a fixed time and a sun event must be the same '
       'on every day of the schedule.',
   explanation: 'If the end time of a weekday window is earlier than or '
-      'equal to the start time, the window ends on the next day. With a sun '
-      'event, the client compares the calculated times. So 06:00Z/SR ends on '
-      'the same day when sunrise is after 06:00 UTC, but on the next day '
-      'when sunrise is before 06:00 UTC. The specification says that the '
-      'writer must check that the order is correct on every day of the '
-      'schedule. It uses 06:00Z/SR as an example of a wrong command.\n'
+      'equal to the start time, the window ends on the next local solar day. '
+      'With a sun event, the client compares the calculated times. So '
+      '06:00Z/SR ends on the same day when sunrise is after 06:00 UTC, but on '
+      'the next day when sunrise is before 06:00 UTC. The specification says '
+      'that the writer must check that the order is correct on every day of '
+      'the schedule. It uses 06:00Z/SR as an example of a wrong command.\n'
       '\n'
-      'openair-lint calculates the sun events at the centre of the airspace '
-      'for every scheduled day. It compares the window of each day with the '
-      'window of the scheduled day before. It reports the command when the '
-      'length of the window changes by more than 12 hours. This happens when '
-      'the order of the start and the end changes.\n'
+      '$_localSolarDayText\n'
       '\n'
-      'A sun event at the end that crosses 00:00Z is not a problem. For '
-      'example, AA SR/SS at 97° W: the sunset is before 00:00Z in winter and '
-      'after 00:00Z in summer. The window ends on the same day in winter and '
-      'on the next day in summer, but it always ends at sunset.\n'
-      '\n'
-      'Two other rules check related problems. '
-      'aa-sun-event-start-crosses-midnight reports a sun event at the start '
-      'that crosses 00:00Z. aa-sun-event-near-fixed-time reports a fixed time '
-      'and a sun event that are less than 2 minutes apart.\n'
+      'This rule checks windows with one sun event and one fixed time. It '
+      'reports the command when the window ends on the same local solar day '
+      'on some days and on the next local solar day on other days. Days on '
+      'which the sun event does not happen (polar regions) are not '
+      'compared.\n'
       '\n'
       '$_sunCheckPeriodText\n'
       '\n'
@@ -1136,68 +1244,16 @@ final Rule _sunEventOrderChanges = Rule(
   correctExample: 'AA MON-FRI 07:00Z/SS 2026-04-01/2026-09-30',
   incorrectExample: 'AA 06:00Z/SR',
   checkAirspace: (ctx, a) {
-    for (final (c, w) in _sunCommands(ctx, a)) {
+    for (final (c, w) in _mixedSunCommands(ctx, a)) {
       final r = _sunCheck(ctx, a, w);
-      if (r.firstLengthJump case (final p, final d)) {
+      if (r.firstOrderChange case (final p, final d)) {
         ctx.reportCommand(
             c,
-            'The order of the start and the end changes during the schedule, '
-            'so the length of the window changes by about '
-            '${_hours(d.length - p.length)} hours. On ${p.day.withWeekday} '
-            'the window is ${_window(w, p)}. On ${d.day.withWeekday} it is '
-            '${_window(w, d)}.${_times(r.lengthJumps)} On ${r.nextDay} of '
-            '${r.calculatedDays} checked days the window ends on the next '
-            'day.');
-      }
-    }
-  },
-);
-
-final Rule _sunEventStartCrossesMidnight = Rule(
-  id: 'aa-sun-event-start-crosses-midnight',
-  severity: Severity.warning,
-  specAnchor: 'weekday-activation',
-  description: 'A sun event at the start of a window should not cross '
-      '00:00Z during the schedule.',
-  explanation: 'A client calculates a sun event for the UTC day on which the '
-      'window starts. For airspaces far east or far west of Greenwich, a sun '
-      'event can be just after 00:00Z on some days and just before 24:00Z '
-      'on other days. For example, SR/SS at 96° E: on some days the sunrise '
-      'of the UTC day is just after 00:00Z, on other days it is just before '
-      '24:00Z. Then the window starts about one day later, and it belongs to '
-      'a different weekday. This is very probably not what the writer '
-      'wants.\n'
-      '\n'
-      'openair-lint reports the command when the start of the window changes '
-      'by more than 12 hours from one scheduled day to the next. If the '
-      'length of the window also changes by more than 12 hours, the rule '
-      'aa-sun-event-order-changes reports the command, and this rule does '
-      'not.\n'
-      '\n'
-      '$_sunCheckPeriodText\n'
-      '\n'
-      'To fix it, use a fixed time for the start, or check that the windows '
-      'start on the weekdays that you want.',
-  correctExample: 'AA SR/SS                 * an airspace at 14° E\n'
-      'V X=46:00:00N 014:00:00E\n'
-      'DC 5',
-  incorrectExample: 'AA SR/SS                 * an airspace at 96° E\n'
-      'V X=20:00:00N 096:00:00E\n'
-      'DC 5',
-  checkAirspace: (ctx, a) {
-    for (final (c, w) in _sunCommands(ctx, a)) {
-      final r = _sunCheck(ctx, a, w);
-      if (r.firstLengthJump != null) continue;
-      if (r.firstStartJump case (final p, final d)) {
-        final e = w.startTime!.sunEvent;
-        final name = e == null ? '' : ' ${e.keyword} (${e.description})';
-        ctx.reportCommand(
-            c,
-            'The start$name crosses 00:00Z during '
-            'the schedule, so the start of the window moves by about '
-            '${_hours(d.start - p.start)} hours. On ${p.day.withWeekday} the '
-            'window is ${_window(w, p)}. On ${d.day.withWeekday} it is '
-            '${_window(w, d)}.${_times(r.startJumps)}');
+            'The order of the start and the end changes during the schedule. '
+            'On the local solar day ${p.day.withWeekday} ${_order(w, p)}. On '
+            '${d.day.withWeekday} ${_order(w, d)}.${_times(r.orderChanges)} '
+            'On ${r.nextDay} of ${r.normalDays} checked days the window ends '
+            'on the next local solar day.');
       }
     }
   },
@@ -1210,16 +1266,16 @@ final Rule _sunEventNearFixedTime = Rule(
   description: 'A fixed time and a sun event of one window should not be '
       'less than 2 minutes apart.',
   explanation: 'If the end time of a weekday window is earlier than or '
-      'equal to the start time, the window ends on the next day. Different '
-      'calculation methods can give sun events that differ by about one '
-      'minute. If a fixed time and a sun event are less than 2 minutes '
-      'apart on some day, readers can disagree on the order. Then one reader '
-      'ends the window on the same day, and another reader ends it on the '
-      'next day.\n'
+      'equal to the start time, the window ends on the next local solar day. '
+      'Different calculation methods can give sun events that differ by '
+      'about one minute. If a fixed time and a sun event are less than 2 '
+      'minutes apart on some day, readers can disagree on the order. Then one '
+      'reader ends the window on the same day, and another reader ends it on '
+      'the next day.\n'
       '\n'
       'openair-lint reports the first scheduled day on which this happens. '
-      'It does not report a command that aa-sun-event-order-changes or '
-      'aa-sun-event-start-crosses-midnight already reports.\n'
+      'It does not report a command that aa-sun-event-order-changes already '
+      'reports.\n'
       '\n'
       '$_sunCheckPeriodText\n'
       '\n'
@@ -1228,18 +1284,76 @@ final Rule _sunEventNearFixedTime = Rule(
   correctExample: 'AA 02:00Z/SR 2026-06-20/2026-06-22',
   incorrectExample: 'AA 03:12Z/SR 2026-06-20/2026-06-22',
   checkAirspace: (ctx, a) {
-    for (final (c, w) in _sunCommands(ctx, a)) {
+    for (final (c, w) in _mixedSunCommands(ctx, a)) {
       final r = _sunCheck(ctx, a, w);
-      if (r.firstLengthJump != null || r.firstStartJump != null) continue;
+      if (r.firstOrderChange != null) continue;
       if (r.firstNear case final d?) {
         ctx.reportCommand(
             c,
-            'On ${d.day.withWeekday} the start and the end are less than 2 '
-            'minutes apart: the window is ${_window(w, d)}. Readers can '
-            'calculate sun events with a difference of about one minute, so '
-            'they can disagree on whether the window ends on the same day or '
-            'on the next day.');
+            'On the local solar day ${d.day.withWeekday} the start and the '
+            'end are less than 2 minutes apart: the window is '
+            '${_window(w, d)}. Readers can calculate sun events with a '
+            'difference of about one minute, so they can disagree on whether '
+            'the window ends on the same day or on the next day.');
       }
+    }
+  },
+);
+
+/// The distance (in minutes) below which a fixed start time is too near to
+/// the start of the local solar day.
+const double _dayStartMargin = 2;
+
+final Rule _sunEventFixedStartNearDayStart = Rule(
+  id: 'aa-sun-event-fixed-start-near-day-start',
+  severity: Severity.warning,
+  specAnchor: 'sun-events',
+  description: 'In a window with a sun event, a fixed start time should not '
+      'be less than 2 minutes from the start of the local solar day.',
+  explanation: '$_localSolarDayText\n'
+      '\n'
+      'The local solar day starts at 00:00Z minus 4 minutes for each degree '
+      'of east longitude. For example, at 15° E it starts at 23:00Z of the '
+      'UTC day before. A fixed start time at this moment is at the start of '
+      'one local solar day and at the end of the day before. Readers '
+      'calculate the centre of the airspace in slightly different ways, for '
+      'example for arcs. A small difference in the longitude can put the '
+      'start on a different UTC day. Then the window moves by one day. In '
+      '23:00Z/SS at 15° E, the window starts at 23:00Z on the UTC day before '
+      'the local solar day, or it starts at 23:00Z on the same UTC day and '
+      'ends at sunset on the next day.\n'
+      '\n'
+      'A fixed end time at the start of the local solar day is not a '
+      'problem: both readings give the same end.\n'
+      '\n'
+      'To fix it, use a start time that is at least 2 minutes from the start '
+      'of the local solar day, or use a window without a sun event.',
+  correctExample: 'AA 05:00Z/SS             * an airspace at 15° E\n'
+      'V X=46:00:00N 015:00:00E\n'
+      'DC 5',
+  incorrectExample: 'AA 23:00Z/SS             * an airspace at 15° E\n'
+      'V X=46:00:00N 015:00:00E\n'
+      'DC 5',
+  checkAirspace: (ctx, a) {
+    final centre = ctx.boundaryOf(a).centre;
+    if (centre == null) return;
+    final dayStart = localDayStartMinutes(centre.lon);
+    for (final (c, w) in _mixedSunCommands(ctx, a)) {
+      final ms = w.startTime!.ms;
+      if (ms == null) continue;
+      final t = placeInLocalDay(ms / msPerMinute, centre.lon);
+      final fromStart = t - dayStart;
+      if (fromStart >= _dayStartMargin && 1440 - fromStart >= _dayStartMargin) {
+        continue;
+      }
+      final time = formatTimeOfDay(ms % msPerDay);
+      ctx.reportCommand(
+          c,
+          'The start $time is less than 2 minutes from the start of the local '
+          'solar day. At the centre of the airspace (${_longitude(centre.lon)}) '
+          'the local solar day starts at ${formatMinutes(dayStart)}. Readers '
+          'that calculate the centre a little differently can put the start '
+          'on different UTC days, so the window can move by one day.');
     }
   },
 );
@@ -1249,11 +1363,29 @@ final Rule _sunEventMissingDay = Rule(
   severity: Severity.info,
   specAnchor: 'sun-events',
   description: 'A sun event does not happen on some days of the schedule.',
-  explanation: 'In polar regions the sun does not rise or set on some days. '
-      'If a weekday window uses a sun event that does not happen on that '
-      'day, the airspace is active for the whole UTC day. This rule tells '
-      'you on which days this happens, so that you can check that this is '
-      'what you want.',
+  explanation: 'In polar regions a sun event does not happen on some days. '
+      'For example, the sun does not set in the summer, and it does not rise '
+      'in the winter. On these days the client uses the position of the sun '
+      'during the whole local solar day. The horizon of SR and SS is 0°50′ '
+      'below the horizon, the horizon of BCMT and EECT is 6° below the '
+      'horizon. The specification defines the meaning of the window:\n'
+      '\n'
+      'From a morning event to an evening event (SR/SS, BCMT/EECT): if the '
+      'sun stays above the horizon all day, the window is active for the '
+      'whole local solar day. If it stays below, the window is not active.\n'
+      'From an evening event to a morning event (SS/SR): if the sun stays '
+      'above the horizon all day, the window is not active. If it stays '
+      'below, the window is active for the whole local solar day.\n'
+      'A sun event and a fixed time (07:00Z/SS): if the sun stays above the '
+      'horizon all day, a missing morning event is the start of the local '
+      'solar day, and a missing evening event is the end of the local solar '
+      'day. If it stays below, the window is not active.\n'
+      '\n'
+      'This rule tells you on which days this happens and what the window '
+      'means on these days, so that you can check that this is what you '
+      'want.\n'
+      '\n'
+      '$_sunCheckPeriodText',
   correctExample: 'AA SR/SS                 * an airspace at 46° N\n'
       'V X=46:00:00N 014:00:00E\n'
       'DC 5',
@@ -1263,14 +1395,26 @@ final Rule _sunEventMissingDay = Rule(
   checkAirspace: (ctx, a) {
     for (final (c, w) in _sunCommands(ctx, a)) {
       final r = _sunCheck(ctx, a, w);
-      if (r.missing == 0) continue;
-      final e = r.missingEvent!;
+      if (r.polar.isEmpty) continue;
+      final parts = <String>[];
+      for (final MapEntry(key: (allDay, outcome), value: g)
+          in r.polar.entries) {
+        final events = g.events.toList()
+          ..sort((x, y) => x.index.compareTo(y.index));
+        final names = [
+          for (final e in events) '${e.keyword} (${e.description})'
+        ];
+        final where = allDay == SunAllDay.above ? 'higher' : 'lower';
+        parts.add('On ${g.count} of ${r.checkedDays} checked days (the first '
+            'is ${g.first.day.withWeekday}) ${names.join(' and ')} '
+            '${names.length == 1 ? 'does' : 'do'} not happen, because the '
+            'centre of the sun stays $where than ${events.first.horizon} all '
+            'day. On these days ${outcome.text}.');
+      }
       ctx.reportCommand(
           c,
-          '${e.keyword} (${e.description}) does not happen at the centre of '
-          'the airspace on ${r.missing} of ${r.checkedDays} days, the first '
-          'is ${r.firstMissing!.withWeekday}. On these days the airspace is '
-          'active for the whole UTC day.');
+          'A sun event of this window does not happen at the centre of the '
+          'airspace on some local solar days. ${parts.join(' ')}');
     }
   },
 );

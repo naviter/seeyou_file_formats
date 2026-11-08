@@ -58,7 +58,7 @@ void main() {
   });
 
   group('Date', () {
-    test('recommended form', () {
+    test('allowed form', () {
       final r = parseIsoDate('2026-07-04', 0, []);
       expect(r.value, const CivilDate(2026, 7, 4));
       expect(r.formNote, isNull);
@@ -120,10 +120,14 @@ void main() {
   });
 
   group('Time', () {
-    test('recommended form', () {
+    test('allowed forms: hh:mmZ and hh:mm:ssZ', () {
       final r = parseIsoTime('09:30Z', 0, [], isEnd: false);
       expect(r.value, 9 * h + 30 * 60000);
       expect(r.formNote, isNull);
+      final s = parseIsoTime('09:30:15Z', 0, [], isEnd: false);
+      expect(s.value, 9 * h + 30 * 60000 + 15000);
+      expect(s.formNote, isNull);
+      expect(parseIsoTime('24:00:00Z', 0, [], isEnd: true).formNote, isNull);
     });
 
     test('lower case z is read (case is checked by another rule)', () {
@@ -132,8 +136,6 @@ void main() {
 
     test('other ISO 8601 forms have a form note', () {
       final cases = {
-        '09:30:00Z': 9 * h + 30 * 60000,
-        '09:30:15Z': 9 * h + 30 * 60000 + 15000,
         '09:30:15.5Z': 9 * h + 30 * 60000 + 15500,
         '09:30,5Z': 9 * h + 30 * 60000 + 30000,
         '0930Z': 9 * h + 30 * 60000,
@@ -228,6 +230,20 @@ void main() {
       expect(
           parseIsoDateTime('2026-07-04T08:00Z', 0, [], isEnd: false).formNote,
           isNull);
+      expect(
+          parseIsoDateTime('2026-07-04T08:00:00Z', 0, [], isEnd: false)
+              .formNote,
+          isNull);
+      for (final t in [
+        '20260704T0800Z',
+        '2026-W27-6T08:00Z',
+        '2026-185T08:00Z',
+        '2026-07-04T08Z',
+        '2026-07-04T08:00:00.5Z',
+      ]) {
+        expect(parseIsoDateTime(t, 0, [], isEnd: false).formNote, isNotNull,
+            reason: t);
+      }
     });
 
     test('24:00 is the start of the next day, only as an end', () {

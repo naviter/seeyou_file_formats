@@ -41,6 +41,10 @@ List<String> messages(String ruleId, List<String> aaLines,
         d.message
     ];
 
+/// True for an error or a warning of an activation rule.
+bool aaProblem(Diagnostic d) =>
+    d.ruleId.startsWith('aa-') && d.severity != Severity.info;
+
 void main() {
   group('parseAa', () {
     test('interval', () {
@@ -128,7 +132,6 @@ void main() {
         'EXCEPT',
         'EXCEPT 2026-12-25,2026-12-26',
         'NONE extra',
-        'PT8H/PT2H',
         '2026-07-04T08:00Z/2026-07-04T16:00Z/2026-07-04T18:00Z',
       ]) {
         expect(fires('aa-invalid-syntax', [v]), [5], reason: v);
@@ -276,17 +279,35 @@ void main() {
     });
   });
 
-  group('aa-invalid-duration', () {
+  group('aa-invalid-duration (version 2.1)', () {
     test('fires for invalid durations', () {
-      expect(fires('aa-invalid-duration', ['2026-07-04T08:00Z/P8H']), [5]);
-      expect(fires('aa-invalid-duration', ['2026-07-04T08:00Z/PT']), [5]);
+      expect(
+          fires('aa-invalid-duration', ['2026-07-04T08:00Z/P8H'],
+              version: '2.1'),
+          [5]);
+      expect(
+          fires('aa-invalid-duration', ['2026-07-04T08:00Z/PT'],
+              version: '2.1'),
+          [5]);
+      expect(fires('aa-invalid-duration', ['PT8H/PT2H'], version: '2.1'), [5]);
+      expect(fires('aa-invalid-duration', ['PT8H/NONE'], version: '2.1'), [5]);
     });
     test('does not fire for valid durations', () {
-      expect(fires('aa-invalid-duration', ['2026-07-04T08:00Z/PT8H']), isEmpty);
       expect(
-          fires('aa-invalid-duration',
-              ['2026-07-04T08:00Z/P0000-00-01T00:00:00']),
+          fires('aa-invalid-duration', ['2026-07-04T08:00Z/PT8H'],
+              version: '2.1'),
           isEmpty);
+      expect(
+          fires(
+              'aa-invalid-duration', ['2026-07-04T08:00Z/P0000-00-01T00:00:00'],
+              version: '2.1'),
+          isEmpty);
+    });
+    test('does not apply to version 3.0 (durations are not allowed)', () {
+      expect(fires('aa-invalid-duration', ['2026-07-04T08:00Z/P8H']), isEmpty);
+      for (final v in ['2026-07-04T08:00Z/P8H', 'PT8H/PT2H', 'PT8H/NONE']) {
+        expect(fires('aa-interval-form-not-allowed', [v]), [5], reason: v);
+      }
     });
     test('fires on the AA line for a very long duration', () {
       for (final v in [
@@ -295,7 +316,7 @@ void main() {
         '2026-07-04T08:00Z/P9000Y',
         'P3000Y/2026-07-04T08:00Z',
       ]) {
-        final all = lintAll(aa([v]));
+        final all = lintAll(aa([v], version: '2.1'));
         expect(all.where((d) => d.ruleId == 'linter-internal-error'), isEmpty,
             reason: v);
         final d = all.where((d) => d.ruleId == 'aa-invalid-duration').single;
@@ -345,56 +366,70 @@ void main() {
     });
   });
 
-  group('aa-value-not-recommended-form', () {
-    test('fires for other ISO 8601 forms', () {
+  group('aa-value-form-not-allowed', () {
+    test('fires for ISO 8601 forms that are not allowed', () {
       for (final v in [
         '20260704T0800Z/2026-07-04T16:00Z',
-        '2026-07-04T08:00:00Z/2026-07-04T16:00Z',
         '2026-W27-6T08:00Z/2026-07-04T16:00Z',
         '2026-185T08:00Z/2026-07-04T16:00Z',
+        '2026-07-04T08:00:00.5Z/2026-07-04T16:00Z',
+        '2026-07-04T08Z/2026-07-04T16:00Z',
         'MON 0900Z/11:00Z',
         'MON 09Z/11:00Z',
+        'MON T09:00Z/11:00Z',
+        'MON 09:00:00,5Z/11:00Z',
+        'MON 09:00Z/11:00Z 20260101/2026-12-31',
         'EXCEPT 20261225',
+        'EXCEPT 2026-W52-5',
+        'EXCEPT 2026-359',
       ]) {
-        expect(fires('aa-value-not-recommended-form', [v]), [5], reason: v);
+        expect(fires('aa-value-form-not-allowed', [v]), [5], reason: v);
       }
     });
-    test('does not fire for the recommended forms', () {
+    test('does not fire for the allowed forms, also with seconds', () {
       expect(
-          fires('aa-value-not-recommended-form', [
+          fires('aa-value-form-not-allowed', [
             '2026-07-04T08:00Z/2026-07-04T16:00Z',
+            '2026-07-05T08:00:00Z/2026-07-05T16:00:30Z',
             'MON 09:00Z/11:00Z 2026-01-01/2026-12-31',
+            'TUE 09:00:00Z/24:00:00Z',
             'EXCEPT 2026-12-25',
           ]),
           isEmpty);
     });
-    test('the message gives the recommended form', () {
+    test('the message names the allowed forms and gives the value', () {
       expect(
-          messages('aa-value-not-recommended-form', ['EXCEPT 2026-W52-5'])
-              .single,
-          contains('"2026-12-25"'));
+          messages('aa-value-form-not-allowed', ['EXCEPT 2026-W52-5']).single,
+          '"2026-W52-5" uses a week date. This form is not allowed. Write it '
+          'as YYYY-MM-DD: "2026-12-25".');
+      expect(
+          messages('aa-value-form-not-allowed',
+              ['20260704T0800Z/2026-07-04T16:00Z']).single,
+          contains('YYYY-MM-DDThh:mmZ or YYYY-MM-DDThh:mm:ssZ: '
+              '"2026-07-04T08:00Z"'));
+      expect(messages('aa-value-form-not-allowed', ['MON 09Z/11:00Z']).single,
+          contains('hh:mmZ or hh:mm:ssZ: "09:00Z"'));
     });
-    test('is a warning, because the specification says "should"', () {
-      expect(findRule('aa-value-not-recommended-form')!.severity,
-          Severity.warning);
-      expect(findRule('aa-interval-not-recommended-form')!.severity,
-          Severity.warning);
+    test('is an error, because the specification says "not allowed"', () {
+      expect(findRule('aa-value-form-not-allowed')!.severity, Severity.error);
+      expect(
+          findRule('aa-interval-form-not-allowed')!.severity, Severity.error);
     });
-    test('version 2.1 has no recommended form', () {
+    test('the value is still known, so other rules use the command', () {
+      final c = parseAa('20260704T0800Z/20260704T1600Z') as AaIntervalCommand;
+      expect(c.isUsable, isTrue);
+      expect(formatInstant(c.start!), '2026-07-04T08:00Z');
       expect(
-          fires('aa-value-not-recommended-form',
-              ['2026-07-04T08:00:00Z/2026-07-04T16:00Z'],
-              version: '2.1'),
-          isEmpty);
-      expect(
-          fires('aa-interval-not-recommended-form', ['2026-07-04T08:00Z/PT8H'],
-              version: '2.1'),
-          isEmpty);
+          fires('aa-intervals-overlap', [
+            '20260704T0800Z/20260704T1600Z',
+            '2026-07-04T10:00Z/2026-07-04T18:00Z',
+          ]),
+          [6]);
     });
     test('a fraction is cut, not rounded up to the next day', () {
       expect(
-          messages('aa-value-not-recommended-form',
-              ['MON 23:59:59.9999Z/24:00Z']).single,
+          messages('aa-value-form-not-allowed', ['MON 23:59:59.9999Z/24:00Z'])
+              .single,
           contains('"23:59:59Z"'));
       expect(
           fires('aa-interval-end-before-start',
@@ -402,6 +437,38 @@ void main() {
           isEmpty);
       expect(
           fires('aa-time-24-as-start', ['MON 23:59:59.9999Z/24:00Z']), isEmpty);
+    });
+  });
+
+  group('aa-value-form-not-allowed-v21', () {
+    test('is a warning in version 2.1 that names version 3.0', () {
+      final d = lintRule(
+              'aa-value-form-not-allowed-v21',
+              aa(['20260704T0800Z/2026-07-04T16:00Z', 'EXCEPT 2026-W52-5'],
+                  version: '2.1'))
+          .toList();
+      expect([for (final x in d) x.line], [5, 6]);
+      expect(d.first.message, contains('not allowed in version 3.0'));
+      expect(findRule('aa-value-form-not-allowed-v21')!.severity,
+          Severity.warning);
+    });
+    test('the 3.0 rule does not apply to version 2.1, and the reverse', () {
+      expect(
+          fires(
+              'aa-value-form-not-allowed', ['20260704T0800Z/2026-07-04T16:00Z'],
+              version: '2.1'),
+          isEmpty);
+      expect(
+          fires('aa-value-form-not-allowed-v21',
+              ['20260704T0800Z/2026-07-04T16:00Z']),
+          isEmpty);
+    });
+    test('does not fire for the allowed forms', () {
+      expect(
+          fires('aa-value-form-not-allowed-v21',
+              ['2026-07-04T08:00:00Z/2026-07-04T16:00Z'],
+              version: '2.1'),
+          isEmpty);
     });
   });
 
@@ -456,52 +523,49 @@ void main() {
     });
   });
 
-  group('aa-interval-not-recommended-form', () {
-    test('fires for durations and short ends', () {
-      expect(
-          fires('aa-interval-not-recommended-form', ['2026-07-04T08:00Z/PT8H']),
-          [5]);
-      expect(
-          fires('aa-interval-not-recommended-form', ['PT8H/2026-07-04T16:00Z']),
-          [5]);
-      expect(
-          fires(
-              'aa-interval-not-recommended-form', ['2026-07-04T08:00Z/16:00Z']),
-          [5]);
-      expect(
-          messages('aa-interval-not-recommended-form',
-              ['2026-07-04T08:00Z/PT8H']).single,
-          contains('2026-07-04T08:00Z/2026-07-04T16:00Z'));
-    });
-    test('fires for other ISO 8601 interval forms, which are not errors', () {
-      for (final (v, full) in [
-        ('2026-07-04T08:00Z/07-05T16:00Z', '2026-07-05T16:00Z'),
-        ('2026-07-04T08:00Z/05T16:00Z', '2026-07-05T16:00Z'),
-        ('20260704T0800Z/0705T1600Z', '2026-07-05T16:00Z'),
-        ('2026-07-04T08:00Z/P0000-00-01T00:00:00', '2026-07-05T08:00Z'),
+  group('aa-interval-form-not-allowed', () {
+    test('fires for durations and short ends, with the corrected value', () {
+      for (final (v, fixed) in [
+        ('2026-07-04T08:00Z/PT8H', '2026-07-04T08:00Z/2026-07-04T16:00Z'),
+        ('PT8H/2026-07-04T16:00Z', '2026-07-04T08:00Z/2026-07-04T16:00Z'),
+        ('2026-07-04T08:00Z/16:00Z', '2026-07-04T08:00Z/2026-07-04T16:00Z'),
+        (
+          '2026-07-04T08:00Z/07-05T16:00Z',
+          '2026-07-04T08:00Z/2026-07-05T16:00Z'
+        ),
+        ('2026-07-04T08:00Z/05T16:00Z', '2026-07-04T08:00Z/2026-07-05T16:00Z'),
+        (
+          '2026-07-04T08:00Z/P0000-00-01T00:00:00',
+          '2026-07-04T08:00Z/2026-07-05T08:00Z'
+        ),
       ]) {
-        final all = lintAll(aa([v]));
-        // Only the two "recommended form" rules report these forms, as
-        // warnings. They are not errors.
-        expect(
-            all
-                .where((d) => d.ruleId.startsWith('aa-'))
-                .where((d) => d.severity != Severity.info)
-                .where((d) => !const {
-                      'aa-interval-not-recommended-form',
-                      'aa-value-not-recommended-form',
-                    }.contains(d.ruleId)),
-            isEmpty,
-            reason: v);
-        expect(
-            all.where((d) =>
-                d.severity == Severity.error && d.ruleId.startsWith('aa-')),
-            isEmpty,
-            reason: v);
-        expect(messages('aa-interval-not-recommended-form', [v]).single,
-            contains(full),
+        expect(fires('aa-interval-form-not-allowed', [v]), [5], reason: v);
+        expect(messages('aa-interval-form-not-allowed', [v]).single,
+            contains('"$fixed"'),
             reason: v);
       }
+    });
+    test('the message says what is wrong', () {
+      expect(
+          messages('aa-interval-form-not-allowed', ['2026-07-04T08:00Z/PT8H'])
+              .single,
+          '"PT8H" is a duration. A duration in an interval is not allowed. '
+          'Write the interval as StartDateTime/EndDateTime: '
+          '"2026-07-04T08:00Z/2026-07-04T16:00Z".');
+      expect(
+          messages('aa-interval-form-not-allowed', ['2026-07-04T08:00Z/16:00Z'])
+              .single,
+          startsWith('The end "16:00Z" has no date.'));
+      expect(
+          messages('aa-interval-form-not-allowed',
+              ['2026-07-04T08:00Z/07-05T16:00Z']).single,
+          startsWith('The end "07-05T16:00Z" has no year.'));
+    });
+    test('an invalid duration has no corrected value', () {
+      expect(
+          messages('aa-interval-form-not-allowed', ['2026-07-04T08:00Z/P8H'])
+              .single,
+          contains('for example 2026-07-04T08:00Z/2026-07-04T16:00Z'));
     });
     test('a short end with a date that does not exist is an error', () {
       expect(fires('aa-invalid-date', ['2026-07-04T08:00Z/07-32T16:00Z']), [5]);
@@ -510,10 +574,31 @@ void main() {
               .single,
           contains('from the start (2026-07-04)'));
     });
-    test('does not fire for StartDateTime/EndDateTime', () {
+    test('does not fire for StartDateTime/EndDateTime and the NONE forms', () {
       expect(
-          fires('aa-interval-not-recommended-form',
-              ['2026-07-04T08:00Z/2026-07-04T16:00Z']),
+          fires('aa-interval-form-not-allowed', [
+            '2026-07-04T08:00Z/2026-07-04T16:00Z',
+            '2026-07-05T08:00Z/NONE',
+            'NONE/2026-07-03T08:00Z',
+          ]),
+          isEmpty);
+    });
+  });
+
+  group('aa-interval-form-not-allowed-v21', () {
+    test('is a warning in version 2.1 that names version 3.0', () {
+      final d = lintRule('aa-interval-form-not-allowed-v21',
+              aa(['2026-07-04T08:00Z/PT8H'], version: '2.1'))
+          .single;
+      expect(d.message, contains('not allowed in version 3.0'));
+      expect(d.message, contains('"2026-07-04T08:00Z/2026-07-04T16:00Z"'));
+      expect(findRule('aa-interval-form-not-allowed-v21')!.severity,
+          Severity.warning);
+    });
+    test('the 3.0 rule does not apply to version 2.1', () {
+      expect(
+          fires('aa-interval-form-not-allowed', ['2026-07-04T08:00Z/PT8H'],
+              version: '2.1'),
           isEmpty);
     });
   });
@@ -906,7 +991,8 @@ void main() {
   });
 
   group('aa-sun-event-order-changes', () {
-    // Positions where a sun event crosses 00:00Z during the year.
+    // Positions far from Greenwich. A sun event can be on another UTC day
+    // than its local solar day.
     const texas = 'AH 4500 FT AMSL\nAL GND\nV X=30:00:00N 097:00:00W\nDC 5\n';
     const myanmar = 'AH 4500 FT AMSL\nAL GND\nV X=20:00:00N 096:00:00E\nDC 5\n';
 
@@ -916,11 +1002,13 @@ void main() {
       final m = messages(
               'aa-sun-event-order-changes', ['06:00Z/SR 2026-01-01/2026-12-31'])
           .single;
-      expect(m, contains('length of the window changes by about 24 hours'));
       expect(m, contains('SR (sunrise)'));
-      expect(m, contains('Thursday 2026-02-19'));
+      expect(m, contains('local solar day Thursday 2026-02-19'));
+      expect(m, contains('This happens 2 times'));
       expect(
-          m, contains('of 365 checked days the window ends on the next day'));
+          m,
+          contains('of 365 checked days the window ends on the next local '
+              'solar day'));
     });
     test('is an error, because the specification says "must"', () {
       expect(findRule('aa-sun-event-order-changes')!.severity, Severity.error);
@@ -931,79 +1019,67 @@ void main() {
               ['03:12Z/SR 2026-06-20/2026-06-22']),
           isEmpty);
     });
-    test('names the days of the change, with dates on the times', () {
+    test('names the days of the change and the times of that day', () {
       // Sunset in Ljubljana is before 17:00Z until about 9 March.
       final m = messages(
               'aa-sun-event-order-changes', ['17:00Z/SS 2026-03-01/2026-03-31'])
           .single;
-      expect(m, contains('On Sunday 2026-03-08 the window is from'));
-      expect(m, contains('On Monday 2026-03-09 it is from 2026-03-09T17:00Z'));
+      expect(
+          m,
+          contains('On the local solar day Sunday 2026-03-08 the start is '
+              '2026-03-08T17:00'));
+      expect(m, contains('so the window ends on the next local solar day'));
+      expect(
+          m,
+          contains('On Monday 2026-03-09 the start is 2026-03-09T17:00Z and '
+              'the end is SS (sunset) at 2026-03-09T17:0'));
       expect(m, contains('On 8 of 31 checked days'));
     });
     test('shows seconds when the start and the end are in one minute', () {
       final m = messages(
               'aa-sun-event-order-changes', ['17:00Z/SS 2026-03-01/2026-03-31'])
           .single;
-      expect(m, matches(RegExp(r'at 2026-03-09T16:59:\d\dZ')));
+      expect(m, matches(RegExp(r'at 2026-03-08T16:59:\d\dZ')));
     });
-    test('does not fire when only the end crosses 00:00Z', () {
+    test('does not fire far from Greenwich: the day is local', () {
       // In Texas, sunset is before 00:00Z in winter and after it in summer.
-      // The window always ends at sunset, so nothing changes.
+      // In Myanmar, sunrise is just before or just after 00:00Z. On the
+      // local solar day, the order does not change.
       for (final v in [
         'SR/SS',
+        'SS/SR 2026-01-01/2026-12-31',
         'MON-FRI 14:00Z/SS 2026-01-01/2026-12-31',
         'BCMT/EECT 2026-01-01/2026-12-31',
         'MON-FRI 07:00Z/SS 2026-04-01/2026-09-30',
+        'SS/03:00Z',
       ]) {
         expect(fires('aa-sun-event-order-changes', [v], geo: texas), isEmpty,
             reason: v);
+        expect(lintAll(aa([v], geo: texas)).where(aaProblem), isEmpty,
+            reason: 'Texas $v');
       }
-      // In Myanmar, sunrise is just before or just after 00:00Z.
-      expect(
-          fires('aa-sun-event-order-changes', ['SS/SR 2026-01-01/2026-12-31'],
-              geo: myanmar),
-          isEmpty);
-    });
-    test('fires when the start crosses 00:00Z', () {
-      expect(
-          fires('aa-sun-event-start-crosses-midnight', ['SR/SS'], geo: myanmar),
-          [5]);
-      final m = messages('aa-sun-event-start-crosses-midnight', ['SR/SS'],
-              geo: myanmar)
-          .single;
-      expect(m, contains('The start SR (sunrise) crosses 00:00Z'));
-      expect(m, contains('moves by about 24 hours'));
-      expect(m, matches(RegExp(r'SR \(sunrise\) at \d{4}-\d\d-\d\dT23:5\dZ')));
-      // In Texas, sunset as the start crosses 00:00Z.
-      expect(
-          fires('aa-sun-event-start-crosses-midnight', ['SS/SR'], geo: texas),
-          [5]);
+      for (final v in ['SR/SS', 'SS/SR', 'SR/12:00Z', '20:00Z/SS']) {
+        expect(lintAll(aa([v], geo: myanmar)).where(aaProblem), isEmpty,
+            reason: 'Myanmar $v');
+      }
     });
     test('the result does not depend on the date of the run', () {
       // Without a date range, the days 2026 to 2029 are checked.
-      final m = messages('aa-sun-event-start-crosses-midnight', ['SR/SS'],
-              geo: myanmar)
-          .single;
-      expect(m, contains('Monday 2026-02-23'));
+      final m = messages('aa-sun-event-order-changes', ['06:00Z/SR']).single;
+      expect(m, contains('Thursday 2026-02-19'));
       // An open end that starts long ago is checked from 2026.
       expect(
-          messages('aa-sun-event-start-crosses-midnight',
-                  ['SR/SS 2020-01-01/NONE'],
-                  geo: myanmar)
+          messages('aa-sun-event-order-changes', ['06:00Z/SR 2020-01-01/NONE'])
               .single,
           m);
       // An open end in the future is checked from its start.
       expect(
-          messages('aa-sun-event-start-crosses-midnight',
-                  ['SR/SS 2031-01-01/NONE'],
-                  geo: myanmar)
+          messages('aa-sun-event-order-changes', ['06:00Z/SR 2031-01-01/NONE'])
               .single,
           contains('2031-'));
       // An open start is checked for the four years before the end.
       expect(
-          messages('aa-sun-event-start-crosses-midnight',
-                  ['SR/SS NONE/2022-12-31'],
-                  geo: myanmar)
+          messages('aa-sun-event-order-changes', ['06:00Z/SR NONE/2022-12-31'])
               .single,
           contains('2019-'));
     });
@@ -1026,16 +1102,10 @@ void main() {
           ]),
           isEmpty);
     });
-  });
-
-  group('aa-sun-event-start-crosses-midnight', () {
-    test('does not fire when the order changes', () {
-      // aa-sun-event-order-changes reports this command.
-      expect(
-          fires('aa-sun-event-start-crosses-midnight', ['06:00Z/SR']), isEmpty);
-    });
-    test('does not fire at 14° E', () {
-      expect(fires('aa-sun-event-start-crosses-midnight', ['SR/SS', 'SS/SR']),
+    test('days without the sun event are not compared', () {
+      const tromso =
+          'AH 4500 FT AMSL\nAL GND\nV X=69:39:00N 018:57:00E\nDC 5\n';
+      expect(fires('aa-sun-event-order-changes', ['07:00Z/SS'], geo: tromso),
           isEmpty);
     });
   });
@@ -1062,6 +1132,38 @@ void main() {
     });
   });
 
+  group('aa-sun-event-fixed-start-near-day-start', () {
+    // At 15° E the local solar day starts at 23:00Z.
+    const at15 = 'AH 4500 FT AMSL\nAL GND\nV X=46:00:00N 015:00:00E\nDC 5\n';
+    test('fires for a fixed start at the start of the local solar day', () {
+      expect(
+          fires('aa-sun-event-fixed-start-near-day-start', ['23:00Z/SS'],
+              geo: at15),
+          [5]);
+      expect(
+          fires('aa-sun-event-fixed-start-near-day-start', ['22:59Z/SS'],
+              geo: at15),
+          [5]);
+      expect(
+          messages('aa-sun-event-fixed-start-near-day-start', ['23:00Z/SS'],
+                  geo: at15)
+              .single,
+          contains('(15.00° E) the local solar day starts at 23:00Z'));
+      expect(findRule('aa-sun-event-fixed-start-near-day-start')!.severity,
+          Severity.warning);
+    });
+    test('does not fire for other times or for a fixed end', () {
+      for (final v in ['23:05Z/SS', '05:00Z/SS', 'SR/23:00Z', 'SR/SS']) {
+        expect(fires('aa-sun-event-fixed-start-near-day-start', [v], geo: at15),
+            isEmpty,
+            reason: v);
+      }
+      // 00:00Z at 14° E is not near the start of the day (23:04Z).
+      expect(fires('aa-sun-event-fixed-start-near-day-start', ['00:00Z/SS']),
+          isEmpty);
+    });
+  });
+
   group('aa-sun-event-missing-day', () {
     const tromso = 'AH 4500 FT AMSL\nAL GND\nV X=69:39:00N 018:57:00E\nDC 5\n';
     test('fires in polar regions', () {
@@ -1070,8 +1172,72 @@ void main() {
               geo: tromso),
           [5]);
     });
+    test('the message says what the window means (the table)', () {
+      String m(String v) =>
+          messages('aa-sun-event-missing-day', [v], geo: tromso).single;
+      final summer = m('SR/SS 2026-06-10/2026-06-20');
+      expect(summer, contains('On 11 of 11 checked days'));
+      expect(summer, contains('SR (sunrise) and SS (sunset) do not happen'));
+      expect(summer, contains('higher than 0°50′ below the horizon'));
+      expect(summer,
+          contains('the window is active for the whole local solar day'));
+      expect(m('SR/SS 2026-12-10/2026-12-20'),
+          contains('the window is not active'));
+      expect(m('SS/SR 2026-06-10/2026-06-20'),
+          contains('the window is not active'));
+      expect(m('SS/SR 2026-12-10/2026-12-20'),
+          contains('the window is active for the whole local solar day'));
+      expect(m('07:00Z/SS 2026-06-10/2026-06-20'),
+          contains('the window ends at the end of the local solar day'));
+      expect(m('SR/15:00Z 2026-06-10/2026-06-20'),
+          contains('the window starts at the start of the local solar day'));
+      expect(m('07:00Z/SS 2026-12-10/2026-12-20'),
+          contains('the window is not active'));
+      final twilight = m('BCMT/EECT 2026-06-10/2026-06-20');
+      expect(twilight, contains('higher than 6° below the horizon'));
+    });
+    test('lists the days above and the days below the horizon', () {
+      final m =
+          messages('aa-sun-event-missing-day', ['SR/SS'], geo: tromso).single;
+      expect(m, contains('lower than'));
+      expect(m, contains('higher than'));
+    });
     test('does not fire at 46° N', () {
       expect(fires('aa-sun-event-missing-day', ['SR/SS']), isEmpty);
+    });
+    test('is an info', () {
+      expect(findRule('aa-sun-event-missing-day')!.severity, Severity.info);
+    });
+  });
+
+  group('sun windows and local solar days', () {
+    // Fiji: the local solar day starts at about 12:06Z of the UTC day
+    // before.
+    const fiji = 'AH 4500 FT AMSL\nAL GND\nV X=18:00:00S 178:30:00E\nDC 5\n';
+    test('the weekday and the date range refer to the local solar day', () {
+      // 2026-06-21 is a Sunday. The window of this local solar day starts
+      // at 20:00Z on Saturday 2026-06-20 (UTC).
+      expect(
+          lintAll(aa(['SUN 20:00Z/SS 2026-06-21/2026-06-21'], geo: fiji))
+              .where(aaProblem),
+          isEmpty);
+      expect(
+          fires('aa-weekday-never-active',
+              ['SAT 20:00Z/SS 2026-06-21/2026-06-21'],
+              geo: fiji),
+          [5]);
+    });
+    test('AA EXCEPT dates are local solar days', () {
+      expect(
+          fires('aa-weekday-never-active',
+              ['SUN SR/SS 2026-06-21/2026-06-21', 'EXCEPT 2026-06-21'],
+              geo: fiji),
+          [5]);
+      expect(
+          fires('aa-except-no-effect',
+              ['SUN SR/SS 2026-06-21/2026-06-21', 'EXCEPT 2026-06-21'],
+              geo: fiji),
+          isEmpty);
     });
   });
 

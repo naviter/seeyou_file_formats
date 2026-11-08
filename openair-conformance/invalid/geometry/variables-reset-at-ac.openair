@@ -1,0 +1,25 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: the V values are reset at every AC. The second airspace uses DC without its own V X= (line 18). The third airspace uses DY without its own V W= (line 24). The values of the first airspace are not used. V W= in the first airspace has no DY (line 11).
+
+AC D
+AY CTR
+AN Example CTR
+AH 4500 FT AMSL
+AL GND
+V X=46:00:00N 014:00:00E
+V W=4
+DC 2.5
+AC D
+AY CTR
+AN Example CTR 2
+AH 4500 FT AMSL
+AL GND
+DC 5
+AC D
+AY CTR
+AN Example CTR 3
+AH 4500 FT AMSL
+AL GND
+DY 46:00:00N 014:00:00E
+DY 46:00:00N 015:00:00E

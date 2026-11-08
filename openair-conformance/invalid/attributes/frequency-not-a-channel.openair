@@ -1,11 +1,12 @@
 *VERSION: 3.0
 *WRITTEN_BY: openair-conformance
-* Tests: a frequency with two decimals is allowed. openair-lint reports only an info hint.
+* Tests: values that are not 25 kHz or 8.33 kHz channel names (123.520 and 123.456).
 
 AC D
 AY CTR
 AN Example CTR
-AF 126.10
+AF 123.520
+AF 123.456
 AH 4500 FT AMSL
 AL GND
 DP 46:00:00N 014:00:00E

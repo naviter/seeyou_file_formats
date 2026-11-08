@@ -1,6 +1,6 @@
 *VERSION: 3.0
 *WRITTEN_BY: openair-conformance
-* Tests: interval ends without the year, or without the year and the month. ISO 8601 takes the missing parts from the start. A reader must accept them. Writers should use StartDateTime/EndDateTime, so a validator reports warnings.
+* Tests: interval ends without the year, or without the year and the month. ISO 8601 allows them, but the specification does not. Only StartDateTime/EndDateTime is allowed.
 
 AC D
 AY TRA

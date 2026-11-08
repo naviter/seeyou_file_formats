@@ -131,20 +131,24 @@ void main() {
 
   group('sun events', () {
     test('an event near the polar limit is found', () {
-      // The end of evening civil twilight at 64° N on 24 July 2026. At solar
-      // noon the sun does not reach -6°, but about 12 hours later it does.
-      // A brute-force scan of the solar altitude gives 317.6 minutes.
-      final m = sunEventMinutes(SunEvent.civilDusk,
-          const CivilDate(2026, 7, 24), const LatLng(64.09, -81.73));
+      // The end of evening civil twilight at 64° N, 81.73° W at 05:17.6Z on
+      // 24 July 2026. A brute-force scan of the solar altitude gives this
+      // time. It is on the local solar day 23 July (local solar time is
+      // UTC - 5:27), so it is 1440 + 317.6 minutes after 00:00Z on 23 July.
+      // At solar noon the sun does not reach -6°, but about 12 hours later
+      // it does.
+      final m = sunEventOnLocalDay(SunEvent.civilDusk,
+              const CivilDate(2026, 7, 23), const LatLng(64.09, -81.73))
+          .minutes;
       expect(m, isNotNull);
-      expect(m!, closeTo(317.6, 1.5));
+      expect(m!, closeTo(1440 + 317.6, 1.5));
     });
     test('an event that does not happen is still null', () {
       // Midsummer at 70° N: the sun does not set.
-      expect(
-          sunEventMinutes(SunEvent.sunset, const CivilDate(2026, 6, 21),
-              const LatLng(70, 20)),
-          isNull);
+      final r = sunEventOnLocalDay(
+          SunEvent.sunset, const CivilDate(2026, 6, 21), const LatLng(70, 20));
+      expect(r.minutes, isNull);
+      expect(r.allDay, SunAllDay.above);
     });
   });
 }

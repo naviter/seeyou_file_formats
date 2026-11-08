@@ -43,8 +43,9 @@ final class AaNoneCommand extends AaCommand {
   String get kindLabel => 'AA NONE';
 }
 
-/// An interval: `AA StartDateTime/EndDateTime`, also with `NONE` on one side
-/// or with a duration.
+/// An interval: `AA StartDateTime/EndDateTime`, also with `NONE` on one
+/// side. The parser also reads the other ISO 8601 interval forms (with a
+/// duration or with a short end) and reports them as not allowed.
 final class AaIntervalCommand extends AaCommand {
   AaIntervalCommand(super.text, super.issues,
       {this.start, this.end, this.startIsNone = false, this.endIsNone = false});
@@ -350,7 +351,7 @@ class _SlashJoin {
     int end(int e) => e <= 0 ? 0 : (e > n ? _sourceLength : _map[e - 1] + 1);
     final s = start(issue.offset);
     final length = end(issue.offset + issue.length) - s;
-    return AaIssue(issue.kind, s, length < 1 ? 1 : length, issue.message);
+    return issue.at(s, length < 1 ? 1 : length);
   }
 }
 
@@ -386,23 +387,42 @@ class _AaParser {
 
   final List<AaIssue> issues = [];
 
-  void _issue(AaIssueKind kind, int offset, int length, String message) =>
-      issues.add(AaIssue(kind, offset, length < 1 ? 1 : length, message));
+  void _issue(AaIssueKind kind, int offset, int length, String message,
+          {String? v21Message}) =>
+      issues.add(AaIssue(kind, offset, length < 1 ? 1 : length, message,
+          v21Message: v21Message));
 
   void _syntax(int offset, int length, String message) =>
       _issue(AaIssueKind.invalidSyntax, offset, length, message);
 
-  /// Adds an info for a value in another ISO 8601 form.
-  void _formNote(TextPart part, String? note, String recommendedForm,
-      String? recommendedValue) {
+  /// Reports a value in an ISO 8601 form that the specification does not
+  /// allow. [note] says which form (from [IsoParse.formNote]); nothing is
+  /// reported if it is null. [allowedForms] are the allowed forms and
+  /// [correctValue] is the value in an allowed form.
+  void _formNotAllowed(
+      TextPart part, String? note, String allowedForms, String correctValue) {
     if (note == null) return;
-    final suggestion = recommendedValue == null ? '' : ': "$recommendedValue"';
-    _issue(
-        AaIssueKind.valueNotRecommendedForm,
-        part.offset,
-        part.text.length,
-        '"${part.text}" uses $note. Writers should use the recommended form '
-        '$recommendedForm$suggestion.');
+    final what = '"${part.text}" uses $note.';
+    final fix = 'Write it as $allowedForms: "$correctValue".';
+    _issue(AaIssueKind.valueFormNotAllowed, part.offset, part.text.length,
+        '$what This form is not allowed. $fix',
+        v21Message: '$what This form is not allowed in version 3.0. $fix');
+  }
+
+  /// Reports an interval in an ISO 8601 form other than
+  /// StartDateTime/EndDateTime. [what] says what is wrong, [form] names the
+  /// form. If [start] and [end] are known, the message shows the interval
+  /// in the allowed form.
+  void _intervalFormNotAllowed(TextPart whole, String what, String form,
+      {int? start, int? end}) {
+    final fix = start != null && end != null && end > start
+        ? 'Write the interval as StartDateTime/EndDateTime: '
+            '"${formatInstant(start)}/${formatInstant(end)}".'
+        : 'Write the interval as StartDateTime/EndDateTime, for example '
+            '2026-07-04T08:00Z/2026-07-04T16:00Z.';
+    _issue(AaIssueKind.intervalFormNotAllowed, whole.offset, whole.text.length,
+        '$what $form is not allowed. $fix',
+        v21Message: '$what $form is not allowed in version 3.0. $fix');
   }
 
   AaCommand parse() {
@@ -566,7 +586,8 @@ class _AaParser {
     IsoDuration? rightDuration;
     var startIsNone = false;
     var endIsNone = false;
-    var abbreviatedEnd = false;
+    // What is missing in a short end, for example "no date".
+    String? shortEnd;
     var ok = true;
 
     // The start.
@@ -579,8 +600,8 @@ class _AaParser {
         start = r.value;
         if (start == null) ok = false;
         if (start != null) {
-          _formNote(
-              left, r.formNote, recommendedDateTimeForm, formatInstant(start));
+          _formNotAllowed(
+              left, r.formNote, allowedDateTimeForms, formatInstant(start));
         }
       case _Shape.duration:
         final r = parseIsoDuration(left.text, left.offset, issues);
@@ -617,7 +638,9 @@ class _AaParser {
         if (short != null) {
           end = short.value;
           if (end == null) ok = false;
-          abbreviatedEnd = true;
+          final datePart =
+              right.text.substring(0, right.text.indexOf(RegExp('[Tt]')));
+          shortEnd = datePart.length <= 2 ? 'no year and no month' : 'no year';
           break;
         }
         final r =
@@ -625,8 +648,8 @@ class _AaParser {
         end = r.value;
         if (end == null) ok = false;
         if (end != null) {
-          _formNote(
-              right, r.formNote, recommendedDateTimeForm, formatInstant(end));
+          _formNotAllowed(
+              right, r.formNote, allowedDateTimeForms, formatInstant(end));
         }
       case _Shape.duration:
         final r = parseIsoDuration(right.text, right.offset, issues);
@@ -639,10 +662,10 @@ class _AaParser {
           final r = parseIsoTime(right.text, right.offset, issues, isEnd: true);
           if (r.value != null && start != null) {
             end = CivilDate.fromInstant(start).startInstant + r.value!;
-            abbreviatedEnd = true;
           } else {
             ok = false;
           }
+          shortEnd = 'no date';
         } else {
           parseIsoDateTime(right.text, right.offset, issues, isEnd: true);
           ok = false;
@@ -660,9 +683,12 @@ class _AaParser {
         ok = false;
     }
 
-    // Durations.
+    // Durations. Version 3.0 does not allow them (see below). These problems
+    // are invalid in version 2.1 too, so they are reported as invalid
+    // durations (a rule for version 2.1 only).
     if (ls == _Shape.duration && rs == _Shape.duration) {
-      _syntax(
+      _issue(
+          AaIssueKind.invalidDuration,
           whole.offset,
           whole.text.length,
           'An interval cannot have two durations. Write the start and the '
@@ -670,7 +696,8 @@ class _AaParser {
       ok = false;
     } else if ((ls == _Shape.duration && rs == _Shape.none) ||
         (ls == _Shape.none && rs == _Shape.duration)) {
-      _syntax(
+      _issue(
+          AaIssueKind.invalidDuration,
           whole.offset,
           whole.text.length,
           'A duration needs a fixed start or end. NONE cannot be used with '
@@ -719,16 +746,21 @@ class _AaParser {
             whole.text.length,
             'The interval has no length. The start and the end are both '
             '${formatInstant(start)}.');
-      } else if (leftDuration != null ||
-          rightDuration != null ||
-          abbreviatedEnd) {
-        _issue(
-            AaIssueKind.intervalNotRecommendedForm,
-            whole.offset,
-            whole.text.length,
-            'Writers should use the form StartDateTime/EndDateTime: '
-            '"${formatInstant(start)}/${formatInstant(end)}".');
       }
+    }
+
+    // Interval forms other than StartDateTime/EndDateTime.
+    final fixStart = ok ? start : null;
+    final fixEnd = ok ? end : null;
+    if (ls == _Shape.duration || rs == _Shape.duration) {
+      final d = ls == _Shape.duration ? left.text : right.text;
+      _intervalFormNotAllowed(
+          whole, '"$d" is a duration.', 'A duration in an interval',
+          start: fixStart, end: fixEnd);
+    } else if (shortEnd != null) {
+      _intervalFormNotAllowed(whole, 'The end "${right.text}" has $shortEnd.',
+          'An interval end without a full date',
+          start: fixStart, end: fixEnd);
     }
     return AaIntervalCommand(source, issues,
         start: startIsNone ? null : start,
@@ -993,8 +1025,8 @@ class _AaParser {
       case _Shape.unknown:
         final r = parseIsoTime(part.text, part.offset, issues, isEnd: isEnd);
         if (r.value == null) return null;
-        _formNote(
-            part, r.formNote, recommendedTimeForm, formatTimeOfDay(r.value!));
+        _formNotAllowed(
+            part, r.formNote, allowedTimeForms, formatTimeOfDay(r.value!));
         return AaTimeOfDay.fixed(r.value!);
     }
   }
@@ -1084,7 +1116,7 @@ class _AaParser {
             part.offset,
             part.text.length,
             '"${part.text}" has a time. Write only the date, for example '
-            '2026-07-04. A date means the whole UTC day.');
+            '2026-07-04. A date means a whole day.');
         return null;
       case _Shape.empty:
         _issue(
@@ -1101,7 +1133,8 @@ class _AaParser {
       case _Shape.unknown:
         final r = parseIsoDate(part.text, part.offset, issues);
         if (r.value != null) {
-          _formNote(part, r.formNote, recommendedDateForm, r.value!.toString());
+          _formNotAllowed(
+              part, r.formNote, allowedDateForm, r.value!.toString());
         }
         return r.value;
     }

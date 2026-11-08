@@ -1,0 +1,16 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: a figure-eight that crosses itself at a point that the boundary passes twice (line 10 and line 13). The west part is clockwise and the east part is counter-clockwise.
+
+AC D
+AY CTR
+AN Example CTR
+AH 4500 FT AMSL
+AL GND
+DP 46:05:00N 014:10:00E
+DP 46:00:00N 014:00:00E
+DP 46:10:00N 014:00:00E
+DP 46:05:00N 014:10:00E
+DP 46:00:00N 014:20:00E
+DP 46:10:00N 014:20:00E
+DP 46:05:00N 014:10:00E

@@ -65,7 +65,7 @@ void main() {
       expect(r.reference, AltitudeReference.amsl);
       expect(r.suggestion, '1000 FT AMSL');
       expect(r.has(AltitudeIssueKind.noSpaceBeforeUnit), isTrue);
-      expect(r.has(AltitudeIssueKind.unknownReference), isTrue);
+      expect(r.has(AltitudeIssueKind.mslAlias), isTrue);
 
       expect(parseAltitude('9F MSL').suggestion, '9 FT AMSL');
       expect(parseAltitude('1000 ft GND').suggestion, '1000 FT AGL');
@@ -81,7 +81,7 @@ void main() {
 
     test('issue offsets point into the text', () {
       final r = parseAltitude('1000 FT MSL');
-      final i = r.issuesOf(AltitudeIssueKind.unknownReference).single;
+      final i = r.issuesOf(AltitudeIssueKind.mslAlias).single;
       expect('1000 FT MSL'.substring(i.offset, i.offset + i.length), 'MSL');
       expect(i.replacement, 'AMSL');
     });
@@ -381,9 +381,13 @@ void main() {
       expect(ah(id, '1000 FT AGL'), isEmpty);
       expect(ah(id, '9500 FT STD'), isEmpty);
     });
-    test('reports MSL and ALT', () {
-      expect(ah(id, '1000 FT MSL').single.message, contains('Write "AMSL"'));
+    test('reports ALT and ASL', () {
       expect(ah(id, '1000 FT ALT').single.message, contains('Write "AMSL"'));
+      expect(ah(id, '1000 FT ASL').single.message, contains('Write "AMSL"'));
+    });
+    test('MSL is left to altitude-msl-alias', () {
+      expect(ah(id, '1000 FT MSL'), isEmpty);
+      expect(ah(id, '1000 ft msl'), isEmpty);
     });
     test('reports GND after a number', () {
       final d = ah(id, '1000 FT GND');
@@ -392,6 +396,33 @@ void main() {
     });
     test('reports an unknown word after the unit', () {
       expect(ah(id, '1000 FT XYZ').single.message, contains('AMSL, AGL'));
+    });
+  });
+
+  group('altitude-msl-alias', () {
+    const id = 'altitude-msl-alias';
+    test('no diagnostic for AMSL', () {
+      expect(ah(id, '1000 FT AMSL'), isEmpty);
+    });
+    test('reports MSL as a warning', () {
+      final d = ah(id, '1000 FT MSL').single;
+      expect(d.severity, Severity.warning);
+      expect(d.line, 5);
+      expect(d.column, 4 + '1000 FT '.length);
+      expect(d.endColumn, 4 + '1000 FT MSL'.length);
+      expect(d.message, contains('alias of "AMSL"'));
+      expect(d.message, contains('should write "AMSL"'));
+    });
+    test('MSL is read as AMSL by the other rules', () {
+      final text = limits('AH 3000 FT MSL', 'AL 1000 FT AMSL');
+      expect(expectedFormat(lintAll(text)), ['5 altitude-msl-alias']);
+      expect(
+          linesOf('altitude-lower-not-below-upper',
+              limits('AH 1000 FT MSL', 'AL 1000 FT AMSL')),
+          [6]);
+    });
+    test('applies to version 2.1 too', () {
+      expect(ah(id, '1000 FT MSL', version: '2.1'), hasLength(1));
     });
   });
 
@@ -456,6 +487,14 @@ void main() {
       final d = ah(id, 'FL 95');
       expect(d.single.severity, Severity.warning);
       expect(d.single.message, contains('"FL95"'));
+    });
+    test('FL 95 has the same meaning as FL95 for the other rules', () {
+      expect(expectedFormat(lintAll(limits('AH FL 95', 'AL FL65'))),
+          ['5 altitude-flight-level-space']);
+      expect(
+          linesOf('altitude-lower-not-below-upper',
+              limits('AH FL 95', 'AL 9500 FT STD')),
+          [6]);
     });
   });
 
@@ -595,6 +634,19 @@ void main() {
     test('uses old forms with a clear meaning', () {
       expect(lines('AH 1000ft MSL', 'AL 2000 FT AMSL'), [6]);
     });
+    test('MSL is AMSL', () {
+      expect(lines('AH 2000 FT MSL', 'AL 1000 FT AMSL'), isEmpty);
+      expect(lines('AH 1000 FT AMSL', 'AL 1000 FT MSL'), [6]);
+    });
+    test('9500 FT STD is the same as FL95', () {
+      expect(lines('AH FL95', 'AL 9500 FT STD'), [6]);
+      expect(lines('AH 9500 FT STD', 'AL FL94'), isEmpty);
+      expect(lines('AH FL96', 'AL 9500 FT STD'), isEmpty);
+    });
+    test('is an error', () {
+      expect(lintRule(id, limits('AH FL65', 'AL FL95')).single.severity,
+          Severity.error);
+    });
     test('does not compare a value without a unit', () {
       expect(lines('AH 1000 AMSL', 'AL 2000 AMSL'), isEmpty);
     });
@@ -606,7 +658,36 @@ void main() {
       final diags = lintAll(withHeader(validAirspace))
           .where((d) => d.ruleId.startsWith('altitude-'));
       expect(diags, isEmpty);
-      expect(ids.where((id) => id.startsWith('altitude-')).length, 18);
+      expect(ids.where((id) => id.startsWith('altitude-')).length, 19);
+    });
+  });
+
+  group('the altitude examples of the specification', () {
+    // The table "Supported Altitude References" and the section
+    // "Altitude" of the specification.
+    test('every example is valid', () {
+      for (final (ah, al) in [
+        ('AH 1500 FT AMSL', 'AL GND'),
+        ('AH 1500 FT AMSL', 'AL 300 M AGL'),
+        ('AH 9500 FT STD', 'AL 1500 FT AMSL'),
+        ('AH FL95', 'AL GND'),
+        ('AH UNL', 'AL FL95'),
+        ('AH UNL', 'AL 9500 FT STD'),
+        ('AH FL100', 'AL GND'),
+        ('AH 4500 FT AMSL', 'AL 1000 FT AGL'),
+      ]) {
+        expect(expectedFormat(lintAll(limits(ah, al))), isEmpty,
+            reason: '$ah / $al');
+      }
+    });
+    test('the invalid examples are errors', () {
+      expect(linesOf('altitude-unit-missing', limits('AH 1000 AMSL', 'AL GND')),
+          [5]);
+      expect(
+          linesOf('altitude-reference-missing', limits('AH 1000 FT', 'AL GND')),
+          [5]);
+      expect(findRule('altitude-unit-missing')!.severity, Severity.error);
+      expect(findRule('altitude-reference-missing')!.severity, Severity.error);
     });
   });
 

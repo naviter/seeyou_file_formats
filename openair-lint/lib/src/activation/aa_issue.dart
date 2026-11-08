@@ -20,7 +20,9 @@ enum AaIssueKind {
   /// A `Time` value (or the time part of a `DateTime`) is not valid.
   invalidTime('aa-invalid-time'),
 
-  /// A duration such as `PT8H` is not valid.
+  /// A duration such as `PT8H` is not valid. Version 3.0 does not allow
+  /// durations at all ([intervalFormNotAllowed]), so the rule checks only
+  /// version 2.1.
   invalidDuration('aa-invalid-duration'),
 
   /// A time of day has no `Z`.
@@ -57,12 +59,16 @@ enum AaIssueKind {
   /// The weekdays cover all seven days. They can be left out.
   weekdayEveryDay('aa-weekday-every-day', blocking: false),
 
-  /// A value that ISO 8601 allows, but that is not the recommended form.
-  valueNotRecommendedForm('aa-value-not-recommended-form', blocking: false),
+  /// A date or a time in an ISO 8601 form that the specification does not
+  /// allow, for example the basic format `20260704T0800Z` or a week date.
+  /// The value is known, so the other rules can still use the command.
+  valueFormNotAllowed('aa-value-form-not-allowed', blocking: false),
 
-  /// An interval that is not written as `StartDateTime/EndDateTime`.
-  intervalNotRecommendedForm('aa-interval-not-recommended-form',
-      blocking: false),
+  /// An interval that is not written as `StartDateTime/EndDateTime`, for
+  /// example with a duration or with an end without a date. The interval is
+  /// known when the values are valid, so the other rules can still use the
+  /// command.
+  intervalFormNotAllowed('aa-interval-form-not-allowed', blocking: false),
 
   /// The end of an interval is before or equal to its start.
   intervalEndBeforeStart('aa-interval-end-before-start'),
@@ -87,7 +93,8 @@ enum AaIssueKind {
 
 /// One problem in an `AA` command.
 class AaIssue {
-  const AaIssue(this.kind, this.offset, this.length, this.message);
+  const AaIssue(this.kind, this.offset, this.length, this.message,
+      {this.v21Message});
 
   /// The kind of problem.
   final AaIssueKind kind;
@@ -100,6 +107,15 @@ class AaIssue {
 
   /// A message in plain English.
   final String message;
+
+  /// The message for a file of version 2.1, if it is different from
+  /// [message]. For example, version 2.1 allows forms of ISO 8601 that
+  /// version 3.0 does not allow.
+  final String? v21Message;
+
+  /// This issue at another place in the text.
+  AaIssue at(int offset, int length) =>
+      AaIssue(kind, offset, length, message, v21Message: v21Message);
 
   @override
   String toString() => 'AaIssue(${kind.ruleId} at $offset+$length: $message)';

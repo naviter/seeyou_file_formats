@@ -1,6 +1,6 @@
 *VERSION: 3.0
 *WRITTEN_BY: openair-conformance
-* Tests: a duration in the alternative format of ISO 8601 (P0000-00-01T00:00:00 is one day). A reader must accept it. Writers should use StartDateTime/EndDateTime, so a validator reports a warning.
+* Tests: a duration in the alternative format of ISO 8601 (P0000-00-01T00:00:00 is one day). Durations are not allowed in an interval.
 
 AC D
 AY TRA

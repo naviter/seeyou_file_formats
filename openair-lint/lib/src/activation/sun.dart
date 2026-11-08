@@ -8,13 +8,23 @@
 ///
 /// The rules of the specification:
 ///
-/// - Date: the UTC day. The result is the event that happens on that UTC
-///   day.
+/// - Local solar time: UTC plus the longitude divided by 15, in hours (east
+///   is positive). It does not use time zones or daylight saving time.
+/// - Day: a window with a sun event belongs to a local solar day, from 00:00
+///   to 24:00 local solar time. The event is the one that happens on this
+///   local solar day.
 /// - Position: the centre of the airspace.
 /// - Horizon: flat, at sea level.
 /// - `SR` and `SS`: the centre of the sun is 0°50′ below the horizon.
 /// - `BCMT` and `EECT`: the centre of the sun is 6° below the horizon,
 ///   without refraction.
+/// - Polar regions: on a day without the event, the sun is above or below
+///   the horizon of the event for the whole day ([SunAllDay]).
+///
+/// Times are minutes after 00:00Z of the UTC day that has the same date as
+/// the local solar day. For example, at 15° E the local solar day
+/// 2026-07-04 is from -60 (23:00Z on 2026-07-03) to 1380 (23:00Z on
+/// 2026-07-04).
 library;
 
 import 'dart:math' as math;
@@ -55,6 +65,11 @@ enum SunEvent {
   /// True for morning events (`SR`, `BCMT`).
   final bool morning;
 
+  /// The horizon of the event, for messages: `0°50′ below the horizon` or
+  /// `6° below the horizon`.
+  String get horizon =>
+      zenithDeg == 96 ? '6° below the horizon' : '0°50′ below the horizon';
+
   /// The event with this keyword (any case), or null.
   static SunEvent? fromKeyword(String keyword) {
     final k = keyword.toUpperCase();
@@ -65,59 +80,130 @@ enum SunEvent {
   }
 }
 
-/// The time of [event] on the UTC day [date] at [position], in minutes
-/// after 00:00Z of that day.
+/// Where the sun is during a local solar day on which a sun event does not
+/// happen.
+enum SunAllDay {
+  /// The sun is above the horizon of the event during the whole day (for
+  /// `SR` and `SS`: the polar day).
+  above,
+
+  /// The sun is below the horizon of the event during the whole day (for
+  /// `SR` and `SS`: the polar night).
+  below,
+}
+
+/// A sun event on one local solar day: the time of the event, or where the
+/// sun is if the event does not happen on that day.
+class LocalSunEvent {
+  const LocalSunEvent.at(double this.minutes) : allDay = null;
+  const LocalSunEvent.missing(SunAllDay this.allDay) : minutes = null;
+
+  /// The time of the event, in minutes after 00:00Z of the UTC day with the
+  /// same date as the local solar day. Null if the event does not happen.
+  final double? minutes;
+
+  /// Where the sun is if the event does not happen, else null.
+  final SunAllDay? allDay;
+
+  /// True if the event happens on the day.
+  bool get happens => minutes != null;
+}
+
+/// The start of a local solar day at [longitude] (degrees, east positive),
+/// in minutes after 00:00Z of the UTC day with the same date. The day ends
+/// 1440 minutes later.
 ///
-/// Returns null if the event does not happen (polar day or polar night).
-///
-/// The result is the event of the local solar day around [date]. If that
-/// event is on the UTC day before or after, the event of the neighbour local
-/// day is used. So the result is almost always 0 to 1440. In some rare
-/// cases it is a little outside (for example -0.2 or 1440.2): this happens
-/// when the UTC day has no such event because the events of two local days
-/// are just before 00:00Z and just after 24:00Z. If the UTC day has two such
-/// events (near a polar day or a polar night), only one is returned. The
-/// specification does not say yet which event belongs to a UTC day in these
-/// cases.
-///
-/// Callers that show the result with a date must use the day offset of the
-/// result (a value below 0 is on the day before). [formatMinutes] shows only
-/// the time of day.
-double? sunEventMinutes(SunEvent event, CivilDate date, LatLng position) {
-  final t = _eventNearDay(event, date, position);
-  if (t == null) return null;
-  // Far from Greenwich, the event of the local day can be on the UTC day
-  // before or after. Then the event of the neighbour day is on this UTC
-  // day.
-  if (t < 0) {
-    final n = _eventNearDay(event, date.addDays(1), position);
-    return n == null ? null : n + 1440;
+/// Local solar time is UTC plus `longitude / 15` hours. So at 15° E the
+/// local solar day starts at -60 (23:00Z on the day before), and at 120° W
+/// it starts at 480 (08:00Z).
+double localDayStartMinutes(double longitude) => -4 * longitude;
+
+/// The minutes after 00:00Z of the UTC day with the same date as the local
+/// solar day, for the UTC time of day [timeOfDayMinutes] (0 to 1440) inside
+/// the local solar day at [longitude]. Each UTC time of day happens exactly
+/// once in a local solar day. `24:00Z` is the same time of day as `00:00Z`.
+double placeInLocalDay(double timeOfDayMinutes, double longitude) {
+  final start = localDayStartMinutes(longitude);
+  var t = timeOfDayMinutes % 1440;
+  while (t < start) {
+    t += 1440;
   }
-  if (t >= 1440) {
-    final p = _eventNearDay(event, date.addDays(-1), position);
-    return p == null ? null : p - 1440;
+  while (t >= start + 1440) {
+    t -= 1440;
   }
   return t;
 }
 
-/// The event for the local solar day around [date], in minutes after
-/// 00:00Z of [date]. The result can be below 0 or above 1440.
-double? _eventNearDay(SunEvent event, CivilDate date, LatLng position) {
-  // Start with the solar position at the solar noon.
+/// The sun [event] on the local solar day [day] at [position].
+///
+/// The result is the event that happens on this local solar day. The
+/// calculation starts at the solar noon of the day. In rare cases near a
+/// polar day or a polar night, the event of the solar day is a few minutes
+/// before or after the local solar day. Then the event of the next or of the
+/// previous day is used if it is inside the local solar day. If neither is
+/// inside, the event of the solar day is used.
+///
+/// If the event does not happen (polar day or polar night), the result says
+/// whether the sun is above or below the horizon of the event during the
+/// whole day.
+LocalSunEvent sunEventOnLocalDay(
+    SunEvent event, CivilDate day, LatLng position) {
+  final start = localDayStartMinutes(position.lon);
+  final end = start + 1440;
+  final r = _eventOfSolarDay(event, day, position);
+  final t = r.minutes;
+  if (t == null || (t >= start && t < end)) return r;
+  if (t < start) {
+    final next = _eventOfSolarDay(event, day.addDays(1), position).minutes;
+    if (next != null && next + 1440 >= start && next + 1440 < end) {
+      return LocalSunEvent.at(next + 1440);
+    }
+  } else {
+    final previous = _eventOfSolarDay(event, day.addDays(-1), position).minutes;
+    if (previous != null && previous - 1440 >= start && previous - 1440 < end) {
+      return LocalSunEvent.at(previous - 1440);
+    }
+  }
+  return r;
+}
+
+/// The event of the solar day [date] (the day with the solar noon near
+/// 12:00 local solar time), in minutes after 00:00Z of [date].
+LocalSunEvent _eventOfSolarDay(
+    SunEvent event, CivilDate date, LatLng position) {
+  // Start with the solar position at the mean solar noon.
   final noon = 720 - 4 * position.lon;
-  final (t, failedAtStart) = _iterate(event, date, position, noon, true);
-  if (t != null || !failedAtStart) return t;
+  final first = _iterate(event, date, position, noon, true);
+  if (first.minutes != null || !first.failedAtStart) return first.result;
   // Near a polar day or a polar night, the sun can miss the angle of the
   // event at noon, but reach it about 12 hours later (or earlier), when the
   // declination is a little different. Start again at that time.
   final edge = event.morning ? noon - 720 : noon + 720;
-  return _iterate(event, date, position, edge, false).$1;
+  final second = _iterate(event, date, position, edge, false);
+  if (second.minutes != null) return second.result;
+  // The event does not happen. Use the position of the sun at noon.
+  return first.result;
+}
+
+/// The result of [_iterate].
+class _Iteration {
+  _Iteration(this.minutes, this.allDay, {this.failedAtStart = false});
+
+  final double? minutes;
+  final SunAllDay? allDay;
+
+  /// True if the sun does not reach the angle of the event at the start
+  /// estimate.
+  final bool failedAtStart;
+
+  LocalSunEvent get result => minutes != null
+      ? LocalSunEvent.at(minutes!)
+      : LocalSunEvent.missing(allDay!);
 }
 
 /// Calculates the event from the start estimate [start] (minutes after
-/// 00:00Z of [date]). Returns the time, or null and true if the sun does not
-/// reach the angle of the event at [start].
-(double?, bool) _iterate(SunEvent event, CivilDate date, LatLng position,
+/// 00:00Z of [date]).
+_Iteration _iterate(SunEvent event, CivilDate date, LatLng position,
     double start, bool cached) {
   final lat = position.lat;
   final lon = position.lon;
@@ -131,8 +217,14 @@ double? _eventNearDay(SunEvent event, CivilDate date, LatLng position) {
   for (var i = 0; i < 10; i++) {
     final jd = date.dayNumber + 2440587.5 + t / 1440;
     final s = i == 0 && cached ? _solarCached(jd) : _solar(jd);
-    final ha = _hourAngleDeg(lat, s.declination, event.zenithDeg);
-    if (ha == null) return (null, i == 0);
+    final cosH = _cosHourAngle(lat, s.declination, event.zenithDeg);
+    if (cosH < -1) {
+      return _Iteration(null, SunAllDay.above, failedAtStart: i == 0);
+    }
+    if (cosH > 1) {
+      return _Iteration(null, SunAllDay.below, failedAtStart: i == 0);
+    }
+    final ha = math.acos(cosH) / _rad;
     final noon = 720 - 4 * lon - s.equationOfTime;
     final next = event.morning ? noon - 4 * ha : noon + 4 * ha;
     final change = (next - t).abs();
@@ -140,7 +232,7 @@ double? _eventNearDay(SunEvent event, CivilDate date, LatLng position) {
     final nearEdge = ha < 20 || ha > 160;
     if (i >= 1 && change < (nearEdge ? 0.01 : 1)) break;
   }
-  return (t, false);
+  return _Iteration(t, null);
 }
 
 // The last solar position at the solar noon. All events of one day at one
@@ -189,15 +281,17 @@ const double _rad = math.pi / 180;
   return (declination: decl, equationOfTime: eqTime);
 }
 
-/// The hour angle of the sun at the zenith angle [zenithDeg], in degrees,
-/// or null if the sun does not reach this angle on that day.
-double? _hourAngleDeg(double latDeg, double declDeg, double zenithDeg) {
+/// The cosine of the hour angle of the sun at the zenith angle
+/// [zenithDeg]. A value below -1 means that the sun stays above this angle
+/// during the whole day, a value above 1 that it stays below.
+double _cosHourAngle(double latDeg, double declDeg, double zenithDeg) {
   final lat = latDeg * _rad;
   final decl = declDeg * _rad;
+  final numerator = math.cos(zenithDeg * _rad) - math.sin(lat) * math.sin(decl);
   final denominator = math.cos(lat) * math.cos(decl);
-  if (denominator.abs() < 1e-12) return null;
-  final cosH = (math.cos(zenithDeg * _rad) - math.sin(lat) * math.sin(decl)) /
-      denominator;
-  if (cosH < -1 || cosH > 1) return null;
-  return math.acos(cosH) / _rad;
+  if (denominator.abs() < 1e-12) {
+    // At a pole the height of the sun does not change during the day.
+    return numerator < 0 ? double.negativeInfinity : double.infinity;
+  }
+  return numerator / denominator;
 }

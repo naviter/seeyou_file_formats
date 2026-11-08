@@ -1,0 +1,16 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: times with seconds (hh:mm:ssZ) are allowed in intervals and in weekday commands. 24:00:00Z is allowed as an end time.
+
+AC D
+AY TRA
+AN Example TRA
+AA 2026-07-04T08:00:00Z/2026-07-04T10:00:30Z
+AA MON 09:00:00Z/24:00:00Z
+AH 4500 FT AMSL
+AL GND
+DP 46:00:00N 014:00:00E
+DP 46:00:00N 014:10:00E
+DP 45:55:00N 014:10:00E
+DP 45:55:00N 014:00:00E
+DP 46:00:00N 014:00:00E

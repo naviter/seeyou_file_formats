@@ -1,23 +1,27 @@
 /// A strict parser for the ISO 8601 values that `AA` commands use:
 /// `Date`, `Time`, `DateTime` and durations.
 ///
-/// The specification recommends one form for each type
-/// (`YYYY-MM-DD`, `hh:mmZ`, `YYYY-MM-DDThh:mmZ`) and also allows "any other
-/// representation that ISO 8601 defines for the same type". This parser
-/// accepts these other forms:
+/// Version 3.0 of the specification allows only these forms:
+///
+/// - `Date`: `YYYY-MM-DD`,
+/// - `Time`: `hh:mmZ` or `hh:mm:ssZ`,
+/// - `DateTime`: `YYYY-MM-DDThh:mmZ` or `YYYY-MM-DDThh:mm:ssZ`.
+///
+/// This parser also reads these other ISO 8601 forms, so that a rule can
+/// show the value in an allowed form:
 ///
 /// - the basic format without separators (`20260704`, `0800Z`),
-/// - seconds and decimal fractions (`08:00:30Z`, `08:00:30.5Z`),
+/// - decimal fractions (`08:00:30.5Z`),
 /// - a time with only the hour (`08Z`),
 /// - a time with the time designator `T` in front (`T08:00Z`),
 /// - week dates (`2026-W27-6`) and ordinal dates (`2026-185`),
 /// - an interval end without the higher-order parts of the date
 ///   (`05T16:00Z` after `2026-07-04T08:00Z`, see [parseShortEndDateTime]),
-/// - durations in the alternative format (`P0000-00-01T00:00:00`).
+/// - durations, also in the alternative format (`P0000-00-01T00:00:00`).
 ///
-/// For these forms the result has a [IsoParse.formNote], so that a rule can
-/// recommend the recommended form. A time of day must end with `Z`. Time
-/// zone offsets (`+01:00`) and names (`UTC`, `LT`) are errors.
+/// For the other forms of a value the result has a [IsoParse.formNote].
+/// A time of day must end with `Z`. Time zone offsets (`+01:00`) and names
+/// (`UTC`, `LT`) are errors.
 ///
 /// Every function writes its problems to a list of [AaIssue]. Offsets are
 /// `base` plus the position in the text, so they point into the `AA`
@@ -34,8 +38,8 @@ class IsoParse<T> {
   /// The value, or null if the text has an error.
   final T? value;
 
-  /// Why the value is not in the recommended form, for example
-  /// `the basic format`, or null if it is in the recommended form.
+  /// Why the value is not in an allowed form, for example
+  /// `the basic format`, or null if it is in an allowed form.
   final String? formNote;
 
   /// True for the extended format (with `-` or `:`), false for the basic
@@ -98,14 +102,19 @@ final RegExp _sloppyDate = RegExp(r'^(\d{4})-(\d{1,2})-(\d{1,2})$');
 final RegExp _dayFirstDate = RegExp(r'^\d{1,2}[./-]\d{1,2}[./-]\d{4}$');
 final RegExp _monthOnly = RegExp(r'^\d{4}-?\d{2}$');
 
-/// The recommended form of a date, for messages.
-const String recommendedDateForm = 'YYYY-MM-DD';
+/// The allowed form of a date, for messages.
+const String allowedDateForm = 'YYYY-MM-DD';
 
-/// The recommended form of a time, for messages.
-const String recommendedTimeForm = 'hh:mmZ';
+/// The allowed forms of a time, for messages.
+const String allowedTimeForms = 'hh:mmZ or hh:mm:ssZ';
 
-/// The recommended form of a date and time, for messages.
-const String recommendedDateTimeForm = 'YYYY-MM-DDThh:mmZ';
+/// The allowed forms of a date and time, for messages.
+const String allowedDateTimeForms = 'YYYY-MM-DDThh:mmZ or YYYY-MM-DDThh:mm:ssZ';
+
+// The short forms that messages use to ask for a value.
+const String _dateForm = allowedDateForm;
+const String _timeForm = 'hh:mmZ';
+const String _dateTimeForm = 'YYYY-MM-DDThh:mmZ';
 
 /// Parses a `Date` value, for example `2026-07-04`.
 IsoParse<CivilDate> parseIsoDate(String text, int base, List<AaIssue> issues) {
@@ -113,7 +122,7 @@ IsoParse<CivilDate> parseIsoDate(String text, int base, List<AaIssue> issues) {
       AaIssueKind.invalidDate, base, text.isEmpty ? 1 : text.length, message));
 
   if (text.isEmpty) {
-    error('A date is missing. Write the date as $recommendedDateForm, '
+    error('A date is missing. Write the date as $_dateForm, '
         'for example 2026-07-04.');
     return const IsoParse(null);
   }
@@ -180,16 +189,16 @@ IsoParse<CivilDate> parseIsoDate(String text, int base, List<AaIssue> issues) {
 
   if (_sloppyDate.hasMatch(text)) {
     error('"$text" is not a valid date. Write two digits for the month and '
-        'the day: $recommendedDateForm, for example 2026-07-04.');
+        'the day: $_dateForm, for example 2026-07-04.');
   } else if (_dayFirstDate.hasMatch(text)) {
     error('"$text" is not a valid date. Write the year first: '
-        '$recommendedDateForm, for example 2026-07-04.');
+        '$_dateForm, for example 2026-07-04.');
   } else if (_monthOnly.hasMatch(text)) {
     error('"$text" is not a full date. A date needs a year, a month and a '
-        'day: $recommendedDateForm, for example 2026-07-04.');
+        'day: $_dateForm, for example 2026-07-04.');
   } else {
     error('"$text" is not a valid date. Write the date as '
-        '$recommendedDateForm, for example 2026-07-04.');
+        '$_dateForm, for example 2026-07-04.');
   }
   return const IsoParse(null);
 }
@@ -223,7 +232,7 @@ IsoParse<int> parseIsoTime(
   void invalid(String message) => error(AaIssueKind.invalidTime, message);
 
   if (text.isEmpty) {
-    invalid('A time is missing. Write the time as $recommendedTimeForm, '
+    invalid('A time is missing. Write the time as $_timeForm, '
         'for example 09:00Z.');
     return const IsoParse(null);
   }
@@ -234,7 +243,7 @@ IsoParse<int> parseIsoTime(
   if (t.startsWith('T') || t.startsWith('t')) {
     if (!allowDesignator) {
       invalid('"$text" is not a valid time. Write the time as '
-          '$recommendedTimeForm, for example 09:00Z.');
+          '$_timeForm, for example 09:00Z.');
       return const IsoParse(null);
     }
     t = t.substring(1);
@@ -245,7 +254,7 @@ IsoParse<int> parseIsoTime(
   final m = _time.firstMatch(t);
   if (m == null) {
     invalid('"$text" is not a valid time. Write the time as '
-        '$recommendedTimeForm, for example 09:00Z.');
+        '$_timeForm, for example 09:00Z.');
     return const IsoParse(null);
   }
   final g1 = m.group(1)!;
@@ -288,7 +297,7 @@ IsoParse<int> parseIsoTime(
         return const IsoParse(null);
       default:
         invalid('"$text" is not a valid time. Write the time as '
-            '$recommendedTimeForm, for example 09:00Z.');
+            '$_timeForm, for example 09:00Z.');
         return const IsoParse(null);
     }
   }
@@ -338,7 +347,7 @@ IsoParse<int> parseIsoTime(
     }
   } else {
     invalid('"$text" is not a valid time. Remove "$zone" after the time. '
-        'Write the time as $recommendedTimeForm, for example 09:00Z.');
+        'Write the time as $_timeForm, for example 09:00Z.');
     return const IsoParse(null);
   }
 
@@ -407,7 +416,6 @@ IsoParse<int> parseIsoTime(
   }
 
   if (extended == false) notes.add('the basic format');
-  if (second != null) notes.add('seconds');
   if (fraction != null) notes.add('a decimal fraction');
   if (minute == null) notes.add('only the hour');
   return IsoParse(ms,
@@ -448,7 +456,7 @@ IsoParse<int> parseIsoDateTime(String text, int base, List<AaIssue> issues,
           base,
           text.isEmpty ? 1 : text.length,
           '"$text" is not a valid date and time. Write it as '
-          '$recommendedDateTimeForm, for example 2026-07-04T08:00Z.'));
+          '$_dateTimeForm, for example 2026-07-04T08:00Z.'));
     }
     return const IsoParse(null);
   }

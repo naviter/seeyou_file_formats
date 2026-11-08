@@ -1089,14 +1089,38 @@ void main() {
   group('airspace-attribute-duplicate', () {
     const id = 'airspace-attribute-duplicate';
 
-    test('reports a second AF', () {
+    test('reports a second AN, AY, AG and AX as an error', () {
+      // validAirspace has AY on line 4 and AN on line 5. The new lines are
+      // inserted before AH (line 6).
+      for (final (lines, duplicateLine) in [
+        ('AN Other CTR', 6),
+        ('AY TMA', 6),
+        ('AG Test Tower\nAG Test Radar', 7),
+        ('AX 7000\nAX 0424', 7),
+      ]) {
+        final text = withHeader(validAirspace.replaceFirst(
+            'AH 4500 FT AMSL\n', '$lines\nAH 4500 FT AMSL\n'));
+        final d = lintRule(id, text);
+        expect(d, hasLength(1), reason: lines);
+        expect(d.single.line, duplicateLine, reason: lines);
+        expect(d.single.severity, Severity.error, reason: lines);
+        expect(d.single.message, contains('at most one'), reason: lines);
+      }
+    });
+
+    test('AF can be repeated', () {
       final text = withHeader(validAirspace.replaceFirst(
           'AN Test CTR\n', 'AN Test CTR\nAF 118.480\nAF 120.500\n'));
-      final d = lintRule(id, text);
-      expect(d, hasLength(1));
-      expect(d.single.line, 7);
-      expect(d.single.message, contains('line 6'));
-      expect(d.single.severity, Severity.warning);
+      expect(lintRule(id, text), isEmpty);
+      expect(lintAll(text).where((d) => d.severity != Severity.info), isEmpty);
+    });
+
+    test('an AF after the geometry is reported by airspace-command-order', () {
+      final text = withHeader(
+          '${validAirspace.replaceFirst('AN Test CTR\n', 'AN Test CTR\nAF 118.480\n')}AF 120.500\n');
+      expect(lintRule(id, text), isEmpty);
+      expect(linesOf('airspace-command-order', text), [14]);
+      expect(linesOf('airspace-ac-missing', text), isEmpty);
     });
 
     test('an AN written before the next AC gets a hint', () {

@@ -23,7 +23,6 @@ final List<Rule> geometryRules = [
   _coordinateOutOfRange,
   _coordinateDecimalDegrees,
   _coordinateTrailingText,
-  _coordinateSpaceBeforeHemisphere,
   _coordinateSpaceBetweenParts,
   _coordinateDigitCount,
   _coordinateDecimalSeconds,
@@ -44,6 +43,7 @@ final List<Rule> geometryRules = [
   _daNotRecommended,
   _dbWrongFormat,
   _dbRadiusMismatch,
+  _dbRadiusMismatchV21,
   _dcWrongFormat,
   _dcRadiusNotPositive,
   _dcMixedWithOtherGeometry,
@@ -125,15 +125,17 @@ Command? _variableBeforeLine(LintContext ctx, int line, String upperName) {
   return lo == 0 ? null : all[lo - 1];
 }
 
+/// The sentence that the specification gives for the scope of `V` values.
+const String _resetNote = 'The V values are reset at every AC.';
+
 /// A sentence that says that a value from an earlier airspace is not used.
 String _earlierScopeNote(LintContext ctx, Airspace? airspace, String what,
     String upperName, int line) {
   final start = airspace?.startLine ?? 1;
   final earlier = _variableBeforeLine(ctx, start, upperName);
   if (earlier == null) return '';
-  return ' The $what on line ${earlier.line} belongs to an earlier part of '
-      'the file. Some readers use it, but others do not. Each airspace must '
-      'set its own $what.';
+  return ' The $what on line ${earlier.line} is in an earlier part of the '
+      'file, so it is not used here.';
 }
 
 String _ordinal(int i) => const ['first', 'second', 'third'][i];
@@ -471,55 +473,29 @@ final Rule _coordinateTrailingText = _coordinateRule(
   incorrectExample: 'DP 45:40:30N 014:18:20E near the river',
 );
 
-final Rule _coordinateSpaceBeforeHemisphere = _coordinateRule(
-  id: 'coordinate-space-before-hemisphere',
-  severity: Severity.warning,
-  kinds: {CoordinateIssueKind.spaceBeforeHemisphere},
-  groupMessage: (found) => 'Do not write a space before the letters N, S, E '
-      'and W.${_hemisphereFix(found)}',
-  message: (cc, i) => '${i.message}${_hemisphereFix([(cc, i)])}',
-  description: 'Write the letter N, S, E or W directly after the number.',
-  explanation: 'The specification writes the hemisphere letter directly '
-      'after the number, without a space: 45:40:30N. Many files have a space '
-      '(45:40:30 N). Most readers accept it, but it is not the specified '
-      'format and a strict reader can fail.',
-  correctExample: 'DP 45:40:30N 014:18:20E',
-  incorrectExample: 'DP 45:40:30 N 014:18:20 E',
-);
-
-/// The fix for [_coordinateSpaceBeforeHemisphere]: the coordinates of the
-/// command without the space before the letters, for example
-/// ` Write "41:09:37N 019:20:32E".`
-String _hemisphereFix(List<_Found> found) {
-  final coords = <CommandCoordinate>[];
-  for (final (cc, _) in found) {
-    if (!coords.any((c) => identical(c, cc))) coords.add(cc);
-  }
-  final fixed = [
-    for (final cc in coords)
-      cc.text.replaceAllMapped(_spaceBeforeLetter, (m) => '${m[1]}${m[2]}')
-  ];
-  return ' Write "${fixed.join(', ')}".';
-}
-
-final RegExp _spaceBeforeLetter =
-    RegExp(r'([0-9.])[ \t]+([NSEWnsew])(?![A-Za-z])');
-
 final Rule _coordinateSpaceBetweenParts = _coordinateRule(
   id: 'coordinate-space-between-parts',
   severity: Severity.warning,
   kinds: {
     CoordinateIssueKind.missingSpace,
     CoordinateIssueKind.extraSpace,
+    CoordinateIssueKind.extraSpaceBeforeHemisphere,
   },
-  description: 'Write exactly one space between the latitude and the '
-      'longitude.',
+  description: 'Write one space between the latitude and the longitude, and '
+      'at most one space before the letter N, S, E or W.',
   explanation: 'The latitude and the longitude are separated by one space '
       'character. A missing space, two or more spaces, or a tab are not the '
+      'specified format.\n'
+      '\n'
+      'Between the number and its letter N, S, E or W, you can write no '
+      'space or one space. Both forms are valid and have the same meaning: '
+      '45:40:30N and 45:40:30 N. Two or more spaces, or a tab, are not the '
       'specified format.',
-  correctExample: 'DP 45:40:30N 014:18:20E',
+  correctExample: 'DP 45:40:30N 014:18:20E\n'
+      'DP 45:40:30 N 014:18:20 E',
   incorrectExample: 'DP 45:40:30N014:18:20E\n'
-      'DP 45:40:30N   014:18:20E',
+      'DP 45:40:30N   014:18:20E\n'
+      'DP 45:40:30  N 014:18:20  E',
 );
 
 final Rule _coordinateDigitCount = _coordinateRule(
@@ -900,24 +876,31 @@ final Rule _polygonSelfIntersection = Rule(
   id: 'geometry-polygon-self-intersection',
   severity: Severity.warning,
   versions: SpecVersion.all,
-  specAnchor: 'dp-polygon-point',
+  specAnchor: 'd-geometric-definitions',
   description: 'The boundary of an airspace should not cross itself.',
-  explanation: 'An airspace boundary that crosses itself does not define a '
+  explanation: 'The specification says: the boundary of an airspace should '
+      'not cross itself. A boundary that crosses itself does not define a '
       'clear area. Readers can fill it in different ways, so pilots can see '
-      'different airspaces. The specification does not have a rule for '
-      'this, so it is a warning and not an error. The cause is often a '
-      'point in the wrong order, a '
+      'different airspaces. The cause is often a point in the wrong order, a '
       'wrong coordinate, or an arc with the wrong direction (V D=+ or '
       'V D=-).\n'
       '\n'
+      'The boundary can touch itself. For example, a ring-shaped airspace is '
+      'drawn as one boundary: the outer ring, a connecting line to the inner '
+      'ring, the inner ring in the opposite direction, and the same '
+      'connecting line back. This rule does not report it. Only a real '
+      'crossing is reported: the boundary goes from one side of itself to '
+      'the other side. Edges that only touch, a line that is used twice, '
+      'and a point that the boundary passes twice without crossing are not '
+      'reported.\n'
+      '\n'
       'The message gives the position of the first crossing and the two '
-      'edges that cross. Arcs are checked as many short edges. Edges that '
-      'only touch each other are not reported. A crossing that makes only a '
-      'very thin loop (less than '
-      '${minLoopWidthMetres.round()} m wide on average) is not reported '
-      'either. Such loops come from rounded coordinates or from an arc that '
-      'touches a straight edge, and they are not visible on a map. An '
-      'airspace with a DC circle or a DY airway is not checked.',
+      'edges that cross. Arcs are checked as many short edges. A crossing '
+      'that makes only a very thin loop (less than '
+      '${minLoopWidthMetres.round()} m wide on average) is not reported. '
+      'Such loops come from rounded coordinates or from an arc that touches '
+      'a straight edge, and they are not visible on a map. An airspace with '
+      'a DC circle or a DY airway is not checked.',
   correctExample: _dpExample,
   incorrectExample: 'DP 46:00:00N 014:00:00E\n'
       'DP 46:00:00N 014:10:00E\n'
@@ -932,10 +915,18 @@ final Rule _polygonSelfIntersection = Rule(
     if (crossing == null) return;
     final ring = shape.ring;
     final at = ring.edgeCommand(crossing.second);
+    final corners = crossing.corners;
     final buffer = StringBuffer('The boundary of ${a.label} crosses itself '
-        'near ${formatCoordinate(crossing.point)}: '
-        '${_edgeText(ring, crossing.second)} crosses '
-        '${_edgeText(ring, crossing.first)}.');
+        'near ${formatCoordinate(crossing.point)}: ');
+    if (corners == null) {
+      buffer.write('${_edgeText(ring, crossing.second)} crosses '
+          '${_edgeText(ring, crossing.first)}.');
+    } else {
+      buffer.write('the boundary passes this point on line '
+          '${ring.drawnBy[corners.$1].line} and again on line '
+          '${ring.drawnBy[corners.$2].line}, and there it goes from one side '
+          'of itself to the other side.');
+    }
     if (result.count > 1) {
       buffer.write(' The boundary has '
           '${result.limitReached ? 'at least ' : ''}${result.count} '
@@ -968,9 +959,9 @@ final Rule _centerMissing = Rule(
       'that the V command must be declared before the command that uses '
       'it.\n'
       '\n'
-      'Each airspace must set its own centre. Some readers use a centre from '
-      'an earlier airspace, but others do not. So the airspace can look '
-      'different in different programs.',
+      'The V values are reset at every AC. At the start of each airspace, X '
+      'has no value. So each airspace must set its own centre. A centre from '
+      'an earlier airspace is not used.',
   correctExample: 'V X=50:35:36N 007:56:42E\n'
       'DC 2.00',
   incorrectExample: 'DC 2.00\n'
@@ -991,7 +982,7 @@ final Rule _centerMissing = Rule(
     ctx.reportKeyword(
         c,
         '${c.upperKeyword} needs a centre. Write "V X=<point>" before it in '
-        'the same airspace.$later'
+        'the same airspace. $_resetNote$later'
         '${later.isEmpty ? _earlierScopeNote(ctx, a, 'centre', 'X', c.line) : ''}');
   },
 );
@@ -1220,52 +1211,84 @@ final Rule _dbWrongFormat = Rule(
 const double _dbRadiusAbsoluteNm = 0.1;
 const double _dbRadiusRelative = 0.01;
 
+const String _dbRadiusExplanation = 'A DB arc is given by a centre and two '
+    'points. This is more information than an arc needs: the specification '
+    'says that the arc is over-defined. If the two points have different '
+    'distances from the centre, readers draw the arc in different ways. Some '
+    'use the distance of the first point, some use the average, and some '
+    'draw a spiral.';
+
+String _dbRadiusTolerance() => 'This rule reports an arc when the two '
+    'distances differ by more than '
+    '${_dbRadiusAbsoluteNm.toStringAsFixed(1)} NM plus '
+    '${(_dbRadiusRelative * 100).round()} % of the radius. Smaller '
+    'differences come from rounding the coordinates and are not reported. '
+    'Check the centre and the two points.';
+
+/// Reports a DB arc whose two points have different distances from the
+/// centre. Used by [_dbRadiusMismatch] (3.0) and [_dbRadiusMismatchV21].
+void _checkDbRadius(LintContext ctx, Command c, Airspace? a) {
+  final coords = coordinatesOf(ctx, c, a);
+  if (coords.length != 2) return;
+  final p1 = coords[0].position;
+  final p2 = coords[1].position;
+  if (p1 == null || p2 == null) return;
+  final vx = _previousVariable(ctx, c, a, 'X');
+  if (vx == null) return;
+  final cc = coordinatesOf(ctx, vx, a);
+  final centre = cc.isEmpty ? null : cc.first.position;
+  if (centre == null) return;
+  final r1 = distanceNm(centre, p1);
+  final r2 = distanceNm(centre, p2);
+  final diff = (r1 - r2).abs();
+  final r = r1 > r2 ? r1 : r2;
+  if (diff <= _dbRadiusAbsoluteNm + _dbRadiusRelative * r) return;
+  ctx.reportArgument(
+      c,
+      'The two points have different distances from the centre (line '
+      '${vx.line}): ${formatNm(r1)} and ${formatNm(r2)}. The difference '
+      'is ${formatNmAndMetres(diff)}. Readers can draw this arc in '
+      'different ways. Check the centre and the points.');
+}
+
 final Rule _dbRadiusMismatch = Rule(
   id: 'db-radius-mismatch',
-  severity: Severity.warning,
-  versions: SpecVersion.all,
+  severity: Severity.error,
+  versions: SpecVersion.only3,
   specAnchor: 'db-arc-between-start-and-end-point',
-  description: 'Both points of a DB arc should have the same distance from '
+  description: 'Both points of a DB arc must have the same distance from '
       'the centre.',
-  explanation: 'A DB arc is given by a centre and two points. This is more '
-      'information than an arc needs: the specification says that the arc '
-      'is over-defined. If the two points have different distances from the '
-      'centre, readers draw the arc in different ways. Some use the distance '
-      'of the first point, some use the average, and some draw a spiral.\n'
+  explanation: '$_dbRadiusExplanation The specification says: "Both points '
+      'must be at the same distance from the centre."\n'
       '\n'
-      'This rule reports an arc when the two distances differ by more than '
-      '${_dbRadiusAbsoluteNm.toStringAsFixed(1)} NM plus '
-      '${(_dbRadiusRelative * 100).round()} % of the radius. Smaller '
-      'differences come from rounding the coordinates and are not reported. '
-      'Check the centre and the two points.',
+      '${_dbRadiusTolerance()}',
   correctExample: 'V X=46:00:00N 014:00:00E\n'
       'DB 46:10:00N 014:00:00E, 46:00:00N 014:14:24E',
   incorrectExample: 'V X=46:00:00N 014:00:00E\n'
       'DB 46:10:00N 014:00:00E, 46:00:00N 014:20:00E',
   keywords: {'DB'},
-  checkCommand: (ctx, c, a) {
-    final coords = coordinatesOf(ctx, c, a);
-    if (coords.length != 2) return;
-    final p1 = coords[0].position;
-    final p2 = coords[1].position;
-    if (p1 == null || p2 == null) return;
-    final vx = _previousVariable(ctx, c, a, 'X');
-    if (vx == null) return;
-    final cc = coordinatesOf(ctx, vx, a);
-    final centre = cc.isEmpty ? null : cc.first.position;
-    if (centre == null) return;
-    final r1 = distanceNm(centre, p1);
-    final r2 = distanceNm(centre, p2);
-    final diff = (r1 - r2).abs();
-    final r = r1 > r2 ? r1 : r2;
-    if (diff <= _dbRadiusAbsoluteNm + _dbRadiusRelative * r) return;
-    ctx.reportArgument(
-        c,
-        'The two points have different distances from the centre (line '
-        '${vx.line}): ${formatNm(r1)} and ${formatNm(r2)}. The difference '
-        'is ${formatNmAndMetres(diff)}. Readers can draw this arc in '
-        'different ways. Check the centre and the points.');
-  },
+  checkCommand: _checkDbRadius,
+);
+
+final Rule _dbRadiusMismatchV21 = Rule(
+  id: 'db-radius-mismatch-v21',
+  severity: Severity.warning,
+  versions: SpecVersion.only21,
+  specAnchor: 'db-arc-between-start-and-end-point',
+  anchorInVersion21Text: true,
+  description: 'Both points of a DB arc should have the same distance from '
+      'the centre (version 2.1).',
+  explanation: '$_dbRadiusExplanation Version 2.1 only asks to calculate the '
+      'centre carefully. Version 3.0 says that both points must be at the '
+      'same distance from the centre, so this is an error in version 3.0.\n'
+      '\n'
+      '${_dbRadiusTolerance()}',
+  correctExample: 'V X=46:00:00N 014:00:00E\n'
+      'DB 46:10:00N 014:00:00E, 46:00:00N 014:14:24E',
+  incorrectExample: 'V X=46:00:00N 014:00:00E\n'
+      'DB 46:10:00N 014:00:00E, 46:00:00N 014:20:00E',
+  keywords: {'DB'},
+  checkCommand: _checkDbRadius,
 );
 
 final Rule _dcWrongFormat = Rule(
@@ -1315,20 +1338,22 @@ final Rule _dcRadiusNotPositive = Rule(
 
 final Rule _dcMixedWithOtherGeometry = Rule(
   id: 'dc-mixed-with-other-geometry',
-  severity: Severity.warning,
+  severity: Severity.error,
   versions: SpecVersion.all,
   specAnchor: 'dc-circular-area',
-  description: 'A DC circle should be the only geometry of its airspace.',
+  description: 'A DC circle must be the only geometry command of its '
+      'airspace.',
   explanation: 'DC defines a circular area. The circle is the whole '
-      'airspace. The specification does not say how a circle combines with '
-      'DP points, DA or DB arcs, DY segments or a second circle. Readers '
-      'handle it in different ways, and often draw a wrong shape.\n'
-      '\n'
-      'The specification has no "must" rule for this case. So this is a '
-      'warning: it is very probably a mistake.\n'
+      'airspace. The specification says: DC must be the only geometry '
+      'command of its airspace. Do not combine it with DP, DA, DB, DY or a '
+      'second DC. Readers handle such a combination in different ways, and '
+      'often draw a wrong shape.\n'
       '\n'
       'Write one airspace for each circle. If the area is a part of a '
-      'circle, use DP points with DB arcs.',
+      'circle, use DP points with DB arcs.\n'
+      '\n'
+      'V commands are not geometry commands. "V X=" and "V D=" before the DC '
+      'are allowed.',
   correctExample: 'AC UNC\n'
       'AY Q\n'
       'AN PARA Example\n'
@@ -1359,16 +1384,16 @@ final Rule _dcMixedWithOtherGeometry = Rule(
       ctx.reportKeyword(
           circles[1],
           'An airspace can have only one DC circle. ${a.label} already has '
-          'a circle on line ${dc.line}. Write one airspace for each '
-          'circle.');
+          'a circle on line ${dc.line}. DC must be the only geometry command '
+          'of its airspace. Write one airspace for each circle.');
       return;
     }
     final other = commands.firstWhere((c) => !identical(c, dc));
     ctx.reportKeyword(
         dc,
-        'A DC circle is the whole airspace. Do not combine it with '
-        '${other.upperKeyword} (line ${other.line}). Use only the circle, or '
-        'only DP points and arcs.');
+        'DC must be the only geometry command of its airspace. Do not '
+        'combine it with ${other.upperKeyword} (line ${other.line}). Use '
+        'only the circle, or only DP points and arcs.');
   },
 );
 
@@ -1423,10 +1448,15 @@ final Rule _dyWidthMissing = Rule(
   specAnchor: 'v-variable-assignment',
   description: 'DY needs a "V W=" airway width before it in the same '
       'airspace.',
-  explanation: 'A DY airway segment has a width. The width is set with '
-      '"V W=<number>" in nautical miles. The specification says that the V '
+  explanation: 'The format is "DY Point". Each DY is one point of an '
+      'airway. The width of the airway is set by a preceding "V W=<number>" '
+      'command, in nautical miles. The specification says that the V '
       'command must be declared before the command that uses it. Without a '
       'width, readers cannot draw the airway.\n'
+      '\n'
+      'The V values are reset at every AC. At the start of each airspace, W '
+      'has no value. So each airspace must set its own width. A width from '
+      'an earlier airspace is not used.\n'
       '\n'
       'This rule reports the first DY of each airspace that has no width '
       'before it.',
@@ -1457,7 +1487,7 @@ final Rule _dyWidthMissing = Rule(
     ctx.reportKeyword(
         firstWithout,
         'DY needs an airway width. Write "V W=<width in NM>" before it in '
-        'the same airspace.$note');
+        'the same airspace. $_resetNote$note');
   },
 );
 

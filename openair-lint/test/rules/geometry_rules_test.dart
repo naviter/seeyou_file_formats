@@ -62,10 +62,15 @@ void main() {
     expect(d, isEmpty);
   });
 
-  test('all rules apply to 2.1 and 3.0', () {
+  test('all rules apply to 2.1 and 3.0, except the DB radius rules', () {
+    // Version 3.0 says "must" for the DB radius, version 2.1 does not.
+    const versionRules = {
+      'db-radius-mismatch': SpecVersion.only3,
+      'db-radius-mismatch-v21': SpecVersion.only21,
+    };
     for (final g in ruleGroups.where((g) => g.name == 'geometry')) {
       for (final r in g.rules) {
-        expect(r.versions, SpecVersion.all, reason: r.id);
+        expect(r.versions, versionRules[r.id] ?? SpecVersion.all, reason: r.id);
       }
     }
   });
@@ -271,18 +276,39 @@ void main() {
     });
   });
 
-  group('coordinate-space-before-hemisphere', () {
-    const id = 'coordinate-space-before-hemisphere';
-    test('valid', () => expect(at(id, square), isEmpty));
-    test('one diagnostic for both parts', () {
-      final d = lintRule(id, airspace(['DP 46:00:00 N 014:00:00 E']));
-      expect(d.length, 1);
-      expect(d.single.column, 'DP 46:00:00'.length + 1);
-      expect(d.single.endColumn, 'DP 46:00:00 N 014:00:00'.length + 2);
-    });
-    test('one part', () {
+  group('one space before the letter N, S, E or W', () {
+    // The specification allows "45:40:30 N 014:18:20 E". It has the same
+    // meaning as "45:40:30N 014:18:20E".
+    const spaced = [
+      'DP 46:00:00 N 014:00:00 E',
+      'DP 46:00:00 N 014:10:00 E',
+      'DP 45:55:00N 014:10:00 E',
+      'DP 45:55:00 N 014:00:00E',
+      'DP 46:00:00 N 014:00:00 E',
+    ];
+    // All diagnostics, also info, except the note that 3.0 is a draft.
+    List<Diagnostic> all(List<String> lines) => [
+          for (final d in lintAll(airspace(lines)))
+            if (d.ruleId != 'header-version-draft') d
+        ];
+    test('no rule reports it', () {
+      expect(all(spaced), isEmpty);
       expect(
-          messages(id, ['DP 46:00:00 N 014:00:00E']).single, contains('"N"'));
+          all([
+            'V X=46:00:00 N 014:00:00 E',
+            'DB 46:10:00 N 014:00:00 E, 46:00:00 N 014:14:24 E',
+          ]),
+          isEmpty);
+      expect(all(['V X=46:00.000 N 014:00.000 E', 'DC 2']), isEmpty);
+    });
+    test('the rule coordinate-space-before-hemisphere does not exist', () {
+      expect(findRule('coordinate-space-before-hemisphere'), isNull);
+    });
+    test('it is the same point as without the space', () {
+      // The closing point has the space, the first point has none.
+      expect(at('geometry-polygon-not-closed', [...square.take(4), spaced[0]]),
+          isEmpty);
+      expect(at('dp-duplicate-point', [square[0], spaced[0]]), [8]);
     });
   });
 
@@ -297,6 +323,21 @@ void main() {
             'DP 46:00:00N\t014:00:00E',
           ]),
           [7, 8, 9]);
+    });
+    test('one space before the letter is fine', () {
+      expect(at(id, ['DP 46:00:00 N 014:00:00 E']), isEmpty);
+    });
+    test('two blanks or a tab before the letter', () {
+      expect(
+          at(id, [
+            'DP 46:00:00  N 014:00:00E',
+            'DP 46:00:00N 014:00:00\tE',
+          ]),
+          [7, 8]);
+      expect(
+          messages(id, ['DP 46:00:00  N 014:00:00E']).single,
+          'Write no space or one space between the latitude and its letter '
+          '"N".');
     });
   });
 
@@ -600,6 +641,175 @@ void main() {
           ]),
           isEmpty);
     });
+    test('the severity is warning (the specification says "should")', () {
+      expect(findRule(id)!.severity, Severity.warning);
+      expect(findRule(id)!.specAnchor, 'd-geometric-definitions');
+    });
+    test('a figure-eight with two crossing edges', () {
+      // The west loop is clockwise, the east loop is counter-clockwise. The
+      // edges to the points on lines 9 and 13 cross near 46:05N 014:10E.
+      final lines = [
+        'DP 46:10:00N 014:00:00E',
+        'DP 46:10:00N 014:05:00E',
+        'DP 46:00:00N 014:15:00E',
+        'DP 46:00:00N 014:20:00E',
+        'DP 46:10:00N 014:20:00E',
+        'DP 46:10:00N 014:15:00E',
+        'DP 46:00:00N 014:05:00E',
+        'DP 46:00:00N 014:00:00E',
+        'DP 46:10:00N 014:00:00E',
+      ];
+      expect(at(id, lines), [13]);
+      expect(messages(id, lines).single,
+          contains('crosses itself near 46:05:00N 014:10:00E'));
+    });
+  });
+
+  group('a boundary that touches itself', () {
+    const id = 'geometry-polygon-self-intersection';
+    // A ring-shaped airspace with an empty area inside: the outer ring
+    // (clockwise), a connecting line, the inner ring (counter-clockwise)
+    // and the same connecting line back (lines 18 to 23).
+    const ringFile = 'AC UNC\n'
+        'AY CUSTOM\n'
+        'AN Outside competition area\n'
+        'AH FL95\n'
+        'AL GND\n'
+        'DP 46:30:00N 013:40:00E\n'
+        'DP 46:32:00N 014:20:00E\n'
+        'DP 46:10:00N 014:35:00E\n'
+        'DP 45:50:00N 014:20:00E\n'
+        'DP 45:48:00N 013:45:00E\n'
+        'DP 46:30:00N 013:40:00E\n'
+        'DP 46:15:00N 013:55:00E\n'
+        'DP 46:00:00N 013:55:00E\n'
+        'DP 46:00:00N 014:15:00E\n'
+        'DP 46:15:00N 014:15:00E\n'
+        'DP 46:15:00N 013:55:00E\n'
+        'DP 46:30:00N 013:40:00E\n';
+
+    test('a ring-shaped airspace has no error and no warning', () {
+      final text = withHeader(ringFile);
+      final d = lintAll(text).where((d) => d.severity != Severity.info);
+      expect(d, isEmpty);
+    });
+
+    test('the shape rules check the ring', () {
+      // The same ring in the opposite direction: the outer ring is
+      // counter-clockwise. The direction rule reports it, so the ring is
+      // checked as one boundary without a crossing.
+      final lines = ringFile.trim().split('\n');
+      final reversed = [...lines.take(5), ...lines.skip(5).toList().reversed];
+      final text = withHeader('${reversed.join('\n')}\n');
+      expect(linesOf('geometry-polygon-counter-clockwise', text), [8]);
+      expect(linesOf(id, text), isEmpty);
+    });
+
+    test('findCrossings finds no crossing in the ring', () {
+      final file = parseOpenAir(withHeader(ringFile));
+      final ring = PolygonRing(
+          [
+            for (final c in file.airspaces.single.commands)
+              if (c.upperKeyword == 'DP') parseCoordinate(c.argument).value!
+          ]..removeLast(),
+          List.filled(11, file.airspaces.single.commands.last),
+          file.airspaces.single.commands.last,
+          explicitlyClosed: true);
+      final r = findCrossings(ring);
+      expect(r.count, 0);
+      expect(r.limitReached, isFalse);
+    });
+
+    test('a ring-shaped airspace made of DB arcs', () {
+      final text = withHeader('AC UNC\n'
+          'AY CUSTOM\n'
+          'AN Outside competition circle\n'
+          'AH FL95\n'
+          'AL GND\n'
+          'V X=46:10:00N 014:10:00E\n'
+          'DB 46:30:00N 014:10:00E, 45:50:00N 014:10:00E\n'
+          'DB 45:50:00N 014:10:00E, 46:30:00N 014:10:00E\n'
+          'DP 46:20:00N 014:10:00E\n'
+          'V D=-\n'
+          'DB 46:20:00N 014:10:00E, 46:00:00N 014:10:00E\n'
+          'DB 46:00:00N 014:10:00E, 46:20:00N 014:10:00E\n'
+          'DP 46:30:00N 014:10:00E\n');
+      expect(lintAll(text).where((d) => d.severity != Severity.info), isEmpty);
+    });
+
+    test('a connecting line in the middle of an edge', () {
+      // The connecting line starts in the middle of the south edge of the
+      // outer square and goes to the inner square.
+      expect(
+          at(id, [
+            'DP 46:00:00N 014:00:00E',
+            'DP 46:00:00N 014:20:00E',
+            'DP 45:40:00N 014:20:00E',
+            'DP 45:40:00N 014:10:00E',
+            'DP 45:45:00N 014:10:00E',
+            'DP 45:45:00N 014:15:00E',
+            'DP 45:55:00N 014:15:00E',
+            'DP 45:55:00N 014:05:00E',
+            'DP 45:45:00N 014:05:00E',
+            'DP 45:45:00N 014:10:00E',
+            'DP 45:40:00N 014:10:00E',
+            'DP 45:40:00N 014:00:00E',
+            'DP 46:00:00N 014:00:00E',
+          ]),
+          isEmpty);
+    });
+
+    test('two loops that touch at one point', () {
+      // Both loops are clockwise. They touch at 46:05N 014:10E.
+      final lines = [
+        'DP 46:05:00N 014:10:00E',
+        'DP 46:00:00N 014:00:00E',
+        'DP 46:10:00N 014:00:00E',
+        'DP 46:05:00N 014:10:00E',
+        'DP 46:10:00N 014:20:00E',
+        'DP 46:00:00N 014:20:00E',
+        'DP 46:05:00N 014:10:00E',
+      ];
+      final d =
+          lintAll(airspace(lines)).where((d) => d.severity != Severity.info);
+      expect(d, isEmpty);
+    });
+
+    test('a figure-eight that crosses at a point it passes twice', () {
+      // The west loop is clockwise, the east loop is counter-clockwise.
+      final lines = [
+        'DP 46:05:00N 014:10:00E',
+        'DP 46:00:00N 014:00:00E',
+        'DP 46:10:00N 014:00:00E',
+        'DP 46:05:00N 014:10:00E',
+        'DP 46:00:00N 014:20:00E',
+        'DP 46:10:00N 014:20:00E',
+        'DP 46:05:00N 014:10:00E',
+      ];
+      expect(at(id, lines), [10]);
+      expect(
+          messages(id, lines).single,
+          'The boundary of "Test" (line 3) crosses itself near 46:05:00N '
+          '014:10:00E: the boundary passes this point on line 7 and again on '
+          'line 10, and there it goes from one side of itself to the other '
+          'side.');
+      // No other warning hides it: the direction is not checked.
+      expect(at('geometry-polygon-counter-clockwise', lines), isEmpty);
+    });
+
+    test('a spike: a line drawn out and back', () {
+      expect(
+          at(id, [
+            'DP 46:00:00N 014:00:00E',
+            'DP 46:00:00N 014:10:00E',
+            'DP 46:05:00N 014:15:00E',
+            'DP 46:00:00N 014:10:00E',
+            'DP 45:55:00N 014:10:00E',
+            'DP 45:55:00N 014:00:00E',
+            'DP 46:00:00N 014:00:00E',
+          ]),
+          isEmpty);
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -638,7 +848,25 @@ void main() {
           'DC 3\n');
       final d = lintRule(id, text);
       expect(d.map((d) => d.line), [13]);
-      expect(d.single.message, contains('line 7 belongs to an earlier part'));
+      expect(
+          d.single.message,
+          'DC needs a centre. Write "V X=<point>" before it in the same '
+          'airspace. The V values are reset at every AC. The centre on line 7 '
+          'is in an earlier part of the file, so it is not used here.');
+      expect(findRule(id)!.specAnchor, 'v-variable-assignment');
+    });
+    test('a centre before the first AC is not used', () {
+      final text = withHeader('V X=46:00:00N 014:00:00E\n'
+          'AC D\n'
+          'AN A\n'
+          'AH FL95\n'
+          'AL GND\n'
+          'DC 5\n');
+      expect(linesOf(id, text), [8]);
+    });
+    test('the message always says that the values are reset', () {
+      expect(messages(id, ['DC 5']).single,
+          contains('values are reset at every AC'));
     });
     test('a wrong centre counts as a centre', () {
       expect(at(id, ['V X=99:00:00N 014:00:00E', 'DC 5']), isEmpty);
@@ -760,9 +988,35 @@ void main() {
       expect(at(id, lines), [8]);
       expect(messages(id, lines).single, contains('(line 7)'));
     });
+    test('the DB example of the specification', () {
+      // Both points are 10 NM from the centre.
+      final lines = [
+        'V X=46:00:00N 014:00:00E',
+        'DB 46:10:00N 014:00:00E, 46:00:00N 014:14:24E',
+      ];
+      expect(lintAll(airspace(lines)).where((d) => d.severity != Severity.info),
+          isEmpty);
+    });
     test('no centre: not checked here', () {
       expect(
           at(id, ['DB 46:10:00N 014:00:00E, 46:00:00N 014:20:00E']), isEmpty);
+    });
+    test('an error in 3.0, a warning (other rule) in 2.1', () {
+      const lines = [
+        'V X=46:00:00N 014:00:00E',
+        'DB 46:10:00N 014:00:00E, 46:00:00N 014:20:00E',
+      ];
+      final v30 = lintAll(airspace(lines))
+          .where((d) => d.ruleId.startsWith('db-radius'))
+          .toList();
+      expect(v30.map((d) => d.ruleId), ['db-radius-mismatch']);
+      expect(v30.single.severity, Severity.error);
+      final v21 = lintAll(airspace(lines, version: '2.1'))
+          .where((d) => d.ruleId.startsWith('db-radius'))
+          .toList();
+      expect(v21.map((d) => d.ruleId), ['db-radius-mismatch-v21']);
+      expect(v21.single.severity, Severity.warning);
+      expect(v21.single.message, v30.single.message);
     });
   });
 
@@ -804,6 +1058,33 @@ void main() {
           ]),
           [10]);
     });
+    test('every other geometry command is an error', () {
+      for (final other in [
+        'DP 46:00:00N 014:00:00E',
+        'DA 5, 0, 90',
+        'DB 46:05:00N 014:00:00E, 46:00:00N 014:07:12E',
+        'DY 46:00:00N 014:00:00E',
+      ]) {
+        final d = lintRule(
+            id, airspace(['V X=46:00:00N 014:00:00E', 'V W=2', 'DC 5', other]));
+        expect(d.map((d) => d.line), [9], reason: other);
+        expect(d.single.severity, Severity.error);
+        expect(
+            d.single.message,
+            startsWith(
+                'DC must be the only geometry command of its airspace.'));
+      }
+    });
+    test('the DC example of the specification', () {
+      final text = withHeader('AC UNC\n'
+          'AY Q\n'
+          'AN PARA Ailertchen EDGA\n'
+          'AH FL100\n'
+          'AL GND\n'
+          'V X=50:35:36N 007:56:42E\n'
+          'DC 2.00\n');
+      expect(lintAll(text).where((d) => d.severity != Severity.info), isEmpty);
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -836,6 +1117,72 @@ void main() {
     test('width after the DY', () {
       expect(messages(id, ['DY 46:00:00N 014:00:00E', 'V W=4']).single,
           contains('comes after it'));
+    });
+    test('the width of an earlier airspace is not used', () {
+      final text = withHeader('AC D\n'
+          'AN A\n'
+          'AH FL95\n'
+          'AL GND\n'
+          'V W=4\n'
+          'DY 46:00:00N 014:00:00E\n'
+          'DY 46:00:00N 015:00:00E\n'
+          'AC D\n'
+          'AN B\n'
+          'AH FL95\n'
+          'AL GND\n'
+          'DY 46:10:00N 014:00:00E\n'
+          'DY 46:10:00N 015:00:00E\n');
+      final d = lintRule(id, text);
+      expect(d.map((d) => d.line), [14]);
+      expect(
+          d.single.message,
+          'DY needs an airway width. Write "V W=<width in NM>" before it in '
+          'the same airspace. The V values are reset at every AC. The width '
+          'on line 7 is in an earlier part of the file, so it is not used '
+          'here.');
+      expect(findRule(id)!.severity, Severity.error);
+    });
+    test('the DY example of the specification is fine', () {
+      final lines = [
+        'V W=5',
+        'DY 46:00:00N 014:00:00E',
+        'DY 46:30:00N 014:30:00E',
+      ];
+      final d = lintAll(airspace(lines))
+          .where((d) => geometryIds.contains(d.ruleId))
+          .map((d) => d.ruleId);
+      // DY itself is not recommended. Nothing else is reported.
+      expect(d, ['dy-deprecated']);
+    });
+  });
+
+  group('V values are reset at every AC', () {
+    test('the direction of an earlier airspace is not used', () {
+      // The first airspace sets V D=-. The second airspace has the same arc
+      // without V D=, so its arc is clockwise and does not cross the edges.
+      const arc = [
+        'DP 46:05:00N 014:00:00E',
+        'DP 46:05:00N 014:20:00E',
+        'DP 46:00:00N 014:20:00E',
+        'V X=46:00:00N 014:10:00E',
+        'DB 46:00:00N 014:20:00E, 46:00:00N 014:00:00E',
+        'DP 46:00:00N 014:00:00E',
+        'DP 46:05:00N 014:00:00E',
+      ];
+      final text = withHeader('AC D\n'
+          'AN A\n'
+          'AH FL95\n'
+          'AL GND\n'
+          'V D=-\n'
+          'V X=46:30:00N 014:00:00E\n'
+          'DC 5\n'
+          'AC D\n'
+          'AN B\n'
+          'AH FL95\n'
+          'AL GND\n'
+          '${arc.join('\n')}\n');
+      expect(linesOf('geometry-polygon-self-intersection', text), isEmpty);
+      expect(linesOf('geometry-polygon-counter-clockwise', text), isEmpty);
     });
   });
 
@@ -1070,18 +1417,6 @@ void main() {
   });
 
   group('review fixes', () {
-    test('coordinate-space-before-hemisphere gives the corrected text', () {
-      expect(
-          messages('coordinate-space-before-hemisphere',
-              ['DP 41:09:37 N 019:20:32 E']).single,
-          contains('Write "41:09:37N 019:20:32E".'));
-      expect(
-          messages('coordinate-space-before-hemisphere', [
-            'V X=46:00:00N 014:00:00E',
-            'DB 46:10:00 N 014:00:00E, 46:00:00N 014:14:24 E',
-          ]).single,
-          contains('Write "46:10:00N 014:00:00E, 46:00:00N 014:14:24E".'));
-    });
     test('a ring around a pole on one latitude has an area', () {
       const ring = [
         'DP 80:00:00N 000:00:00E',
@@ -1110,10 +1445,9 @@ void main() {
       expect(at('da-not-recommended', mixed), isEmpty);
       expect(findRule('da-not-recommended')!.severity, Severity.info);
     });
-    test('dc-mixed-with-other-geometry is a warning (no "must" in the spec)',
-        () {
+    test('dc-mixed-with-other-geometry is an error (the spec says "must")', () {
       expect(
-          findRule('dc-mixed-with-other-geometry')!.severity, Severity.warning);
+          findRule('dc-mixed-with-other-geometry')!.severity, Severity.error);
     });
     test('warning and info descriptions do not say "must"', () {
       for (final r in allRules) {
