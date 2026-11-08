@@ -1,7 +1,7 @@
 ---
 title: Extended OpenAir file format specification (Draft)
 description: SeeYou OpenAir specification with Naviter extensions, Copyright © 2024-2026, Naviter d.o.o. Licensed under the MIT License
-date: 2026-11-07
+date: 2026-11-08
 version: 3.0.0 Draft
 header: ${title} - Naviter d.o.o.
 footer: Page ${pageNo} of ${pageCount}
@@ -16,19 +16,19 @@ footer: Page ${pageNo} of ${pageCount}
 
 The OpenAir format, widely utilized in gliding, paragliding, and hang gliding applications, serves to disseminate airspace information and visualize it on maps. Originally developed by WinPilot in 1998, this format has since been embraced and extended by Naviter. This document outlines the OpenAir format alongside the extensions introduced by Naviter.
 
-**General requirements:**
+## General requirements
 
 - **Encoding:** UTF-8
 - **File Extension:** Use `.openair`, with  `.txt` as legacy alternative
 - **Structure:** Text-based, with one command or data point per line
-- **Comment Syntax:** Begins with `*` and extends to the end of the line.
+- **Comment Syntax:** A comment begins with `*` and extends to the end of the line. A comment can be on its own line or after a command. `*` always starts a comment. For this reason, the text after `AN` and `AG` cannot contain `*`, and a comment is not allowed on the same line as `AN` or `AG`.
 - **Case:** Write everything in upper case: commands, keywords, units and all other values. This includes weekdays, sun events, the letters `T` and `Z` in dates and times, and the letters `N`, `S`, `E` and `W` in coordinates. For example, write `AC D`, not `ac d`, and `1000 FT`, not `1000 ft`. Only these parts can use any case:
   - the name after `AN`,
   - the station name after `AG`,
   - comments (`*`).
 - **Self-contained:** A file contains all the information needed to interpret it. See [Self-contained data](#self-contained-data).
 
-**Self-contained data**
+### Self-contained data
 
 Every client must interpret an OpenAir file in the same way, using only the content of the file. The meaning of the data must not depend on information outside the file, such as time zones, daylight saving time rules, public holiday calendars, NOTAMs, the location of the device or the settings of the client.
 
@@ -36,10 +36,10 @@ For this reason:
 
 * All times and dates are in UTC. Local time and time zone names are not supported.
 * Every activation time is written as an explicit date, weekday or time. A rule that needs outside knowledge, for example "except public holidays", is not allowed. The software or person that writes the OpenAir file must do the calculation and write the result as explicit `AA` commands. For example, write each public holiday as an `AA EXCEPT` command.
-* The only exception are the [sun events](#sun-events) `SR`, `SS`, `BCMT` and `EECT`. They do not need outside knowledge. Every client must calculate them from the date and the position of the airspace, which are both in the file.
+* The only exception are the [sun events](#sun-events) `SR`, `SS`, `BCMT` and `EECT`. They do not need outside knowledge. Every client must calculate them from the date and the position of the airspace, which are both in the file. A window with a sun event uses local solar time. Local solar time depends only on the longitude of the airspace, not on time zones.
 * Comments (`*`) are for humans only. A client must not need a comment to interpret the data.
 
-**Command Reference**
+## Command reference
 
 | Command | Format | Description | Required | Link |
 |---------|--------|-------------|----------|------|
@@ -48,17 +48,22 @@ For this reason:
 | `AC` | `AC Class` | Airspace class (A-G, UNC) | Yes | [AC](#ac-airspace-class) |
 | `AN` | `AN Name` | Airspace name | No | [AN](#an-airspace-name) |
 | `AY` | `AY Type` | Airspace type (CTR, TMA, RMZ, etc.) | No | [AY](#ay-airspace-type) |
-| `AF` | `AF Frequency` | Communication frequency | No | [AF](#af-airspace-frequency) |
+| `AF` | `AF Frequency` | Communication frequency. Can be used more than once. | No | [AF](#af-airspace-frequency) |
 | `AG` | `AG Station Name` | Controlling station name | No | [AG](#ag-station-name) |
 | `AA` | `AA StartDateTime/EndDateTime`, `AA [Weekdays] StartTime/EndTime [StartDate/EndDate]`, `AA EXCEPT Date`, `AA EXCEPT StartDate/EndDate` or `AA NONE` | Activation times (UTC) | No | [AA](#aa-airspace-activation-times) |
-| `AX` | `AX Code` | Transponder code (4 digits) | No | [AX](#ax-transponder-code) |
-| `AH` | `AH Altitude AltRef` or `AH UNL` | Upper altitude limit | Yes | [AH](#ah-upper-alitutde-limit) |
-| `AL` | `AL Altitude AltRef` or `AL GND` | Lower altitude limit | Yes | [AL](#al-lower-alitutde-limit) |
+| `AX` | `AX Code` | Transponder code (4 octal digits) | No | [AX](#ax-transponder-code) |
+| `AH` | `AH Altitude Unit AltRef`, `AH FLnnn` or `AH UNL` | Upper altitude limit | Yes | [AH](#ah-upper-altitude-limit) |
+| `AL` | `AL Altitude Unit AltRef`, `AL FLnnn` or `AL GND` | Lower altitude limit | Yes | [AL](#al-lower-altitude-limit) |
 | `DP` | `DP Point` | Polygon point (recommended) | No* | [DP](#dp-polygon-point) |
 | `DA` | `DA Radius, Start, End` | Arc between bearings | No* | [DA](#da-arc-between-start-and-end-bearing) |
 | `DB` | `DB Point1, Point2` | Arc between points | No* | [DB](#db-arc-between-start-and-end-point) |
 | `DC` | `DC Radius` | Circular area | No* | [DC](#dc-circular-area) |
-| `V` | `V Command=Value` | Variable assignment (X, D, W) | No* | [V](#v-variable-assignment) |
+| `DY` | `DY Point` | Airway segment (not recommended) | No* | [DY](#dy-airway-segment) |
+| `V` | `V Command=Value` | Variable assignment (X, D, W) | No | [V](#v-variable-assignment) |
+
+\* Each airspace must have at least one geometry command: `DP`, `DA`, `DB`, `DC` or `DY`. `V` alone is not a geometry.
+
+Each airspace can have at most one `AC`, `AN`, `AY`, `AG`, `AX`, `AH` and `AL` command. `AF` and the `AA`, `D` and `V` commands can be used more than once.
 
 ## Units
 
@@ -73,29 +78,43 @@ Geographic coordinates can be represented in two formats:
 
 Use a consistent format for each command or data point, either DMS  `45:40:30N 014:18:20E` or DDM `45:40.500N 014:18.333E`.
 
+You can write one space between the number and the letter `N`, `S`, `E` or `W`. Both forms are valid and have the same meaning: `45:40:30N 014:18:20E` and `45:40:30 N 014:18:20 E`. The original WinPilot format uses the space.
+
 ### Altitude
 
-Altitude is specified in feet `FT` (recommended) or in meters `M`. Write a space between the number and the unit. Example: `300 FT` or `1500 M`.
+An altitude has three parts: a number, a unit and a reference. Example: `1500 FT AMSL` or `300 M AGL`.
+
+* **Unit:** required. Use feet `FT` (recommended) or metres `M`.
+* **Reference:** required. Use `AMSL`, `AGL` or `STD`. See [Supported Altitude References](#supported-altitude-references).
+* Write a space between the number and the unit, and between the unit and the reference.
+
+There are three exceptions. They have no unit and no reference:
+
+* A flight level: `FL` and a whole number, for example `FL95`.
+* `GND` (ground) in `AL`.
+* `UNL` (unlimited) in `AH`.
+
+An altitude without a unit or without a reference is not valid. For example, `1000 AMSL` and `1000 FT` are not valid.
 
 ### Distance
 
-Distance is measured in nautical miles `NM` and is implied, meaning it is specified <u>without a unit.</u>  This applies to definitions such as radii, widths and segments, see: [DA](#da:-define-an-arc-between-start-and-end-bearing), [DB](#db:-define-an-arc-between-start-and-end-point), [DY](#dy:-define-an-airway-segment), or [V](#v:-variable-assignment) for more.
+Distance is measured in nautical miles `NM` and is implied, meaning it is specified <u>without a unit.</u>  This applies to definitions such as radii, widths and segments, see: [DA](#da-arc-between-start-and-end-bearing), [DB](#db-arc-between-start-and-end-point), [DY](#dy-airway-segment), or [V](#v-variable-assignment) for more.
 
 ### Time
 
-Time is specified using the [ISO8601](https://en.wikipedia.org/wiki/ISO_8601) format, use only UTC (Zulu) time. Write `Z` after every time of day. Local time and time zone offsets, such as `+01:00`, are not supported.
+Time uses a subset of the [ISO8601](https://en.wikipedia.org/wiki/ISO_8601) format. Use only UTC (Zulu) time. Write `Z` after every time of day. Local time and time zone offsets, such as `+01:00`, are not supported.
 
-The [AA](#aa-airspace-activation-times) command uses three types of time values:
+The [AA](#aa-airspace-activation-times) command uses three types of time values. Only the forms in this table are allowed:
 
-| Type | Meaning | Recommended form | Example |
+| Type | Meaning | Allowed forms | Example |
 | --- | --- | --- | --- |
-| `DateTime` | A date and a time of day | `YYYY-MM-DDThh:mmZ` | `2026-07-04T08:00Z` |
+| `DateTime` | A date and a time of day | `YYYY-MM-DDThh:mmZ` or `YYYY-MM-DDThh:mm:ssZ` | `2026-07-04T08:00Z` |
 | `Date` | A UTC calendar day | `YYYY-MM-DD` | `2026-12-25` |
-| `Time` | A time of day, without a date | `hh:mmZ` | `09:00Z` |
+| `Time` | A time of day, without a date | `hh:mmZ` or `hh:mm:ssZ` | `09:00Z` |
 
-Any other representation that ISO 8601 defines for the same type is also allowed. Examples are a time with seconds (`2026-07-04T08:00:00Z`) or the basic format without separators (`20260704T0800Z`). Writers should use the recommended form.
+Other ISO 8601 forms are not allowed. Examples of forms that are not allowed: the basic format without separators (`20260704T0800Z`), week dates (`2026-W27-6`), ordinal dates (`2026-185`), fractions of a second (`08:00:00.5Z`), a time with only the hour (`08Z`) and durations (`PT8H`).
 
-`24:00Z` is allowed as an end time. It means the end of the day.
+`24:00Z` (or `24:00:00Z`) is allowed as an end time. It means the end of the day. It is not allowed as a start time.
 
 #### Sun events
 
@@ -108,16 +127,31 @@ Any other representation that ISO 8601 defines for the same type is also allowed
 | `BCMT` | Beginning of Civil Morning Twilight | The centre of the sun is 6° below the horizon in the morning. |
 | `EECT` | End of Evening Civil Twilight | The centre of the sun is 6° below the horizon in the evening. |
 
-A sun event is not a fixed time. The client calculates it in UTC for each day, with these rules:
+A sun event is not a fixed time. Sunrise and sunset only make sense in the local time of the airspace. For this reason, a window that uses a sun event uses local solar time, not UTC days. The client calculates the sun event for each day, with these rules:
 
-* **Date:** the UTC day on which the window starts. See [Weekday activation](#weekday-activation).
 * **Position:** the centre of the airspace. This is the midpoint between the lowest and the highest latitude, and the midpoint between the westernmost and the easternmost longitude of the airspace boundary.
+* **Local solar time:** UTC plus the longitude of the centre divided by 15, in hours. East longitude is positive. For example, at 15° E local solar time is UTC + 1 hour, and at 120° W it is UTC − 8 hours. Local solar time does not use time zones or daylight saving time.
+* **Day:** a window with a sun event belongs to a local solar day, from 00:00 to 24:00 local solar time. The weekdays and the date range of the command refer to this local solar day. The dates of `AA EXCEPT` also refer to this local solar day for these windows.
+* **Event:** the client uses the sun event that happens on this local solar day.
+* **Fixed times:** a fixed time in the same window, for example `07:00Z` in `07:00Z/SS`, is still a UTC time. The client uses this UTC time inside the local solar day.
 * **Horizon:** a flat horizon at sea level. Terrain and the elevation of the airspace are not used.
 * **Refraction:** for `SR` and `SS`, the centre of the sun is 0°50′ below the horizon. This value includes the radius of the sun (0°16′) and the standard atmospheric refraction (0°34′). For `BCMT` and `EECT`, the 6° are measured to the geometric centre of the sun, without refraction.
 
+If EndTime is earlier than or equal to StartTime, the window ends on the next local solar day. For example, `SS/SR` starts at sunset and ends at sunrise of the next day.
+
+Example: for an airspace at 15° E, `AA SAT,SUN SR/SS` means: on Saturday and Sunday, local solar time, from sunrise to sunset.
+
 Different calculation methods can give results that differ by about one minute. This is acceptable.
 
-In polar regions a sun event does not happen on some days. For example, the sun does not set during the summer. If a weekday window uses a sun event that does not happen on that day, the airspace is active for the whole UTC day. This is the safe choice: it can show an inactive airspace as active, but never an active airspace as inactive.
+**Polar regions.** In polar regions a sun event does not happen on some days. For example, the sun does not set in the summer, and it does not rise in the winter. On these days the client uses the position of the sun during the whole local solar day. "Above the horizon" means above the horizon of the event: 0°50′ below the horizon for `SR` and `SS`, 6° below the horizon for `BCMT` and `EECT`.
+
+| Window | Sun above the horizon all day | Sun below the horizon all day |
+| --- | --- | --- |
+| From a morning event to an evening event, for example `SR/SS` or `BCMT/EECT` | Active for the whole local solar day | Not active |
+| From an evening event to a morning event, for example `SS/SR` | Not active | Active for the whole local solar day |
+| A sun event and a fixed time, for example `07:00Z/SS` | A missing morning event is the start of the local solar day. A missing evening event is the end of the local solar day. | Not active |
+
+For example, above the Arctic Circle `AA SR/SS` is active for the whole day in midsummer. In midwinter it is not active.
 
 Sun events cannot be used in interval commands (`AA StartDateTime/EndDateTime`) or in dates. A client that does not support version 3.0 cannot parse an `AA` command with a sun event. See [AA commands a reader does not understand](#aa-commands-a-reader-does-not-understand).
 
@@ -137,7 +171,7 @@ Header **must** contain a comment with the following information:
 
 ## Airspace Definition
 
-An airspace definition consists of a series of commands grouped into a block starting with `AC` and the rest of the 'A' commands. This is followed by the geometric definiton of the airpsace, which utilizes commands starting with `D` and/or `V`
+An airspace definition consists of a series of commands grouped into a block starting with `AC` and the rest of the 'A' commands. This is followed by the geometric definition of the airspace, which utilizes commands starting with `D` and/or `V`
 
 > [!IMPORTANT]
 > Each individual airspace definition must begin with the `AC` command.
@@ -186,6 +220,8 @@ AN Name
 
 Here `Name` is the designated name for the airspace. For example `CTR Muenchen`. Any UTF-8 character is allowed, but to avoid issues with some older systems that might not display special characters correctly, it's better to use simpler versions (for example, change `ü` to `ue`).
 
+The name cannot contain `*`, because `*` starts a comment. Do not write a comment on the same line as `AN`. An airspace can have at most one `AN` command.
+
 Example:
 ```
 AN ED-R6 Brokdorf H24
@@ -193,7 +229,7 @@ AN ED-R6 Brokdorf H24
 
 #### AY: Airspace Type
 
-Identifies the type of airspace or a special-use airspace. Typically used immediately after the `AC` command.
+Identifies the type of airspace or a special-use airspace. Typically used immediately after the `AC` command. An airspace can have at most one `AY` command. Only the types in the table below are allowed.
 
 Format:
 ```
@@ -208,7 +244,7 @@ The `Type` field accepts various categories or functions of the airspace:
 | ADIZ    | Air Defence Ident Zone                                     |
 | ALERT   | Alert Area                                                 |
 | ASRA    | Aerial Sporting Or Recreational Activity                   |
-| ATZ     | Aeordrome Traffic Zone                                     |
+| ATZ     | Aerodrome Traffic Zone                                     |
 | AWY     | Airway                                                     |
 | CTA     | Controlled Traffic Area                                    |
 | CTR     | Control Zone                                               |
@@ -221,7 +257,7 @@ The `Type` field accepts various categories or functions of the airspace:
 | MATZ    | Military Airport Traffic Zone                              |
 | MTA     | Military Training Area                                     |
 | MTR     | Military Training Route                                    |
-| N       | NTOAM Affected Area                                        |
+| N       | NOTAM Affected Area                                        |
 | NONE    | Airspace without type                                      |
 | OFR     | Overflight Restriction                                     |
 | P       | Prohibited Area                                            |
@@ -260,6 +296,15 @@ Format:
 AF Frequency
 ```
 
+`Frequency` is the channel name that a pilot sets on the radio, in MHz:
+
+* Write one number with a dot and exactly three decimals, without a unit. For example `123.300` or `118.005`.
+* The channel must be in the VHF air band, from `118.000` to `136.990`.
+* With 25 kHz and 8.33 kHz channel spacing, not every value is a channel. The last two digits of a channel name are `00`, `05`, `10`, `15`, `25`, `30`, `35`, `40`, `50`, `55`, `60`, `65`, `75`, `80`, `85` or `90`. For example, `123.505` is a channel, but `123.520` and `123.456` are not.
+* Write the channel name, not the exact radio frequency. For example, write `118.010`, not `118.0083`.
+
+An airspace can have more than one `AF` command, one for each frequency.
+
 Example:
 ```
 AC E 
@@ -278,6 +323,8 @@ Format:
 ```
 AG Station Name
 ```
+
+The station name cannot contain `*`, because `*` starts a comment. Do not write a comment on the same line as `AG`. An airspace can have at most one `AG` command.
 
 Example:
 ```
@@ -304,7 +351,7 @@ AG Nordholz Radar
 > [!IMPORTANT]
 > All times and dates in `AA` commands are UTC (Zulu). Local time and time zones are not supported, in any form.
 >
-> Weekdays and dates are UTC calendar days. Each activation window belongs to the UTC day on which it starts.
+> Weekdays and dates are UTC calendar days. Each activation window belongs to the UTC day on which it starts. The only exception is a window with a sun event: it belongs to a local solar day. See [Sun events](#sun-events).
 
 ##### Interval activation
 
@@ -316,7 +363,9 @@ AA StartDateTime/EndDateTime
 
 StartDateTime and EndDateTime are `DateTime` values, see [Time](#time). Together they are an ISO 8601 time interval. The interval must use UTC (Zulu) time. Local time or time zone offsets are not supported.
 
-Any other time interval form that ISO 8601 defines is also allowed. For example, a start and a duration: `2026-07-04T08:00Z/PT8H`. Writers should use the StartDateTime/EndDateTime form.
+No other ISO 8601 interval form is allowed. For example, a start and a duration (`2026-07-04T08:00Z/PT8H`) is not allowed. The only exception is `NONE`, as described below.
+
+The end must be after the start. An interval with the same start and end is not valid.
 
 Multiple `AA` commands are permitted within a single airspace definition. Each interval `AA` command defines one activation interval. When multiple activation intervals are provided, they should be sorted from earliest to latest by their start time. See [Combining AA commands](#combining-aa-commands) for the recommended order. Activation intervals should not overlap. Adjacent intervals may be represented as separate `AA` commands, but maintainers are encouraged to merge them when possible. 
 
@@ -358,14 +407,14 @@ AA [Weekdays] StartTime/EndTime [StartDate/EndDate]
   * If Weekdays is left out, the schedule applies to every day.
 * **StartTime/EndTime** *(required)*: two `Time` values in UTC, see [Time](#time). For example `09:00Z/11:30Z`. `NONE` is not allowed.
   * `24:00Z` is allowed as EndTime. It means the end of the day.
-  * StartTime, EndTime or both can be a [sun event](#sun-events): `SR`, `SS`, `BCMT` or `EECT`. For example `SR/SS` or `07:00Z/SS`. The client first calculates the sun event for the day, and then applies the other rules.
+  * StartTime, EndTime or both can be a [sun event](#sun-events): `SR`, `SS`, `BCMT` or `EECT`. For example `SR/SS` or `07:00Z/SS`. A window with a sun event uses the local solar day, see [Sun events](#sun-events). The client first calculates the sun event for the day, and then applies the other rules.
   * If EndTime is earlier than or equal to StartTime, the window ends on the next day. For example, `FRI 22:00Z/02:00Z` starts on Friday at 22:00 UTC and ends on Saturday at 02:00 UTC. With a sun event, the client compares the calculated times. For example, `SS/SR` starts at sunset and ends at sunrise on the next day.
   * When a sun event is mixed with a fixed time, the writer must check that the order is correct on every day of the schedule. For example, `06:00Z/SR` is wrong on days when sunrise is before 06:00 UTC. On these days, the window would end on the next day.
 * **StartDate/EndDate** *(optional)*: two `Date` values, see [Time](#time). For example `2026-03-29/2026-10-24`. The schedule applies only between these dates, **including both dates**.
   * Use `NONE` for an open end: `2026-04-01/NONE` or `NONE/2026-10-31`.
   * If the date range is left out, the schedule repeats with no time limit.
 
-The weekday and the date range always refer to the UTC day on which a window **starts**. A window that crosses midnight UTC belongs to the day on which it starts.
+The weekday and the date range refer to the UTC day on which a window **starts**. A window that crosses midnight UTC belongs to the day on which it starts. A window with a sun event is different: its weekday and date range refer to the local solar day. See [Sun events](#sun-events).
 
 Example:
 ```
@@ -402,7 +451,7 @@ AA EXCEPT StartDate/EndDate
 
 * Date, StartDate and EndDate are `Date` values, see [Time](#time). `NONE` is not allowed.
 * The date range includes both dates.
-* The dates are UTC calendar days. A weekday window is removed when it **starts** on an excepted date. A window that starts on the day before and continues past midnight UTC is not removed.
+* The dates are UTC calendar days. A weekday window is removed when it **starts** on an excepted date. A window that starts on the day before and continues past midnight UTC is not removed. For a window with a sun event, the dates are local solar days. See [Sun events](#sun-events).
 * `AA EXCEPT` applies only to weekday `AA` commands. It does not change interval `AA` commands.
 * `AA EXCEPT` may only be used in an airspace definition that has at least one weekday `AA` command.
 
@@ -445,7 +494,7 @@ In this case the reader must ignore **all** `AA` commands of that airspace and t
 
 #### AX: Transponder Code
 
-*Optional* Transponder code to be used with the airspace. Must be a 4 digit code.
+*Optional* Transponder code to be used with the airspace. Must be a code with exactly 4 digits. Transponder codes are octal, so each digit must be from `0` to `7`. The digits `8` and `9` are not allowed. Write the leading zeros, for example `0424`. An airspace can have at most one `AX` command.
 
 ```
 AX 7000
@@ -454,16 +503,18 @@ AX 7000
 
 ### A: Altitude Definitions
 
-#### AH: Upper Alitutde Limit
+#### AH: Upper Altitude Limit
 
 Defines the highest boundary (the ceiling) of the airspace, including the altitude's reference point.
 
 Format:
 ```
-AH Altitude AltRef
+AH Altitude Unit AltRef
+AH FLnnn
+AH UNL
 ```
 
-Altitude references must be `AGL`, `FL`, `STD`, `AMSL` . For an undefined upper limit, use `UNL` without specifying an altitude.
+The unit (`FT` or `M`) and the reference (`AMSL`, `AGL` or `STD`) are required, see [Altitude](#altitude). For a flight level, write `FL` and a whole number, without a unit and without a reference. For an undefined upper limit, use `UNL` without an altitude.
 
 Example:
 ```
@@ -474,17 +525,20 @@ AL 1000 FT AMSL
 > [!IMPORTANT]
 > Each airspace definition must include only one upper altitude limit. Including multiple altitude references creates ambiguity and is considered invalid (e.g., ~~`100 M AGL/423 M AMSL`~~ is not permitted).
 
-#### AL: Lower Alitutde Limit
+#### AL: Lower Altitude Limit
 
 Defines the lowest boundary (the floor) of the airspace, including the altitude's reference point.
 
 Format:
 ```
-AL Altitude AltRef
+AL Altitude Unit AltRef
+AL FLnnn
+AL GND
 ```
 
-Altitude references are `AGL`, `FL`, `STD`, `AMSL`. For areas extending to the ground, use `GND`, omitting the altitude.
+The unit (`FT` or `M`) and the reference (`AMSL`, `AGL` or `STD`) are required, see [Altitude](#altitude). For a flight level, write `FL` and a whole number, without a unit and without a reference. For areas extending to the ground, use `GND` without an altitude.
 
+The lower limit must be below the upper limit. A lower limit equal to the upper limit is not valid. A client can only compare the two limits when they use the same kind of reference. For example, it cannot compare an `AGL` limit with an `AMSL` limit.
 
 Example:
 ```
@@ -497,19 +551,27 @@ AL 1000 FT AGL
 
 #### Supported Altitude References
 
-| AltRef | Description                                          |
-| ------ | ---------------------------------------------------- |
-| AGL    | Above Ground Level                                   |
-| FL     | Flight Level                                         |
-| STD    | Standard Atmospheric Pressure                        |
-| AMSL   | Above Mean Sea Level                                 |
-| GND    | Ground, no altitude. **AL only, no numeric value**   |
-| UNL    | Unlimited, no altitude **AH only, no numeric value** |
+| AltRef | Description                                          | Example |
+| ------ | ---------------------------------------------------- | ------- |
+| AMSL   | Above Mean Sea Level                                 | `1500 FT AMSL` |
+| AGL    | Above Ground Level                                   | `300 M AGL` |
+| STD    | Above the standard pressure level (1013.25 hPa). This is a pressure altitude, the same as a flight level. | `9500 FT STD` |
+| FL     | Flight Level. Written as a prefix: `FL` and a whole number, without unit and reference. | `FL95` |
+| GND    | Ground, no altitude. **AL only, no numeric value**   | `GND` |
+| UNL    | Unlimited, no altitude **AH only, no numeric value** | `UNL` |
+
+`9500 FT STD` and `FL95` have the same meaning: 9500 ft above the standard pressure level.
+
+`MSL` is an alias of `AMSL`. A reader must read `MSL` as `AMSL`. Writers should write `AMSL`.
+
+`FL 95` (with a space) has the same meaning as `FL95`. A reader must accept it. Writers should write `FL95`, without a space.
 
 
 ### D: Geometric Definitions
 
-Geometric definition commands, often used with variable assignemnt `V`, define airspace geometry. Points are specified in degrees, minutes, seconds (DMS) or degrees and decimal minutes (DDM) notation. Radii are defined in nautical miles `NM`, with unit omitted.
+Geometric definition commands, often used with variable assignment `V`, define airspace geometry. Points are specified in degrees, minutes, seconds (DMS) or degrees and decimal minutes (DDM) notation. Radii are defined in nautical miles `NM`, with unit omitted.
+
+The boundary of an airspace should not cross itself. It can touch itself. For example, a ring-shaped airspace has an empty area inside, such as the airspace outside a competition area. Draw it as one boundary: the outer ring, a connecting line to the inner ring, the inner ring in the opposite direction, and the same connecting line back. The connecting line is used twice. This is allowed, because the boundary touches itself there but does not cross itself.
 
 #### DP: Polygon point
 
@@ -545,7 +607,7 @@ DP 53:47.100N 008:21.700E
 >
 > Combining airspace shapes defined with `DA`  arcs with points defined as `DP` can result in inconsistencies in how airspace is displayed. Avoid using `DA` if possible.
 
-Defines an arc between two bearings, with its center set by a preceding [V](#v:-variable-assignment) command. The direction is clockwise by default, but can be altered with `V`.
+Defines an arc between two bearings, with its center set by a preceding [V](#v-variable-assignment) command. The direction is clockwise by default, but can be altered with `V`.
 
 Format:
 ```
@@ -564,7 +626,7 @@ DA 10, 270, 290
 >
 > The arc is overdefined with `V` and `DB` sentences. Calculate the center of the arc carefully to avoid inconsistent display across various implementations on client software.
 
-Defines an arc between two points, with its center set by a preceding [V](#v:-variable-assignment) command. The direction is clockwise by default, but can be altered with `V`.
+Defines an arc between two points, with its center set by a preceding [V](#v-variable-assignment) command. The direction is clockwise by default, but can be altered with `V`.
 
 Format:
 
@@ -575,13 +637,17 @@ DB Point 1, Point 2
 Example:
 
 ```
-V X=39:13:00N 118:13:00W
-DB 39:36:40N 119:46:10W, 39:29:09N 119:36:10W
+V X=46:00:00N 014:00:00E
+DB 46:10:00N 014:00:00E, 46:00:00N 014:14:24E
 ```
+
+Both points must be at the same distance from the centre. In this example both points are 10 NM from the centre.
 
 #### DC: Circular area
 
-Defines a circular area centered on a point set by a preceding [V](#v:-variable-assignment) command. The radius is given in nautical miles.
+Defines a circular area centered on a point set by a preceding [V](#v-variable-assignment) command. The radius is given in nautical miles.
+
+`DC` must be the only geometry command of its airspace. Do not combine it with `DP`, `DA`, `DB`, `DY` or a second `DC`.
 
 Format:
 ```
@@ -590,7 +656,8 @@ DC Radius
 
 Example:
 ```
-AC Q
+AC UNC
+AY Q
 AN PARA Ailertchen EDGA
 AH FL100
 AL GND
@@ -604,9 +671,25 @@ DC 2.00
 >
 > `DY` is part of the original WinPilot definition, but its use is not recommended. Consecutive `DY` segments do not join cleanly into one continuous airway. Use `DP` instead to define airways more accurately.
 
+Defines one point of an airway. Consecutive `DY` points are joined by straight segments. The width of the airway is set by a preceding `V W=` command.
+
+Format:
+```
+DY Point
+```
+
+Example:
+```
+V W=5
+DY 46:00:00N 014:00:00E
+DY 46:30:00N 014:30:00E
+```
+
 ### V: Variable Assignment
 
 This command sets up parameters for geometric definitions in `DA`, `DB`, `DC`, and `DY` commands, and must be declared beforehand.
+
+The values are reset at every `AC` command. At the start of each airspace, `D` is `+` (clockwise), and `X` and `W` have no value. So each airspace must set the `X` and `W` values that it uses. A value from an earlier airspace is not used.
 
 Format:
 
@@ -614,7 +697,7 @@ Format:
 V Command=Value
 ```
 
-Comand and Value options:
+Command and Value options:
 
 | Command | Value      | Description                                                  |
 | ------- | ---------- | ------------------------------------------------------------ |
