@@ -1,6 +1,6 @@
 ---
 title: OGNAVI APRS message specification
-description: Naviter APRS message specification file, Copyright © 2025, Naviter d.o.o. All Rights Reserved
+description: Naviter APRS message specification file, Copyright © 2025, Naviter d.o.o. Licensed under the MIT License
 date: 2025-10-07
 version: 1.0.2
 header: ${title} - Naviter d.o.o.
@@ -8,7 +8,7 @@ footer: Page ${pageNo} of ${pageCount}
 ---
 
 # OGNAVI APRS message specification
-*Copyright © 2025-10-07, Naviter d.o.o. All Rights Reserved. Version 1.0.2*
+*Copyright © 2025-10-07, Naviter d.o.o. Licensed under the [MIT License](LICENSE). Version 1.0.2*
 
 Naviter’s APRS message format is built on top of the standard OGN-flavoured APRS aircraft beacon messages.
 
@@ -132,3 +132,9 @@ FLRFFFFFF>OGNAVI,NAVABCDEF*,qAS,NAVITER:/092002h1000.00S/01000.00W'000/000/A=003
 
 * **APRS Protocol Reference, Protocol Version 1.0:** [http://www.aprs.org/doc/APRS101.PDF](http://www.aprs.org/doc/APRS101.PDF)
 * **OGN-flavoured APRS:** [OGN-flavoured APRS Spec](https://github.com/svoop/ogn_client-ruby/wiki/OGN-flavoured-APRS/c6678fecc15222cb980f491d09dfaba7e2982df6)
+
+## License
+
+Copyright © Naviter d.o.o.
+
+This specification is licensed under the [MIT License](LICENSE). You can use, copy, change and distribute it, also in commercial software. You must keep the copyright notice and the license text.

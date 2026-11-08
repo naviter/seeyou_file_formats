@@ -1,6 +1,6 @@
 ---
 title: SeeYou CUP file format 
-description: SeeYou CUP file format specification file, Copyright © 2024, Naviter d.o.o. All Rights Reserved
+description: SeeYou CUP file format specification file, Copyright © 2024, Naviter d.o.o. Licensed under the MIT License
 date: 2025-10-07
 version: 1.2.0
 header: ${title} - Naviter d.o.o.
@@ -9,7 +9,7 @@ footer: Page ${pageNo} of ${pageCount}
 
 # SeeYou CUP File Format
 
-*Copyright © 2025-10-07, Naviter d.o.o. All Rights Reserved. Version 1.2.0*
+*Copyright © 2025-10-07, Naviter d.o.o. Licensed under the [MIT License](LICENSE). Version 1.2.0*
 
 SeeYou CUP Waypoint format is a simple comma separated text file. The extension is .CUP
 
@@ -319,3 +319,9 @@ A sample line defining multiple task starts:
 `STARTS=Celovec,Hodos,Ratitovec,Jamnik`
 
 Waypoints must be defined, observation zones are the same for all possible starts.
+
+## License
+
+Copyright © Naviter d.o.o.
+
+This specification is licensed under the [MIT License](LICENSE). You can use, copy, change and distribute it, also in commercial software. You must keep the copyright notice and the license text.

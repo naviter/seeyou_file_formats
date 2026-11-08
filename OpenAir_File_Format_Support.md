@@ -1,6 +1,6 @@
 ---
 title: Extended OpenAir file format specification (Draft)
-description: SeeYou OpenAir specification with Naviter extensions, Copyright © 2026, Naviter d.o.o. All Rights Reserved
+description: SeeYou OpenAir specification with Naviter extensions, Copyright © 2024-2026, Naviter d.o.o. Licensed under the MIT License
 date: 2026-11-07
 version: 3.0.0 Draft
 header: ${title} - Naviter d.o.o.
@@ -9,7 +9,7 @@ footer: Page ${pageNo} of ${pageCount}
 
 # SeeYou OpenAir file format specification
 
-*Copyright © 2026-11-07, Naviter d.o.o. All Rights Reserved. Version 3.0.0 Draft*
+*Copyright © 2024-2026 Naviter d.o.o. Licensed under the [MIT License](LICENSE). Version 3.0.0 Draft*
 
 > [!WARNING]
 > This is a draft. It can change before the final 3.0.0 release. Do not use version 3.0 in production files yet.
@@ -632,3 +632,9 @@ DA 10,320,200
 V D=-
 DA 5,200,270
 ```
+
+## License
+
+Copyright © 2024-2026 Naviter d.o.o.
+
+This specification is licensed under the [MIT License](LICENSE). You can use, copy, change and distribute it, also in commercial software. You must keep the copyright notice and the license text.

@@ -1,6 +1,6 @@
 ---
 title: SeeYou CUB file format
-description: SeeYou CUB file format specification file, Copyright © 2025, Naviter d.o.o. All Rights Reserved
+description: SeeYou CUB file format specification file, Copyright © 2025, Naviter d.o.o. Licensed under the MIT License
 date: 2025-10-14
 version: 2.0.2
 header: ${title} - Naviter d.o.o.
@@ -9,7 +9,7 @@ footer: Page ${pageNo} of ${pageCount}
 
 # SeeYou CUB File Format 
 
-*Copyright © 2025-10-14, Naviter d.o.o. All Rights Reserved. Version 2.0.2*
+*Copyright © 2025-10-14, Naviter d.o.o. Licensed under the [MIT License](LICENSE). Version 2.0.2*
 same 
 The CUB file format is designed to store airspace data that is displayed and utilized by flight navigation software from Naviter and LX Nav.
 
@@ -332,3 +332,9 @@ Different `CubDataId` values indicate specific types of data that follow the `Cu
 | 5     | NOTAM Insert date and time        | Comprised of `b1`, `b2`, `b3`, and an additional byte after the structure. Read one more byte `b4` . Time is encoded as `(value << 8) + (b4 << 0)`. |
 
 Integers composed from multiple bytes are ordered from highest to lowest byte, value = (b1 << 16) + (b2 << 8) + (b3 << 0).
+
+## License
+
+Copyright © Naviter d.o.o.
+
+This specification is licensed under the [MIT License](LICENSE). You can use, copy, change and distribute it, also in commercial software. You must keep the copyright notice and the license text.

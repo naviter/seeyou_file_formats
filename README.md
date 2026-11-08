@@ -10,3 +10,9 @@ Repository contianing description of file formats used within SeeYou products.
 - [CUP File Format](CUP_file_format.md) - [PDF](https://github.com/naviter/seeyou_file_formats/releases/latest/download/CUP_file_format.pdf)
 - [CUPX File Format](CUPX_file_format.md) - [PDF](https://github.com/naviter/seeyou_file_formats/releases/latest/download/CUPX_file_format.pdf)
 - [Task QR Code Format](SeeYou_Task_QR_Code.md) - [PDF](https://github.com/naviter/seeyou_file_formats/releases/latest/download/SeeYou_Task_QR_Code.pdf)
+
+## License
+
+All specifications, examples and tools in this repository are licensed under the [MIT License](LICENSE). You can use them in open source and commercial software.
+
+The MIT License does not give any rights to the names or logos "Naviter", "SeeYou" and "SeeYou Navigator". These are trademarks of Naviter d.o.o.
