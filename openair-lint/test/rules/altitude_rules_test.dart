@@ -476,6 +476,15 @@ void main() {
     test('reports a unit after the flight level', () {
       expect(ah(id, 'FL95 FT').single.message, contains('Remove "FT"'));
     });
+    test('reports a negative flight level as an error', () {
+      for (final v in ['FL-5', 'FL -5']) {
+        final d = al(id, v).single;
+        expect(d.severity, Severity.error, reason: v);
+        expect(d.message, contains('without a sign'), reason: v);
+      }
+      expect(ah(id, 'FL-5'), hasLength(1));
+      expect(al('altitude-out-of-range', 'FL-5'), isEmpty);
+    });
   });
 
   group('altitude-flight-level-space', () {
@@ -487,6 +496,10 @@ void main() {
       final d = ah(id, 'FL 95');
       expect(d.single.severity, Severity.warning);
       expect(d.single.message, contains('"FL95"'));
+    });
+    test('links to the table of altitude references', () {
+      // The text about "FL 95" is in "Supported Altitude References".
+      expect(findRule(id)!.specUrl, endsWith('#supported-altitude-references'));
     });
     test('FL 95 has the same meaning as FL95 for the other rules', () {
       expect(expectedFormat(lintAll(limits('AH FL 95', 'AL FL65'))),

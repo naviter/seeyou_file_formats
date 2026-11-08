@@ -1,5 +1,12 @@
 /// The window of a weekday `AA` command with a sun event on one local solar
-/// day, as the section "Sun events" of the specification defines it.
+/// day.
+///
+/// The section "Sun events" of the specification says that the weekday and
+/// the date mean the local day at the airspace. It also says what `SR/SS`
+/// and `SS/SR` mean on days without a sunrise or a sunset. The other
+/// details are choices of openair-lint: the local solar day as the local
+/// day, and the meaning of other windows (for example `BCMT/EECT` or
+/// `07:00Z/SS`) on days on which a sun event does not happen.
 ///
 /// ```dart
 /// final w = sunWindowOnDay(
@@ -16,8 +23,8 @@ import 'aa_command.dart';
 import 'civil_date.dart';
 import 'sun.dart';
 
-/// The kind of a window with a sun event. The table "Polar regions" of the
-/// specification uses it.
+/// The kind of a window with a sun event. It selects the meaning of the
+/// window on a day on which a sun event does not happen.
 enum SunWindowKind {
   /// From a morning event to an evening event, for example `SR/SS`.
   morningToEvening,
@@ -46,7 +53,11 @@ enum SunWindowKind {
 }
 
 /// What a window means on a local solar day on which one of its sun events
-/// does not happen (see the table "Polar regions" of the specification).
+/// does not happen. For `SR/SS` and `SS/SR` the specification gives the
+/// meaning. For other windows openair-lint uses the same idea: the window
+/// is not active when the sun stays on the wrong side of the horizon of the
+/// event, and a missing event is replaced by the start or the end of the
+/// local solar day when the sun stays on the other side.
 enum SunPolarOutcome {
   /// The window is active for the whole local solar day.
   wholeDay('the window is active for the whole local solar day'),
@@ -82,7 +93,13 @@ class SunWindowDay {
       this.endOnDay,
       this.missingEvents = const [],
       this.allDay,
-      this.polar});
+      this.polar,
+      bool endsOnNextDay = false})
+      : _endsOnNextDay = endsOnNextDay;
+
+  /// True if the end is the event of the next local solar day because the
+  /// end event does not happen on [day] (see [sunWindowOnDay]).
+  final bool _endsOnNextDay;
 
   /// The local solar day.
   final CivilDate day;
@@ -115,13 +132,16 @@ class SunWindowDay {
   /// What the window means on this day when [missingEvents] is not empty.
   final SunPolarOutcome? polar;
 
-  /// True if both times happen on this day, so the normal rules apply.
+  /// True if the normal rules apply: both times happen on this day, or the
+  /// window ends at the event of the next local solar day.
   bool get isNormal => polar == null;
 
   /// True if the window ends on the next local solar day: the end time is
-  /// earlier than or equal to the start time.
+  /// earlier than or equal to the start time, or the end event happens only
+  /// on the next local solar day.
   bool get endsNextDay =>
-      startOnDay != null && endOnDay != null && endOnDay! <= startOnDay!;
+      _endsOnNextDay ||
+      (startOnDay != null && endOnDay != null && endOnDay! <= startOnDay!);
 
   /// True if the window is active on this day.
   bool get isActive => start != null && end != null && end! > start!;
@@ -138,8 +158,11 @@ typedef SunEventOn = LocalSunEvent Function(SunEvent event, CivilDate day);
 /// - A sun event is the event of the local solar day ([eventOn]).
 /// - If the end is earlier than or equal to the start, the window ends on
 ///   the next local solar day.
-/// - If a sun event does not happen on [day], the table "Polar regions" of
-///   the specification gives the window ([SunWindowDay.polar]).
+/// - If the evening event of an evening-to-morning window (for example
+///   `SS/SR`) happens on [day] but the morning event does not, the window
+///   ends at the morning event of the next local solar day, if it happens.
+/// - Else, if a sun event does not happen on [day], [SunPolarOutcome] gives
+///   the window ([SunWindowDay.polar]).
 SunWindowDay sunWindowOnDay(AaTimeOfDay start, AaTimeOfDay end, CivilDate day,
     double longitude, SunEventOn eventOn) {
   final dayStart = localDayStartMinutes(longitude);
@@ -176,6 +199,19 @@ SunWindowDay sunWindowOnDay(AaTimeOfDay start, AaTimeOfDay end, CivilDate day,
     return SunWindowDay._(day, s, next, startOnDay: s, endOnDay: e);
   }
 
+  final kind = SunWindowKind.of(start, end);
+  if (kind == SunWindowKind.eveningToMorning && s != null && e == null) {
+    // The evening event happens on this day, but the morning event of this
+    // day does not. The window ends at the morning event of the next local
+    // solar day. This happens on the first nights after a polar day or
+    // after the white nights.
+    final n = eventOn(endEvent!, day.addDays(1));
+    if (n.minutes != null) {
+      return SunWindowDay._(day, s, n.minutes! + 1440,
+          startOnDay: s, endsOnNextDay: true);
+    }
+  }
+
   // A sun event does not happen on this day.
   final startMissing = startSun != null && startSun.minutes == null;
   final endMissing = endSun != null && endSun.minutes == null;
@@ -191,7 +227,6 @@ SunWindowDay sunWindowOnDay(AaTimeOfDay start, AaTimeOfDay end, CivilDate day,
       SunWindowDay._(day, from, to,
           missingEvents: missingEvents, allDay: allDay.first, polar: outcome);
 
-  final kind = SunWindowKind.of(start, end);
   if (kind == SunWindowKind.eveningToMorning) {
     // The window is the night. If the sun stays above the horizon of an
     // event, there is no night.

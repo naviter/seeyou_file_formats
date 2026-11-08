@@ -134,10 +134,12 @@ Checked 1 file: 2 errors, 1 warning, 0 info.
 Some rules do not follow this table:
 
 - When the specification allows two values and recommends one of them,
-  the other value is `info`, not `warning`. Examples: an altitude in metres
-  (`altitude-unit-metres`, "feet FT (recommended) or meters M") and a `DA`
-  arc in an airspace without `DP` points (`da-not-recommended`, "avoid using
-  DA if possible").
+  the other value is `info`, not `warning`. Example: an altitude in metres
+  (`altitude-unit-metres`, "feet FT (recommended) or meters M").
+- "Avoid using DA if possible" is in a note about `DA` arcs combined with
+  `DP` points. That case is a warning (`da-combined-with-dp`). A `DA` arc in
+  an airspace without `DP` points is `info` (`da-not-recommended`), because
+  the problem of the note does not happen there.
 - `header-version-draft` is `info`, although the specification says that
   writers "must not" write `*VERSION: 3.0` before the 3.0.0 release. As an
   error, it would also report every test file for the draft. The rule will
@@ -175,13 +177,23 @@ Differences between the versions:
   `aa-interval-form-not-allowed`). Version 2.1 did not limit the forms, so
   in a 2.1 file they are warnings (`aa-value-form-not-allowed-v21`,
   `aa-interval-form-not-allowed-v21`).
-- Version 3.0 says that `AN` and `AG` cannot contain `*`
-  (`an-contains-asterisk`, `ag-contains-asterisk`) and that `AF` has exactly
-  three decimals (`af-not-three-decimals`). Version 2.1 does not say this, so
-  these rules do not check 2.1 files.
-- Version 3.0 says that both points of a `DB` arc must be at the same
-  distance from the centre (error, `db-radius-mismatch`). In a 2.1 file this
-  is a warning (`db-radius-mismatch-v21`).
+- Some rules are new in the 3.0 text. They are errors in a 3.0 file. In a
+  2.1 file, openair-lint uses one policy:
+  - When a 2.1 reader has the same problem with the data, the rule is a
+    warning with the ID `<rule>-v21`. The message says that the problem is
+    an error in version 3.0. These rules are: `an-contains-asterisk-v21`
+    and `ag-contains-asterisk-v21` (readers cut the text at the `*`),
+    `af-outside-air-band-v21`, `af-invalid-channel-v21`, `ax-not-octal-v21`
+    (the value is not a channel or a transponder code),
+    `dc-mixed-with-other-geometry-v21` and
+    `airspace-attribute-duplicate-v21` (readers use the data in different
+    ways), and `db-radius-mismatch-v21`.
+  - When the 2.1 text allows the other form, or the other form has the same
+    meaning for a reader, the rule does not check 2.1 files. These rules
+    are: `case-not-upper-case` (2.1 allows lower case),
+    `altitude-unit-no-space` (2.1 allows `1000ft`) and
+    `af-not-three-decimals` (`AF 123.5` has the same meaning as
+    `AF 123.500`).
 - Rules that check a statement of the 2.1 text link to that text (tag
   `v2.1.5`), not to the current specification.
 
@@ -195,10 +207,12 @@ AA MON-FRI 07:00Z/15:00Z   * every working day
 ```
 
 For this reason, the text after `AN` and `AG` cannot contain `*`. A comment
-is also not allowed on the same line as `AN` or `AG`. In version 3.0 the
-rules `an-contains-asterisk` and `ag-contains-asterisk` report every `*` on
-these lines. For example, the name `AN TMA *TWR* 118.7` is only `TMA`.
-Put the comment on its own line.
+is also not allowed on the same line as `AN` or `AG`. The rules
+`an-contains-asterisk` and `ag-contains-asterisk` (errors) report every `*`
+on these lines. For example, the name `AN TMA *TWR* 118.7` is only `TMA`.
+Put the comment on its own line. In version 2.1 files, the rules
+`an-contains-asterisk-v21` and `ag-contains-asterisk-v21` report the same
+problem as a warning, because the 2.1 text has the same comment syntax.
 
 ### Exit codes
 
@@ -471,8 +485,13 @@ not depend on Dart or on openair-lint.
 - `valid/<group>/<case>.openair`: a correct file. A reader must accept it.
   openair-lint reports no error and no warning for it.
 - `invalid/<group>/<case>.openair` and `<case>.expected`: a file with one
-  problem. The `.expected` file lists the errors and warnings, one per line,
-  as `<line> <rule-id>`. Info diagnostics are not listed.
+  or more problems. The `.expected` file lists the errors and warnings, one
+  per line, as `<line> <rule-id>`. Info diagnostics are not listed.
+
+The conformance files test only rules that the specification states. Rules
+that only openair-lint has (for example `dp-duplicate-point` or
+`aa-sun-event-fixed-start-near-day-start`) are tested with files of the same
+format in `test/fixtures/<group>/`.
 
 Each file starts with `*VERSION:` and `*WRITTEN_BY: openair-conformance`
 (except some files of the `header` group, which test the header), and has a

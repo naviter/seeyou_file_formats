@@ -67,7 +67,8 @@ class LintContext {
       line: l,
       column: c,
       endColumn: e,
-      message: message,
+      message:
+          rule.messageNote == null ? message : '$message ${rule.messageNote}',
       specUrl: rule.specUrl,
     ));
   }

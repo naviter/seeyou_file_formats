@@ -12,6 +12,7 @@
 library;
 
 import '../altitude/altitude.dart';
+import '../attributes/attribute_values.dart';
 import '../diagnostic.dart';
 import '../lint_context.dart';
 import '../model/openair_file.dart';
@@ -62,6 +63,7 @@ final List<Rule> headerRules = [
   _airspaceAlDuplicate,
   _airspaceGeometryMissing,
   _airspaceAttributeDuplicate,
+  _airspaceAttributeDuplicateV21,
   _airspaceCommandOrder,
   _airspaceAnMissing,
   _airspaceDuplicate,

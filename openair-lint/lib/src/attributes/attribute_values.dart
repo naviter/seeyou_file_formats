@@ -312,9 +312,13 @@ String? frequencyFormatProblem(String value) {
   }
   final numbers = _separateNumbers(value);
   if (numbers.length > 1) {
+    final commands = [
+      for (final n in numbers) '"AF ${n.replaceFirst(',', '.')}"',
+    ];
+    final last = commands.removeLast();
     return 'AF must contain one frequency, but "$value" has more than one '
-        'number. Write only the main frequency, for example '
-        '"AF ${numbers.first.replaceFirst(',', '.')}".';
+        'number. Write one AF command for each frequency: '
+        '${commands.join(', ')} and $last.';
   }
   if (numbers.length == 1 && _plainNumber.hasMatch(numbers.first)) {
     return 'AF must contain only the frequency, but "$value" also has other '

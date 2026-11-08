@@ -378,7 +378,7 @@ Set<Command> _repeatedCommands(List<Command> part) {
 final Rule _airspaceAttributeDuplicate = Rule(
   id: 'airspace-attribute-duplicate',
   severity: Severity.error,
-  versions: SpecVersion.all,
+  versions: SpecVersion.only3,
   specAnchor: 'command-reference',
   description: 'An airspace must have at most one AN, AY, AG and AX '
       'command.',
@@ -425,6 +425,12 @@ final Rule _airspaceAttributeDuplicate = Rule(
       }
     }
   },
+);
+
+final Rule _airspaceAttributeDuplicateV21 = version21Warning(
+  _airspaceAttributeDuplicate,
+  description: 'An airspace should have at most one AN, AY, AG and AX '
+      'command (version 2.1).',
 );
 
 // ---------------------------------------------------------------------------

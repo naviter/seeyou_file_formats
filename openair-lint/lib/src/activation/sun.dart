@@ -1,23 +1,25 @@
-/// Sun events (sunrise, sunset and civil twilight) as the OpenAir
-/// specification defines them.
+/// Sun events (sunrise, sunset and civil twilight).
 ///
 /// The calculation uses the NOAA solar position equations (based on
 /// "Astronomical Algorithms" by Jean Meeus). The result is accurate to
 /// about one minute between latitudes 72° N and 72° S. The specification
-/// accepts differences of about one minute between methods.
+/// says that different calculation methods can give results that differ
+/// by a few minutes.
 ///
-/// The rules of the specification:
+/// The specification defines the events (`SR` and `SS`: the upper edge of
+/// the sun at the horizon, `BCMT` and `EECT`: the centre of the sun 6°
+/// below the horizon) and says that the weekday and the date mean the
+/// local day at the airspace. These details are choices of openair-lint:
 ///
-/// - Local solar time: UTC plus the longitude divided by 15, in hours (east
-///   is positive). It does not use time zones or daylight saving time.
-/// - Day: a window with a sun event belongs to a local solar day, from 00:00
-///   to 24:00 local solar time. The event is the one that happens on this
-///   local solar day.
-/// - Position: the centre of the airspace.
+/// - Local day: the local solar day, from 00:00 to 24:00 local solar time.
+///   Local solar time is UTC plus the longitude divided by 15, in hours
+///   (east is positive). It does not use time zones or daylight saving
+///   time. The event is the one that happens on this local solar day.
+/// - Position: the centre of the box around the airspace.
 /// - Horizon: flat, at sea level.
-/// - `SR` and `SS`: the centre of the sun is 0°50′ below the horizon.
-/// - `BCMT` and `EECT`: the centre of the sun is 6° below the horizon,
-///   without refraction.
+/// - `SR` and `SS`: the centre of the sun is 0°50′ below the horizon (the
+///   usual value for the radius of the sun and the refraction).
+/// - `BCMT` and `EECT`: without refraction.
 /// - Polar regions: on a day without the event, the sun is above or below
 ///   the horizon of the event for the whole day ([SunAllDay]).
 ///
@@ -175,9 +177,15 @@ LocalSunEvent _eventOfSolarDay(
   final noon = 720 - 4 * position.lon;
   final first = _iterate(event, date, position, noon, true);
   if (first.minutes != null || !first.failedAtStart) return first.result;
-  // Near a polar day or a polar night, the sun can miss the angle of the
-  // event at noon, but reach it about 12 hours later (or earlier), when the
-  // declination is a little different. Start again at that time.
+  // If the sun stays below the angle of the event at noon, its highest
+  // point of the day is below the angle. Then the event does not happen.
+  // Sunrise and sunset (and BCMT and EECT) get the same result, because
+  // they use the same position of the sun at noon.
+  if (first.allDay == SunAllDay.below) return first.result;
+  // Near a polar day, the sun can stay above the angle of the event at
+  // noon, but reach it about 12 hours earlier (a morning event) or later
+  // (an evening event), near midnight, when the declination is a little
+  // different. Start again at that time.
   final edge = event.morning ? noon - 720 : noon + 720;
   final second = _iterate(event, date, position, edge, false);
   if (second.minutes != null) return second.result;

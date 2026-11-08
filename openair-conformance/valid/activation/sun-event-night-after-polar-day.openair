@@ -1,0 +1,27 @@
+*VERSION: 3.0
+*WRITTEN_BY: openair-conformance
+* Tests: AA SS/SR and AA EECT/BCMT on the first nights after the midnight sun. At 69.6 degrees north (Tromso) the sun sets on 25 July 2026 at about 22:38Z and rises again at about 23:04Z. At 60.75 degrees north civil twilight ends on 28 June 2026 at about 23:56Z and begins again at about 00:10Z. AA SS/SR means from sunset to sunrise of the next day, so both windows are active for a short time.
+
+AC D
+AY TRA
+AN Example TRA 1
+AA SS/SR 2026-07-25/2026-07-25
+AH 4500 FT AMSL
+AL GND
+DP 69:42:00N 018:50:00E
+DP 69:42:00N 019:05:00E
+DP 69:36:00N 019:05:00E
+DP 69:36:00N 018:50:00E
+DP 69:42:00N 018:50:00E
+
+AC D
+AY TRA
+AN Example TRA 2
+AA EECT/BCMT 2026-06-28/2026-06-28
+AH 4500 FT AMSL
+AL GND
+DP 60:50:00N 000:05:00W
+DP 60:50:00N 000:05:00E
+DP 60:40:00N 000:05:00E
+DP 60:40:00N 000:05:00W
+DP 60:50:00N 000:05:00W

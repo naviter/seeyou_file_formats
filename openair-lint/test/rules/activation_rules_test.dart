@@ -1009,6 +1009,7 @@ void main() {
           m,
           contains('of 365 checked days the window ends on the next local '
               'solar day'));
+      expect(m, contains('To fix it, split the command with date ranges'));
     });
     test('is an error, because the specification says "must"', () {
       expect(findRule('aa-sun-event-order-changes')!.severity, Severity.error);
@@ -1111,15 +1112,30 @@ void main() {
   });
 
   group('aa-sun-event-near-fixed-time', () {
-    test('fires when the times are less than 2 minutes apart', () {
+    test('fires when the times are less than 5 minutes apart', () {
+      // Sunrise in Ljubljana on 20-22 June is at about 03:13Z.
+      for (final v in ['03:12Z', '03:09Z', '03:17Z']) {
+        expect(
+            fires('aa-sun-event-near-fixed-time',
+                ['$v/SR 2026-06-20/2026-06-22']),
+            [5],
+            reason: v);
+      }
+      final m = messages('aa-sun-event-near-fixed-time',
+          ['03:09Z/SR 2026-06-20/2026-06-22']).single;
+      expect(m, contains('less than 5 minutes apart'));
+      expect(m, contains('differ by a few minutes'));
+      expect(m, contains('Use a fixed time that is further'));
+      expect(m, isNot(contains('one minute')));
       expect(
           fires('aa-sun-event-near-fixed-time',
-              ['03:12Z/SR 2026-06-20/2026-06-22']),
-          [5]);
-      expect(
-          messages('aa-sun-event-near-fixed-time',
-              ['03:12Z/SR 2026-06-20/2026-06-22']).single,
-          contains('less than 2 minutes apart'));
+              ['03:05Z/SR 2026-06-20/2026-06-22']),
+          isEmpty);
+    });
+    test('the texts say "a few minutes", as the specification', () {
+      final r = findRule('aa-sun-event-near-fixed-time')!;
+      expect(r.explanation, contains('a few minutes'));
+      expect(r.explanation, isNot(contains('one minute')));
     });
     test('does not fire when the order changes', () {
       expect(fires('aa-sun-event-near-fixed-time', ['06:00Z/SR']), isEmpty);
@@ -1144,11 +1160,15 @@ void main() {
           fires('aa-sun-event-fixed-start-near-day-start', ['22:59Z/SS'],
               geo: at15),
           [5]);
+      final m = messages(
+              'aa-sun-event-fixed-start-near-day-start', ['23:00Z/SS'],
+              geo: at15)
+          .single;
+      expect(m, contains('(15.00° E) the local solar day starts at 23:00Z'));
       expect(
-          messages('aa-sun-event-fixed-start-near-day-start', ['23:00Z/SS'],
-                  geo: at15)
-              .single,
-          contains('(15.00° E) the local solar day starts at 23:00Z'));
+          m,
+          contains('Use a start time that is at least 2 minutes from '
+              '23:00Z'));
       expect(findRule('aa-sun-event-fixed-start-near-day-start')!.severity,
           Severity.warning);
     });
@@ -1202,11 +1222,162 @@ void main() {
       expect(m, contains('lower than'));
       expect(m, contains('higher than'));
     });
+    test('groups the days by the events that do not happen', () {
+      // On 18 May 2026 only the sunset is missing. On 19 and 20 May both
+      // events are missing.
+      final m = messages(
+              'aa-sun-event-missing-day', ['SS/SR 2026-05-18/2026-05-20'],
+              geo: tromso)
+          .single;
+      expect(
+          m,
+          contains('On 1 of 3 checked days (the first is Monday 2026-05-18) '
+              'SS (sunset) does not happen'));
+      expect(
+          m,
+          contains('On 2 of 3 checked days (the first is Tuesday 2026-05-19) '
+              'SR (sunrise) and SS (sunset) do not happen'));
+    });
+    test('the night after the polar day ends at the next sunrise', () {
+      // 25 July 2026: the sun sets at 22:38Z and rises at 23:04Z.
+      for (final id in [
+        'aa-weekday-never-active',
+        'aa-sun-event-missing-day'
+      ]) {
+        expect(fires(id, ['SS/SR 2026-07-25/2026-07-25'], geo: tromso), isEmpty,
+            reason: id);
+      }
+      expect(
+          fires('aa-weekday-never-active', ['EECT/BCMT 2026-06-28/2026-06-28'],
+              geo: 'AH 4500 FT AMSL\nAL GND\nV X=60:45:00N 000:00:00E\nDC 5\n'),
+          isEmpty);
+    });
+    test('the explanation separates the specification and openair-lint', () {
+      final e = findRule('aa-sun-event-missing-day')!.explanation;
+      expect(e, contains('AA SR/SS means active for the whole day in summer'));
+      expect(e, contains('openair-lint uses these choices'));
+      expect(e, isNot(contains('The specification defines the meaning')));
+    });
     test('does not fire at 46° N', () {
       expect(fires('aa-sun-event-missing-day', ['SR/SS']), isEmpty);
     });
     test('is an info', () {
       expect(findRule('aa-sun-event-missing-day')!.severity, Severity.info);
+    });
+  });
+
+  group('dates without a time of day', () {
+    test('a week date pair also gets aa-value-form-not-allowed', () {
+      final text = aa(['2026-W27-6/2026-W27-7']);
+      final forms = lintRule('aa-value-form-not-allowed', text);
+      expect([
+        for (final d in forms) d.message
+      ], [
+        contains('"2026-W27-6" uses a week date'),
+        contains('"2026-W27-7" uses a week date'),
+      ]);
+      expect(forms.first.message, contains('"2026-07-04"'));
+      final syntax = lintRule('aa-invalid-syntax', text).single.message;
+      // The examples use the dates of the command.
+      expect(syntax, contains('2026-07-04T00:00Z/2026-07-06T00:00Z'));
+      expect(syntax, contains('00:00Z/24:00Z 2026-07-04/2026-07-05'));
+    });
+    test('plain dates get only aa-invalid-syntax', () {
+      final text = aa(['2026-07-04/2026-07-05']);
+      expect(lintRule('aa-value-form-not-allowed', text), isEmpty);
+      expect(lintRule('aa-invalid-syntax', text).single.message,
+          contains('2026-07-04T00:00Z/2026-07-06T00:00Z'));
+    });
+  });
+
+  group('aa-sun-event-near-date-line', () {
+    String geo(String lon) =>
+        'AH 4500 FT AMSL\nAL GND\nV X=17:00:00S $lon\nDC 5\n';
+    const across = 'AH 4500 FT AMSL\nAL GND\n'
+        'DP 17:00:00S 179:50:00E\n'
+        'DP 17:00:00S 179:50:00W\n'
+        'DP 17:10:00S 179:50:00W\n'
+        'DP 17:10:00S 179:50:00E\n'
+        'DP 17:00:00S 179:50:00E\n';
+    test('fires for every sun window near longitude 180°', () {
+      expect(
+          fires('aa-sun-event-near-date-line',
+              ['SAT SR/SS 2026-07-04/2026-07-04', 'SUN 12:01Z/SS'],
+              geo: across),
+          [5, 6]);
+      expect(
+          fires('aa-sun-event-near-date-line', ['SR/SS'],
+              geo: geo('179:45:00W')),
+          [5]);
+      expect(
+          findRule('aa-sun-event-near-date-line')!.severity, Severity.warning);
+    });
+    test('the fixed start rule does not report the same command', () {
+      expect(
+          fires('aa-sun-event-fixed-start-near-day-start', ['SUN 12:01Z/SS'],
+              geo: across),
+          isEmpty);
+    });
+    test('does not fire away from longitude 180° or without a sun event', () {
+      expect(
+          fires('aa-sun-event-near-date-line', ['SR/SS'],
+              geo: geo('179:00:00E')),
+          isEmpty);
+      expect(
+          fires('aa-sun-event-near-date-line', ['MON 18:00Z/06:00Z'],
+              geo: across),
+          isEmpty);
+    });
+  });
+
+  group('sun event rules in version 2.1 files', () {
+    // aa-needs-version-3 reports the command, and a 2.1 reader ignores all
+    // AA commands of the airspace. The sun event rules do not add more.
+    const tromso = 'AH 4500 FT AMSL\nAL GND\nV X=69:39:00N 018:57:00E\nDC 5\n';
+    test('only aa-needs-version-3 is reported', () {
+      for (final (v, geo) in [
+        ('06:00Z/SR', geometry),
+        ('03:12Z/SR 2026-06-20/2026-06-22', geometry),
+        ('SR/SS 2026-12-01/2026-12-31', tromso),
+      ]) {
+        final ids = {
+          for (final d in lintAll(aa([v], version: '2.1', geo: geo)))
+            if (d.ruleId.startsWith('aa-')) d.ruleId
+        };
+        expect(ids, {'aa-needs-version-3'}, reason: v);
+      }
+    });
+  });
+
+  group('messages for sun windows name the local day', () {
+    const east170 = 'AH 4500 FT AMSL\nAL GND\nV X=46:00:00N 170:00:00E\nDC 5\n';
+    test('aa-except-no-effect', () {
+      final m = messages(
+              'aa-except-no-effect', ['MON SR/SS', 'EXCEPT 2026-07-05'],
+              geo: east170)
+          .single;
+      expect(
+          m,
+          contains('No weekday command has a window on Sunday '
+              '2026-07-05 (the local day at the airspace)'));
+      expect(m, isNot(contains('starts on')));
+      final mixed = messages('aa-except-no-effect',
+              ['MON SR/SS', 'TUE 08:00Z/10:00Z', 'EXCEPT 2026-07-05'],
+              geo: east170)
+          .single;
+      expect(
+          mixed,
+          contains('A window with a sun event belongs to the '
+              'local day at the airspace'));
+    });
+    test('aa-weekday-never-active', () {
+      final m = messages(
+              'aa-weekday-never-active', ['MON SR/SS 2026-07-07/2026-07-12'],
+              geo: east170)
+          .single;
+      expect(m, contains('This command has no window in the date range'));
+      expect(m, contains('mean the local day at the airspace'));
+      expect(m, isNot(contains('starts in')));
     });
   });
 

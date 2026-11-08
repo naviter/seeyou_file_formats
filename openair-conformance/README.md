@@ -86,8 +86,11 @@ Covered:
   the same altitude as `FL95`, and the lower limit below the upper limit.
 - **Activation times (`AA`):** only the allowed ISO 8601 forms (also times
   with seconds), intervals, `NONE`, weekday commands, `AA EXCEPT`, 24:00Z as
-  an end time only, and sun events. Sun event cases use local solar time and
-  test the polar rules of the specification.
+  an end time only, and sun events. The specification says that the weekday
+  and the date of a sun window mean the local day at the airspace. The sun
+  event cases use local solar time for the local day. They test the polar
+  rule of the specification for `SR/SS` and `SS/SR`, and the night from
+  sunset to sunrise of the next day.
 - **Geometry:** DMS and DDM coordinates (also with one space before the
   letter `N`, `S`, `E` or `W`), polygons, a boundary that crosses itself and
   a boundary that only touches itself (for example a ring-shaped airspace),
@@ -96,7 +99,9 @@ Covered:
   `AC`).
 - **Version 2.1:** some cases use `*VERSION: 2.1`. They test what is
   different in version 2.1, for example that weekday commands, `AA EXCEPT`
-  and sun events are new in version 3.0.
+  and sun events are new in version 3.0. The 2.1 text has the same comment
+  syntax, so a `*` in `AN` or `AG` also cuts the text in a 2.1 file (a
+  warning in openair-lint).
 
 Not covered:
 
@@ -105,8 +110,15 @@ Not covered:
   example: emergency transponder codes (`7500`, `7600`, `7700`), a station
   name that is a frequency, an altitude that is not plausible, two airspaces
   that are the same, two `AA` commands that are the same, an `AA EXCEPT` that
-  removes nothing, a fixed time that is very close to a sun event, and text
-  that was garbled by a wrong encoding.
+  removes nothing, a weekday command that is never active, a fixed time that
+  is very close to a sun event or to the start of the local day, a sun event
+  near longitude 180°, the same point two times in a row, `V W=` without
+  `DY`, `AL 0 FT AGL` in place of `AL GND`, and text that was garbled by a
+  wrong encoding. openair-lint tests these checks with its own files in
+  `openair-lint/test/fixtures`.
+- Rules that openair-lint adds for version 2.1 files when the 3.0 text
+  states the rule but the 2.1 text does not (for example
+  `ax-not-octal-v21`).
 - The file name extension (`.openair` or `.txt`). A conformance case is a
   file with the extension `.openair`.
 - Info diagnostics. The `.expected` files list only errors and warnings.

@@ -1,6 +1,6 @@
 *VERSION: 3.0
 *WRITTEN_BY: openair-conformance
-* Tests: sun events at 69.6 degrees north (Tromso). Sunrise and sunset do not happen in midsummer and in midwinter. The specification defines what each window means on these days, so these commands are valid. A validator can report info diagnostics.
+* Tests: sun events at 69.6 degrees north (Tromso). Sunrise and sunset do not happen in midsummer and in midwinter. The specification says what AA SR/SS and AA SS/SR mean on these days. It does not say what the other windows (07:00Z/SS and BCMT/EECT) mean on these days, but they are valid commands. A validator can report info diagnostics.
 
 AC D
 AY TRA

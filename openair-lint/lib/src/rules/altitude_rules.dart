@@ -428,6 +428,7 @@ final Rule _flightLevelInvalid = _issueRule(
 final Rule _flightLevelSpace = _issueRule(
   id: 'altitude-flight-level-space',
   severity: Severity.warning,
+  specAnchor: 'supported-altitude-references',
   description: 'Write a flight level without a space: "FL95", not "FL 95".',
   explanation: '"FL 145" (with a space) has the same meaning as "FL145". A '
       'reader must accept it, but writers should write "FL145", without a '
@@ -530,8 +531,8 @@ final Rule _outOfRange = Rule(
       '- an altitude above FL660 (66000 ft). Airspace limits are almost '
       'never that high. Files often use a value such as "FL999" to mean "no '
       'upper limit". Write "AH UNL" for this.\n'
-      '- a negative height above the ground (AGL) or a negative flight level '
-      'or pressure altitude (STD),\n'
+      '- a negative height above the ground (AGL) or a negative pressure '
+      'altitude (STD),\n'
       '- an altitude below 1500 ft under mean sea level (AMSL).',
   correctExample: 'AH UNL',
   incorrectExample: 'AH FL999',
@@ -565,7 +566,7 @@ void _checkOutOfRange(LintContext ctx, Command c, Airspace? a) {
   if (ft < 0 && ref != AltitudeReference.amsl) {
     final what = switch (ref) {
       AltitudeReference.agl => 'A height above the ground',
-      _ => 'A flight level or a pressure altitude',
+      _ => 'A pressure altitude (STD)',
     };
     ctx.reportArgument(
         c, 'The altitude "$shown" is negative. $what cannot be negative.');

@@ -515,14 +515,31 @@ class _AaParser {
       return _parseWeekday(words, 0);
     }
     if (any({_Shape.date})) {
+      // A week date or an ordinal date is also reported as a form that is
+      // not allowed, with the date as YYYY-MM-DD.
+      final dates = <CivilDate?>[];
+      for (final side in [left, right]) {
+        final r = parseIsoDate(side.text, side.offset, <AaIssue>[]);
+        dates.add(r.value);
+        if (r.value != null) {
+          _formNotAllowed(side, r.formNote, 'YYYY-MM-DD', '${r.value}');
+        }
+      }
+      final (from, to) = (dates[0], dates[1]);
+      final known = from != null && to != null && !(to < from);
+      final interval = known
+          ? '${from}T00:00Z/${to.addDays(1)}T00:00Z'
+          : '2026-07-04T00:00Z/2026-07-05T00:00Z';
+      final weekday = known
+          ? '00:00Z/24:00Z $from/$to'
+          : '00:00Z/24:00Z 2026-07-04/2026-07-05';
       _syntax(
           first.offset,
           first.text.length,
           '"${first.text}" has dates without a time of day. An interval '
-          'needs a date and a time on both sides, for example '
-          '2026-07-04T00:00Z/2026-07-05T00:00Z. A weekday command needs the '
-          'times before the date range, for example '
-          '00:00Z/24:00Z 2026-07-04/2026-07-05.');
+          'needs a date and a time on both sides, for example $interval. A '
+          'weekday command needs the times before the date range, for '
+          'example $weekday.');
       return AaUnknownCommand(source, issues);
     }
     _syntax(first.offset, first.text.length,

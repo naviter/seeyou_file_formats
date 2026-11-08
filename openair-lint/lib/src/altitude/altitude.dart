@@ -660,6 +660,19 @@ class _Parser {
           'Write the flight level without a space: "FL${n.text}".',
           replacement: 'FL${n.text}');
     }
+    if (n.text.startsWith('-') || n.text.startsWith('+')) {
+      // "FL-5": a flight level is "FL" and a whole number, without a sign.
+      kind = AltitudeKind.invalid;
+      _add(
+          AltitudeIssueKind.flightLevelInvalid,
+          fl.offset,
+          n.end - fl.offset,
+          'The flight level "${text.substring(fl.offset, n.end)}" is not '
+          'valid. A flight level is "FL" and a whole number without a sign, '
+          'for example "FL95".');
+      if (segs.length > 2) _invalidFrom(2);
+      return;
+    }
     var value = _numberPattern.hasMatch(n.text) ? double.parse(n.text) : null;
     // A number with hundreds of digits is Infinity as a double.
     if (value != null && !value.isFinite) value = null;

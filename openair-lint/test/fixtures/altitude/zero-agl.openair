@@ -1,5 +1,5 @@
 *VERSION: 3.0
-*WRITTEN_BY: openair-conformance
+*WRITTEN_BY: openair-lint test
 * Tests: "AL 0 FT AGL" is the ground. Write "AL GND".
 
 AC D

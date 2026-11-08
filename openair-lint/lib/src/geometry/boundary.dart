@@ -45,8 +45,8 @@ class AirspaceBoundary {
   /// The bounds of [points], or null if there are no points.
   GeoBounds? get bounds => GeoBounds.of(points);
 
-  /// The centre of the airspace as the specification defines it for sun
-  /// events, or null if there are no points. See [GeoBounds.centre].
+  /// The position of the airspace that openair-lint uses for sun events,
+  /// or null if there are no points. See [GeoBounds.centre].
   LatLng? get centre => bounds?.centre;
 }
 
@@ -177,8 +177,9 @@ class GeoBounds {
 
   /// The centre of the box: the midpoint between the lowest and the highest
   /// latitude, and the midpoint between the westernmost and the easternmost
-  /// longitude. This is the airspace position for sun events in the
-  /// specification.
+  /// longitude. openair-lint uses it as the position of the airspace for
+  /// sun events. The specification says only "the position of the
+  /// airspace".
   LatLng get centre =>
       LatLng((south + north) / 2, normalizeLongitude(west + widthDeg / 2));
 

@@ -47,6 +47,7 @@ final List<Rule> geometryRules = [
   _dcWrongFormat,
   _dcRadiusNotPositive,
   _dcMixedWithOtherGeometry,
+  _dcMixedWithOtherGeometryV21,
   // Airways.
   _dyDeprecated,
   _dyWidthMissing,
@@ -1137,10 +1138,12 @@ final Rule _daNotRecommended = Rule(
       'radius and the bearings, and readers calculate them in slightly '
       'different ways. A DB arc gives the start and end points directly.\n'
       '\n'
-      'DA is allowed. This rule is info, because the specification allows '
-      'both DA and DB and only recommends one of them. It reports the first '
-      'DA of each airspace without DP points. An airspace with DA arcs and '
-      'DP points is reported by da-combined-with-dp (a warning) instead.',
+      'DA is allowed. The sentence "Avoid using DA if possible" is in a note '
+      'about DA arcs combined with DP points. That case is reported by '
+      'da-combined-with-dp (a warning). In an airspace without DP points, '
+      'the problem of the note (arcs that do not meet the points) does not '
+      'happen. For this reason this rule is info, not a warning. It reports '
+      'the first DA of each airspace without DP points.',
   correctExample: 'V X=39:13:00N 118:13:00W\n'
       'DB 39:23:00N 118:13:00W, 39:13:00N 118:00:06W\n'
       'DB 39:13:00N 118:00:06W, 39:23:00N 118:13:00W',
@@ -1339,7 +1342,7 @@ final Rule _dcRadiusNotPositive = Rule(
 final Rule _dcMixedWithOtherGeometry = Rule(
   id: 'dc-mixed-with-other-geometry',
   severity: Severity.error,
-  versions: SpecVersion.all,
+  versions: SpecVersion.only3,
   specAnchor: 'dc-circular-area',
   description: 'A DC circle must be the only geometry command of its '
       'airspace.',
@@ -1395,6 +1398,12 @@ final Rule _dcMixedWithOtherGeometry = Rule(
         'combine it with ${other.upperKeyword} (line ${other.line}). Use '
         'only the circle, or only DP points and arcs.');
   },
+);
+
+final Rule _dcMixedWithOtherGeometryV21 = version21Warning(
+  _dcMixedWithOtherGeometry,
+  description: 'A DC circle should be the only geometry command of its '
+      'airspace (version 2.1).',
 );
 
 // ---------------------------------------------------------------------------

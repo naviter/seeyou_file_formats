@@ -63,6 +63,12 @@ final Rule _caseNotUpperCase = Rule(
       return;
     }
     if (freeCase) return;
+    // An AF or AX value with other text, for example "123.500 MHz" or
+    // "7000 (mode S)", is reported by af-invalid-format or
+    // ax-not-four-digits. Their fix removes the text, so the case of the
+    // text is not reported here.
+    if (keyword == 'AF' && frequencyFormatProblem(arg) != null) return;
+    if (keyword == 'AX' && !isFourDigitCode(arg)) return;
     // A unit without a space after the number, for example "4500ft", is
     // reported by altitude-unit-no-space, with the fix in upper case
     // ("4500 FT"). It is not reported here again.

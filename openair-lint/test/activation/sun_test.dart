@@ -3,7 +3,7 @@
 // The reference values are from the sunrise-sunset.org API (which uses the
 // same definitions: 0°50' for sunrise and sunset, 6° for civil twilight)
 // and from published sunrise tables. The specification accepts differences
-// of about one minute; the tests allow 2 minutes.
+// of a few minutes between methods; the tests allow 2 minutes.
 //
 // A sun event belongs to a local solar day: local solar time is UTC plus
 // the longitude divided by 15 hours. The reference values are UTC date and
@@ -210,7 +210,67 @@ void main() {
       expect(window(fixed(6), sr, dec21, ljubljana).endsNextDay, isFalse);
     });
 
-    group('polar regions (the table of the specification)', () {
+    test('SS/SR after a polar day: the window ends at the next sunrise', () {
+      // Tromsø, 25 July 2026: the sun sets at 22:37:45Z (in the local
+      // solar day 25 July). The sunrise of 25 July does not happen (the sun
+      // did not set the night before). The next sunrise is at 23:04Z, in
+      // the local solar day 26 July.
+      const day = CivilDate(2026, 7, 25);
+      final w = window(ss, sr, day, tromso);
+      expect(w.isActive, isTrue);
+      expect(w.isNormal, isTrue);
+      expect(w.endsNextDay, isTrue);
+      expect((w.start! - minutesOf(day, '22:37')).abs(), lessThan(2));
+      expect((w.end! - minutesOf(day, '23:04')).abs(), lessThan(2));
+    });
+
+    test('EECT/BCMT after the white nights', () {
+      // 60.75° N 0° E, 28 June 2026: EECT at 23:56Z, the BCMT of the next
+      // local solar day at 00:10Z on 29 June.
+      const p = LatLng(60.75, 0);
+      const day = CivilDate(2026, 6, 28);
+      final w = window(eect, bcmt, day, p);
+      expect(w.isActive, isTrue);
+      expect((w.start! - minutesOf(day, '23:56')).abs(), lessThan(2));
+      expect((w.end! - minutesOf(day, '2026-06-29T00:10')).abs(), lessThan(2));
+      // Tromsø, 14 August 2026.
+      const aug14 = CivilDate(2026, 8, 14);
+      expect(window(eect, bcmt, aug14, tromso).isActive, isTrue);
+    });
+
+    test('sunrise and sunset agree at the start of the polar night', () {
+      // If the sun stays below the horizon of the event at noon, neither
+      // the morning event nor the evening event happens.
+      const p = LatLng(69.75, -179.9);
+      const day = CivilDate(2026, 11, 26);
+      expectMissing(SunEvent.sunrise, day, p, SunAllDay.below);
+      expectMissing(SunEvent.sunset, day, p, SunAllDay.below);
+      expect(window(sr, ss, day, p).polar, SunPolarOutcome.notActive);
+      expect(window(ss, sr, day, p).polar, SunPolarOutcome.wholeDay);
+      for (final lat in [66.5, 68.0, 69.75, 71.25, -69.75]) {
+        for (final lon in [-179.9, 0.0, 15.0, 178.0]) {
+          final q = LatLng(lat, lon);
+          for (var i = 0; i < 365; i++) {
+            final d = const CivilDate(2026, 1, 1).addDays(i);
+            for (final (m, e) in [
+              (SunEvent.sunrise, SunEvent.sunset),
+              (SunEvent.civilDawn, SunEvent.civilDusk),
+            ]) {
+              final a = sunEventOnLocalDay(m, d, q);
+              final b = sunEventOnLocalDay(e, d, q);
+              final below =
+                  a.allDay == SunAllDay.below || b.allDay == SunAllDay.below;
+              if (below) {
+                expect([a.happens, b.happens], [false, false],
+                    reason: '${m.keyword}/${e.keyword} $d at $q');
+              }
+            }
+          }
+        }
+      }
+    });
+
+    group('polar regions', () {
       test('morning to evening', () {
         final summer = window(sr, ss, june21, tromso);
         expect(summer.polar, SunPolarOutcome.wholeDay);

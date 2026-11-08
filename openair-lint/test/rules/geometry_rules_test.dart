@@ -62,11 +62,14 @@ void main() {
     expect(d, isEmpty);
   });
 
-  test('all rules apply to 2.1 and 3.0, except the DB radius rules', () {
-    // Version 3.0 says "must" for the DB radius, version 2.1 does not.
+  test('all rules apply to 2.1 and 3.0, except the rules with a 2.1 part', () {
+    // Version 3.0 says "must" for the DB radius and for DC as the only
+    // geometry. Version 2.1 does not, so 2.1 files get a warning.
     const versionRules = {
       'db-radius-mismatch': SpecVersion.only3,
       'db-radius-mismatch-v21': SpecVersion.only21,
+      'dc-mixed-with-other-geometry': SpecVersion.only3,
+      'dc-mixed-with-other-geometry-v21': SpecVersion.only21,
     };
     for (final g in ruleGroups.where((g) => g.name == 'geometry')) {
       for (final r in g.rules) {

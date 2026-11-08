@@ -1,14 +1,14 @@
 *VERSION: 3.0
-*WRITTEN_BY: openair-conformance
-* Tests: two DP commands in a row with the same point.
+*WRITTEN_BY: openair-lint test
+* Tests: V W= in an airspace without DY segments.
 
 AC D
 AY CTR
 AN Example CTR
 AH 4500 FT AMSL
 AL GND
+V W=4
 DP 46:00:00N 014:00:00E
-DP 46:00:00N 014:10:00E
 DP 46:00:00N 014:10:00E
 DP 45:55:00N 014:10:00E
 DP 45:55:00N 014:00:00E

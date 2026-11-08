@@ -59,6 +59,7 @@ class Rule {
     required this.correctExample,
     required this.incorrectExample,
     this.anchorInVersion21Text = false,
+    this.messageNote,
     this.keywords,
     this.checkFile,
     this.checkAirspace,
@@ -106,6 +107,10 @@ class Rule {
   /// for rules that check a statement that only the 2.1 text has.
   final bool anchorInVersion21Text;
 
+  /// A sentence that [LintContext.report] adds at the end of every message
+  /// of this rule, or null. [version21Warning] uses it.
+  final String? messageNote;
+
   /// Upper case keywords for [checkCommand], for example `{'AA'}`.
   /// Null means: every command.
   final Set<String>? keywords;
@@ -148,4 +153,43 @@ class Rule {
 
   @override
   String toString() => 'Rule($id)';
+}
+
+/// A copy of [base] for version 2.1 files: the ID is `<id>-v21`, the
+/// severity is warning, and the rule checks only version 2.1 files.
+///
+/// Use it when version 3.0 adds a requirement that the 2.1 text does not
+/// have, but a 2.1 reader has the same problem with the data. [base] must
+/// check only version 3.0 ([SpecVersion.only3]). [description] must not
+/// say "must", because the rule is a warning. Each message gets a note
+/// that version 3.0 makes the problem an error.
+Rule version21Warning(Rule base,
+    {required String description,
+    String? specAnchor,
+    bool anchorInVersion21Text = false,
+    String? explanation}) {
+  assert(base.versions.length == 1 && base.appliesTo(SpecVersion.v3_0),
+      '${base.id} must check only version 3.0');
+  return Rule(
+    id: '${base.id}-v21',
+    severity: Severity.warning,
+    versions: SpecVersion.only21,
+    specAnchor: specAnchor ?? base.specAnchor,
+    anchorInVersion21Text: anchorInVersion21Text,
+    description: description,
+    explanation: explanation ??
+        '${base.explanation}\n'
+            '\n'
+            'The version 2.1 text does not have this rule. Version 3.0 has '
+            'it, and there it is an error (${base.id}). A reader of a 2.1 '
+            'file has the same problem, so openair-lint reports a warning in '
+            'version 2.1 files.',
+    correctExample: base.correctExample,
+    incorrectExample: base.incorrectExample,
+    messageNote: 'In version 3.0 this is an error.',
+    keywords: base.keywords,
+    checkFile: base.checkFile,
+    checkAirspace: base.checkAirspace,
+    checkCommand: base.checkCommand,
+  );
 }

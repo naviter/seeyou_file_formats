@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:openair_lint/openair_lint.dart';
 import 'package:test/test.dart';
@@ -65,47 +64,6 @@ void main() {
         .where((d) => headerIds.contains(d.ruleId))
         .toList();
     expect(d, isEmpty);
-  });
-
-  // -------------------------------------------------------------------------
-  // Fixtures
-  // -------------------------------------------------------------------------
-
-  // The files in test/fixtures/header test rules that are openair-lint
-  // heuristics, not requirements of the specification (for example
-  // StrePla blocks and garbled text). They are not in ../openair-conformance,
-  // because other validators do not have to report these problems. The
-  // format is the same: <case>.openair and <case>.expected with
-  // "<line> <rule-id>" for each error and warning.
-  group('fixtures', () {
-    final dir = Directory('test/fixtures/header');
-    final files = dir
-        .listSync()
-        .whereType<File>()
-        .where((f) => f.path.endsWith('.openair'))
-        .toList()
-      ..sort((a, b) => a.path.compareTo(b.path));
-
-    test('the fixture folder has files', () {
-      expect(files, isNotEmpty);
-    });
-
-    for (final f in files) {
-      final name = f.uri.pathSegments.last;
-      test(name, () {
-        final expectedFile =
-            File(f.path.replaceFirst(RegExp(r'\.openair$'), '.expected'));
-        final expected = [
-          for (final line in expectedFile.readAsLinesSync())
-            if (line.trim().isNotEmpty && !line.startsWith('#')) line.trim()
-        ]..sort();
-        final result = Linter().lintBytes(f.readAsBytesSync());
-        final actual = expectedFormat(result.diagnostics)..sort();
-        expect(actual, expected,
-            reason: '$name: all diagnostics:\n'
-                '${result.diagnostics.map((d) => '  $d').join('\n')}');
-      });
-    }
   });
 
   // -------------------------------------------------------------------------

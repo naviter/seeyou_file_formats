@@ -1,5 +1,5 @@
 *VERSION: 3.0
-*WRITTEN_BY: openair-conformance
+*WRITTEN_BY: openair-lint test
 * Tests: AA SR/SS at 69.6 degrees north (Tromso) with a date range in midwinter. The sun does not rise on any day of the date range, so the window is never active.
 
 AC D

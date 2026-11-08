@@ -19,15 +19,20 @@ final List<Rule> attributeRules = [
   _anNameTooLong,
   _anNonAscii,
   _anContainsAsterisk,
+  _anContainsAsteriskV21,
   _afInvalidFormat,
   _afOutsideAirBand,
+  _afOutsideAirBandV21,
   _afInvalidChannel,
+  _afInvalidChannelV21,
   _afNotThreeDecimals,
   _agStationEmpty,
   _agStationIsFrequency,
   _agContainsAsterisk,
+  _agContainsAsteriskV21,
   _axNotFourDigits,
   _axNotOctal,
+  _axNotOctalV21,
   _axEmergencyCode,
 ];
 
@@ -349,8 +354,25 @@ String _asteriskExplanation(String keyword, String what) =>
     'text after the "*" is a comment, put the comment on its own line, '
     'before or after the $keyword line.\n'
     '\n'
-    'Version 2.1 allowed a comment after $keyword, so this rule applies only '
-    'to version 3.0.';
+    'In version 2.1 files this is a warning '
+    '(${keyword.toLowerCase()}-contains-asterisk-v21).';
+
+String _asteriskExplanationV21(String keyword, String what) =>
+    'The version 2.1 text says: a comment begins with "*" and extends to '
+    'the end of the line. So also in a version 2.1 file, a reader shows only '
+    'the text before the "*" as the $what.\n'
+    '\n'
+    'If the "*" is part of the $what, remove the "*" characters. If the '
+    'text after the "*" is a comment, put the comment on its own line, '
+    'before or after the $keyword line.\n'
+    '\n'
+    'Version 3.0 also says that the $what cannot contain "*" and that a '
+    'comment is not allowed on the same line as $keyword. In version 3.0 '
+    'this is an error (${keyword.toLowerCase()}-contains-asterisk).';
+
+/// The anchor of the general requirements (with the comment syntax) in the
+/// version 2.1 text: the title of the document.
+const String _generalAnchor21 = 'seeyou-openair-file-format-specification';
 
 final Rule _anContainsAsterisk = Rule(
   id: 'an-contains-asterisk',
@@ -382,6 +404,38 @@ final Rule _agContainsAsterisk = Rule(
   checkCommand: (ctx, c, a) => _checkAsterisk(ctx, c, 'station name'),
 );
 
+final Rule _anContainsAsteriskV21 = Rule(
+  id: 'an-contains-asterisk-v21',
+  severity: Severity.warning,
+  versions: SpecVersion.only21,
+  specAnchor: _generalAnchor21,
+  anchorInVersion21Text: true,
+  description: 'An AN line should not contain "*" (version 2.1). The "*" '
+      'starts a comment, so readers cut the name there.',
+  explanation: _asteriskExplanationV21('AN', 'name'),
+  correctExample: '* part in France\n'
+      'AN EKR664 ZONE 1 (NOTAM)',
+  incorrectExample: 'AN EKR664 ZONE 1 (*NOTAM*) * part in France',
+  keywords: {'AN'},
+  checkCommand: (ctx, c, a) => _checkAsterisk(ctx, c, 'name'),
+);
+
+final Rule _agContainsAsteriskV21 = Rule(
+  id: 'ag-contains-asterisk-v21',
+  severity: Severity.warning,
+  versions: SpecVersion.only21,
+  specAnchor: _generalAnchor21,
+  anchorInVersion21Text: true,
+  description: 'An AG line should not contain "*" (version 2.1). The "*" '
+      'starts a comment, so readers cut the station name there.',
+  explanation: _asteriskExplanationV21('AG', 'station name'),
+  correctExample: '* only in summer\n'
+      'AG Langen Information (FIS)',
+  incorrectExample: 'AG Langen Information (*FIS*) * only in summer',
+  keywords: {'AG'},
+  checkCommand: (ctx, c, a) => _checkAsterisk(ctx, c, 'station name'),
+);
+
 /// Reports [c] (an AN or AG command) if its line contains "*". [what] is
 /// the word for the text in the message ("name" or "station name").
 void _checkAsterisk(LintContext ctx, Command c, String what) {
@@ -392,9 +446,13 @@ void _checkAsterisk(LintContext ctx, Command c, String what) {
   final shown = c.argument.isEmpty
       ? 'readers show an empty $what'
       : 'readers show only the $what "${c.argument}"';
+  // The version 2.1 text does not forbid a comment after AN or AG. It only
+  // says that a comment runs to the end of the line.
+  final notAllowed = ctx.isV21
+      ? ''
+      : ' A comment is not allowed on the same line as $keyword.';
   final buffer = StringBuffer('The "*" starts a comment, so the $what ends '
-      'before the "*", and $shown. A comment is not allowed on the same line '
-      'as $keyword.');
+      'before the "*", and $shown.$notAllowed');
   if (_looksLikePartOfText(c, comment, starColumn)) {
     final fixed = c.text
         .substring(c.argumentColumn - 1)
@@ -482,7 +540,7 @@ final Rule _afInvalidFormat = Rule(
 final Rule _afOutsideAirBand = Rule(
   id: 'af-outside-air-band',
   severity: Severity.error,
-  versions: SpecVersion.all,
+  versions: SpecVersion.only3,
   specAnchor: 'af-airspace-frequency',
   description: 'The AF frequency must be in the VHF air band '
       '($_bandText).',
@@ -515,7 +573,7 @@ final Rule _afOutsideAirBand = Rule(
 final Rule _afInvalidChannel = Rule(
   id: 'af-invalid-channel',
   severity: Severity.error,
-  versions: SpecVersion.all,
+  versions: SpecVersion.only3,
   specAnchor: 'af-airspace-frequency',
   description: 'The AF frequency must be a valid 25 kHz or 8.33 kHz '
       'channel name.',
@@ -562,6 +620,18 @@ final Rule _afInvalidChannel = Rule(
     }
     ctx.reportArgument(c, buffer.toString());
   },
+);
+
+final Rule _afOutsideAirBandV21 = version21Warning(
+  _afOutsideAirBand,
+  description: 'The AF frequency should be in the VHF air band '
+      '($_bandText) (version 2.1).',
+);
+
+final Rule _afInvalidChannelV21 = version21Warning(
+  _afInvalidChannel,
+  description: 'The AF frequency should be a valid 25 kHz or 8.33 kHz '
+      'channel name (version 2.1).',
 );
 
 final Rule _afNotThreeDecimals = Rule(
@@ -702,7 +772,7 @@ final Rule _axNotFourDigits = Rule(
 final Rule _axNotOctal = Rule(
   id: 'ax-not-octal',
   severity: Severity.error,
-  versions: SpecVersion.all,
+  versions: SpecVersion.only3,
   specAnchor: 'ax-transponder-code',
   description: 'The AX transponder code must use only the digits 0 to 7.',
   explanation: 'Transponder codes are octal. Each of the 4 digits is from 0 '
@@ -721,6 +791,12 @@ final Rule _axNotOctal = Rule(
         '"$code" is not a transponder code. A transponder code uses only the '
         'digits 0 to 7, so 8 and 9 are not possible.');
   },
+);
+
+final Rule _axNotOctalV21 = version21Warning(
+  _axNotOctal,
+  description: 'The AX transponder code should use only the digits 0 to 7 '
+      '(version 2.1).',
 );
 
 final Rule _axEmergencyCode = Rule(

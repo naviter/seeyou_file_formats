@@ -159,6 +159,12 @@ void main() {
       issues.clear();
       expect(time('24:30Z', isEnd: true, issues: issues), isNull);
       expect(kinds(issues), ['aa-invalid-time']);
+      issues.clear();
+      expect(time('24:00:01Z', isEnd: true, issues: issues), isNull);
+      expect(kinds(issues), ['aa-invalid-time']);
+      // The specification allows 24:00Z and 24:00:00Z.
+      expect(issues.single.message,
+          contains('only 24:00Z or 24:00:00Z is allowed'));
     });
 
     test('a missing Z is an error', () {

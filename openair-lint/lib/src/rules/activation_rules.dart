@@ -56,6 +56,7 @@ final List<Rule> activationRules = [
   _sunEventOrderChanges,
   _sunEventNearFixedTime,
   _sunEventFixedStartNearDayStart,
+  _sunEventNearDateLine,
   _sunEventMissingDay,
   _sunEventNoPosition,
   // Combining AA commands.
@@ -788,8 +789,9 @@ final Rule _weekdayNeverActive = Rule(
       'in the dates.\n'
       '\n'
       'For a window without a sun event, the weekdays and the dates are UTC '
-      'days. For a window with a sun event, they are local solar days (see '
-      'the section "Sun events" of the specification). In polar regions, a '
+      'days. For a window with a sun event, the specification says that they '
+      'mean the local day at the airspace. openair-lint uses the local solar '
+      'day (see aa-sun-event-missing-day). In polar regions, a '
       'window with a sun event can be not active on every day of its date '
       'range, for example SR/SS during the polar night. This rule reports '
       'that case too, when the date range is not longer than four years.',
@@ -821,15 +823,21 @@ final Rule _weekdayNeverActive = Rule(
         ];
         ctx.reportCommand(
             c,
-            'No window of this command starts in the date range $from/$to, '
-            'because the range has no ${_dayList(missing)}. The command has '
-            'no effect.');
+            aa.usesSunEvent
+                ? 'This command has no window in the date range $from/$to, '
+                    'because the range has no ${_dayList(missing)}. For a '
+                    'window with a sun event, the dates and the weekdays '
+                    'mean the local day at the airspace. The command has no '
+                    'effect.'
+                : 'No window of this command starts in the date range '
+                    '$from/$to, because the range has no '
+                    '${_dayList(missing)}. The command has no effect.');
       } else if (scheduled == excepted && length <= 3700) {
         ctx.reportCommand(
             c,
             'AA EXCEPT commands remove every day of this command in the date '
             'range $from/$to. The command has no effect.');
-      } else if (aa.usesSunEvent && _sunCheckCoversRange(aa)) {
+      } else if (aa.usesSunEvent && !ctx.isV21 && _sunCheckCoversRange(aa)) {
         final r = _sunCheck(ctx, a, aa);
         if (r.noPosition || r.checkedDays == 0 || r.activeDays > 0) continue;
         ctx.reportCommand(
@@ -856,9 +864,9 @@ final Rule _exceptEndBeforeStart = _issueRule(
   explanation: 'AA EXCEPT StartDate/EndDate removes the weekday windows of '
       'the dates from StartDate to EndDate. Both dates are included. For a '
       'window without a sun event, the dates are the UTC days on which the '
-      'window starts. For a window with a sun event, they are local solar '
-      'days. If the end date is before the start date, the command removes '
-      'nothing.',
+      'window starts. For a window with a sun event, they mean the local day '
+      'at the airspace. If the end date is before the start date, the '
+      'command removes nothing.',
   correctExample: 'AA MON-FRI 07:00Z/15:00Z\n'
       'AA EXCEPT 2026-12-31/2027-01-01',
   incorrectExample: 'AA MON-FRI 07:00Z/15:00Z\n'
@@ -898,16 +906,17 @@ final Rule _exceptNoEffect = Rule(
   specAnchor: 'exceptions',
   description: 'An AA EXCEPT command should remove at least one weekday '
       'window.',
-  explanation: 'AA EXCEPT removes the weekday windows that start on its '
-      'dates. If no weekday command has a window that starts on these dates, '
-      'the exception has no effect. For example, the date is outside the '
-      'date ranges of all weekday commands, or the date is a Saturday and '
-      'the weekday commands are for MON-FRI only.\n'
+  explanation: 'AA EXCEPT removes the weekday windows of its dates. If no '
+      'weekday command has a window on these dates, the exception has no '
+      'effect. For example, the date is outside the date ranges of all '
+      'weekday commands, or the date is a Saturday and the weekday commands '
+      'are for MON-FRI only.\n'
       '\n'
-      'The dates of AA EXCEPT are UTC days for windows without a sun event. '
-      'For windows with a sun event, they are local solar days (see the '
-      'section "Sun events" of the specification). In both cases, the date '
-      'removes the window of the day with this date.',
+      'For a window without a sun event, the date is the UTC day on which '
+      'the window starts. For a window with a sun event, the specification '
+      'says that the date means the local day at the airspace. openair-lint '
+      'uses the local solar day (see aa-sun-event-missing-day). In both '
+      'cases, the date removes the window of the day with this date.',
   correctExample: 'AA MON-FRI 07:00Z/15:00Z\n'
       'AA EXCEPT 2026-12-25',
   incorrectExample: 'AA MON-FRI 07:00Z/15:00Z\n'
@@ -951,10 +960,24 @@ final Rule _exceptNoEffect = Rule(
             'This AA EXCEPT has no effect. $dates is outside the date ranges '
             'of all weekday commands of this airspace.');
       } else {
-        ctx.reportCommand(
-            c,
-            'This AA EXCEPT has no effect. No weekday command has a window '
-            'that starts on ${from == to ? dates : 'the dates $dates'}.');
+        final on = from == to ? dates : 'the dates $dates';
+        final anySun = weekdays.any((w) => w.usesSunEvent);
+        final allSun = weekdays.every((w) => w.usesSunEvent);
+        final String detail;
+        if (!anySun) {
+          detail = 'No weekday command has a window that starts on $on.';
+        } else if (allSun) {
+          // For a window with a sun event, the date means the local day at
+          // the airspace, not the UTC day on which the window starts.
+          detail = 'No weekday command has a window on $on (the local day '
+              'at the airspace).';
+        } else {
+          detail = 'No weekday command has a window on $on. A window '
+              'without a sun event belongs to the UTC day on which it '
+              'starts. A window with a sun event belongs to the local day at '
+              'the airspace.';
+        }
+        ctx.reportCommand(c, 'This AA EXCEPT has no effect. $detail');
       }
     }
   },
@@ -977,9 +1000,9 @@ final Rule _sunEventNotAllowed = _issueRule(
   incorrectExample: 'AA 2026-07-04T08:00Z/SS',
 );
 
-/// One group of polar days of one command: the days on which a sun event
-/// does not happen, with the same position of the sun and the same meaning
-/// of the window.
+/// One group of polar days of one command: the days on which the same sun
+/// events do not happen, with the same position of the sun and the same
+/// meaning of the window.
 class _PolarGroup {
   _PolarGroup(this.first);
 
@@ -989,9 +1012,20 @@ class _PolarGroup {
   /// The number of days in the group.
   int count = 0;
 
-  /// The sun events that do not happen on the days of the group.
-  final Set<SunEvent> events = {};
+  /// The sun events that do not happen on every day of the group, in the
+  /// order of [SunEvent.values].
+  List<SunEvent> get events => first.missingEvents.toSet().toList()
+    ..sort((x, y) => x.index.compareTo(y.index));
 }
+
+/// The key of the [_PolarGroup] of [day]: the position of the sun, the
+/// meaning of the window and the missing events.
+(SunAllDay, SunPolarOutcome, String) _polarKey(SunWindowDay day) => (
+      day.allDay!,
+      day.polar!,
+      (day.missingEvents.map((e) => e.index).toSet().toList()..sort())
+          .join(','),
+    );
 
 /// What the sun check found for one weekday command.
 class _SunCheck {
@@ -1013,12 +1047,13 @@ class _SunCheck {
   (SunWindowDay, SunWindowDay)? firstOrderChange;
 
   /// The first normal day on which a fixed time and a sun event are less
-  /// than 2 minutes apart.
+  /// than [_nearMinutes] minutes apart.
   SunWindowDay? firstNear;
 
   /// The days on which a sun event does not happen, grouped by the
-  /// position of the sun and the meaning of the window.
-  final Map<(SunAllDay, SunPolarOutcome), _PolarGroup> polar = {};
+  /// position of the sun, the meaning of the window and the missing events
+  /// ([_polarKey]).
+  final Map<(SunAllDay, SunPolarOutcome, String), _PolarGroup> polar = {};
 
   /// True if the airspace has no position.
   bool noPosition = false;
@@ -1151,10 +1186,7 @@ _SunCheck _sunCheck(LintContext ctx, Airspace a, AaWeekdayCommand w) =>
             start, end, CivilDate.fromDayNumber(n), centre.lon, eventOn);
         if (day.isActive) r.activeDays++;
         if (!day.isNormal) {
-          final group = r.polar
-              .putIfAbsent((day.allDay!, day.polar!), () => _PolarGroup(day));
-          group.count++;
-          group.events.addAll(day.missingEvents);
+          r.polar.putIfAbsent(_polarKey(day), () => _PolarGroup(day)).count++;
           continue;
         }
         r.normalDays++;
@@ -1165,7 +1197,7 @@ _SunCheck _sunCheck(LintContext ctx, Airspace a, AaWeekdayCommand w) =>
         }
         if (r.firstNear == null &&
             start.isSunEvent != end.isSunEvent &&
-            (day.endOnDay! - day.startOnDay!).abs() < 2) {
+            (day.endOnDay! - day.startOnDay!).abs() < _nearMinutes) {
           r.firstNear = day;
         }
         previous = day;
@@ -1175,8 +1207,13 @@ _SunCheck _sunCheck(LintContext ctx, Airspace a, AaWeekdayCommand w) =>
 
 /// The weekday commands of an airspace that use a sun event and can be
 /// checked.
+///
+/// In a version 2.1 file there are none: aa-needs-version-3 reports these
+/// commands, and a 2.1 reader ignores all AA commands of the airspace. More
+/// diagnostics about the sun events would only be noise.
 Iterable<(Command, AaWeekdayCommand)> _sunCommands(
     LintContext ctx, Airspace a) sync* {
+  if (ctx.isV21) return;
   for (final (c, aa) in _aaOf(ctx, a)) {
     if (aa is AaWeekdayCommand &&
         aa.isUsable &&
@@ -1196,10 +1233,13 @@ Iterable<(Command, AaWeekdayCommand)> _mixedSunCommands(
         .where((e) => e.$2.startTime!.isSunEvent != e.$2.endTime!.isSunEvent);
 
 /// The text that the sun event rules use for the local solar day.
-const String _localSolarDayText = 'A window with a sun event belongs to a '
-    'local solar day, from 00:00 to 24:00 local solar time. Local solar time '
-    'is UTC plus the longitude of the centre of the airspace divided by 15, '
-    'in hours (east is positive). The client calculates the sun event that '
+const String _localSolarDayText = 'The specification says that the weekday '
+    'and the date of a window with a sun event mean the local day at the '
+    'airspace. It does not say how to calculate the local day. openair-lint '
+    'uses the local solar day, from 00:00 to 24:00 local solar time. Local '
+    'solar time is UTC plus the longitude of the centre of the airspace '
+    'divided by 15, in hours (east is positive). The centre is the middle of '
+    'the box around the airspace. openair-lint calculates the sun event that '
     'happens on this local solar day. A fixed time in the same window, for '
     'example 07:00Z in 07:00Z/SS, is a UTC time inside this local solar '
     'day.';
@@ -1214,6 +1254,12 @@ const String _sunCheckPeriodText = 'openair-lint calculates the sun events '
 
 String _times(int n) =>
     n > 1 ? ' This happens $n times in the checked days.' : '';
+
+/// aa-sun-event-near-fixed-time reports a fixed time and a sun event that
+/// are less than this many minutes apart. The specification says that
+/// methods can differ by "a few minutes". The value is a choice of
+/// openair-lint.
+const int _nearMinutes = 5;
 
 final Rule _sunEventOrderChanges = Rule(
   id: 'aa-sun-event-order-changes',
@@ -1253,7 +1299,9 @@ final Rule _sunEventOrderChanges = Rule(
             'On the local solar day ${p.day.withWeekday} ${_order(w, p)}. On '
             '${d.day.withWeekday} ${_order(w, d)}.${_times(r.orderChanges)} '
             'On ${r.nextDay} of ${r.normalDays} checked days the window ends '
-            'on the next local solar day.');
+            'on the next local solar day. To fix it, split the command with '
+            'date ranges, or use a fixed time that is always before (or '
+            'always after) the sun event.');
       }
     }
   },
@@ -1264,18 +1312,20 @@ final Rule _sunEventNearFixedTime = Rule(
   severity: Severity.warning,
   specAnchor: 'weekday-activation',
   description: 'A fixed time and a sun event of one window should not be '
-      'less than 2 minutes apart.',
+      'less than $_nearMinutes minutes apart.',
   explanation: 'If the end time of a weekday window is earlier than or '
       'equal to the start time, the window ends on the next local solar day. '
-      'Different calculation methods can give sun events that differ by '
-      'about one minute. If a fixed time and a sun event are less than 2 '
-      'minutes apart on some day, readers can disagree on the order. Then one '
-      'reader ends the window on the same day, and another reader ends it on '
-      'the next day.\n'
+      'The specification says that different calculation methods can give '
+      'results that differ by a few minutes. If a fixed time and a sun event '
+      'are very close on some day, readers can disagree on the order. Then '
+      'one reader ends the window on the same day, and another reader ends '
+      'it on the next day.\n'
       '\n'
-      'openair-lint reports the first scheduled day on which this happens. '
-      'It does not report a command that aa-sun-event-order-changes already '
-      'reports.\n'
+      'The specification does not give a limit. openair-lint uses '
+      '$_nearMinutes minutes. It reports the first scheduled day on which '
+      'the fixed time and the sun event are less than $_nearMinutes minutes '
+      'apart. It does not report a command that aa-sun-event-order-changes '
+      'already reports.\n'
       '\n'
       '$_sunCheckPeriodText\n'
       '\n'
@@ -1291,10 +1341,12 @@ final Rule _sunEventNearFixedTime = Rule(
         ctx.reportCommand(
             c,
             'On the local solar day ${d.day.withWeekday} the start and the '
-            'end are less than 2 minutes apart: the window is '
-            '${_window(w, d)}. Readers can calculate sun events with a '
-            'difference of about one minute, so they can disagree on whether '
-            'the window ends on the same day or on the next day.');
+            'end are less than $_nearMinutes minutes apart: the window is '
+            '${_window(w, d)}. Sun events from different calculation methods '
+            'can differ by a few minutes, so readers can disagree on whether '
+            'the window ends on the same day or on the next day. Use a fixed '
+            'time that is further from the sun event, or split the command '
+            'with date ranges.');
       }
     }
   },
@@ -1326,6 +1378,9 @@ final Rule _sunEventFixedStartNearDayStart = Rule(
       'A fixed end time at the start of the local solar day is not a '
       'problem: both readings give the same end.\n'
       '\n'
+      'The specification does not have this rule. The limit of 2 minutes '
+      '(0.5° of longitude) is a choice of openair-lint.\n'
+      '\n'
       'To fix it, use a start time that is at least 2 minutes from the start '
       'of the local solar day, or use a window without a sun event.',
   correctExample: 'AA 05:00Z/SS             * an airspace at 15° E\n'
@@ -1337,6 +1392,9 @@ final Rule _sunEventFixedStartNearDayStart = Rule(
   checkAirspace: (ctx, a) {
     final centre = ctx.boundaryOf(a).centre;
     if (centre == null) return;
+    // Near the date line, aa-sun-event-near-date-line reports every window
+    // with a sun event.
+    if (_nearDateLine(centre.lon)) return;
     final dayStart = localDayStartMinutes(centre.lon);
     for (final (c, w) in _mixedSunCommands(ctx, a)) {
       final ms = w.startTime!.ms;
@@ -1353,7 +1411,66 @@ final Rule _sunEventFixedStartNearDayStart = Rule(
           'solar day. At the centre of the airspace (${_longitude(centre.lon)}) '
           'the local solar day starts at ${formatMinutes(dayStart)}. Readers '
           'that calculate the centre a little differently can put the start '
-          'on different UTC days, so the window can move by one day.');
+          'on different UTC days, so the window can move by one day. Use a '
+          'start time that is at least 2 minutes from '
+          '${formatMinutes(dayStart)}, or a window without a sun event.');
+    }
+  },
+);
+
+/// aa-sun-event-near-date-line reports a window with a sun event when the
+/// centre of the airspace is less than this many degrees from longitude
+/// 180°. 0.5° is 2 minutes of local solar time, the same margin as
+/// aa-sun-event-fixed-start-near-day-start.
+const double _dateLineMargin = 0.5;
+
+/// True if [lon] is less than [_dateLineMargin] from longitude 180°.
+bool _nearDateLine(double lon) => 180 - lon.abs() < _dateLineMargin;
+
+final Rule _sunEventNearDateLine = Rule(
+  id: 'aa-sun-event-near-date-line',
+  severity: Severity.warning,
+  specAnchor: 'sun-events',
+  description: 'The centre of an airspace with a sun event should not be '
+      'less than 0.5° from longitude 180°.',
+  explanation: '$_localSolarDayText\n'
+      '\n'
+      'At longitude 180° the local solar day changes by 24 hours. At '
+      '179.9° E the local solar day 4 July starts at about 12:00Z on 3 July. '
+      'At 179.9° W it starts at about 12:00Z on 4 July. Readers calculate '
+      'the centre of the airspace in slightly different ways, for example '
+      'for arcs or for an airspace that crosses longitude 180°. Near '
+      'longitude 180°, a small difference in the longitude can move every '
+      'window with a sun event by one day. The specification does not say '
+      'what to do in this case.\n'
+      '\n'
+      'openair-lint reports every weekday command with a sun event when the '
+      'centre of the airspace is less than 0.5° from longitude 180°. 0.5° is '
+      '2 minutes of local solar time. In this case '
+      'aa-sun-event-fixed-start-near-day-start does not report the command '
+      'again.\n'
+      '\n'
+      'To fix it, use fixed UTC times in place of the sun events. Use date '
+      'ranges if the times change during the year.',
+  correctExample: 'AA SAT 18:30Z/05:40Z     * an airspace at 180°\n'
+      'V X=17:00:00S 180:00:00E\n'
+      'DC 5',
+  incorrectExample: 'AA SAT SR/SS             * an airspace at 180°\n'
+      'V X=17:00:00S 180:00:00E\n'
+      'DC 5',
+  checkAirspace: (ctx, a) {
+    final commands = _sunCommands(ctx, a).toList();
+    if (commands.isEmpty) return;
+    final centre = ctx.boundaryOf(a).centre;
+    if (centre == null || !_nearDateLine(centre.lon)) return;
+    for (final (c, _) in commands) {
+      ctx.reportCommand(
+          c,
+          'The centre of the airspace (${_longitude(centre.lon)}) is less '
+          'than 0.5° from longitude 180°. Here the local solar day changes '
+          'by 24 hours. Readers that calculate the centre a little '
+          'differently can move every window of this command by one day. '
+          'Use fixed UTC times in place of the sun events.');
     }
   },
 );
@@ -1365,21 +1482,32 @@ final Rule _sunEventMissingDay = Rule(
   description: 'A sun event does not happen on some days of the schedule.',
   explanation: 'In polar regions a sun event does not happen on some days. '
       'For example, the sun does not set in the summer, and it does not rise '
-      'in the winter. On these days the client uses the position of the sun '
-      'during the whole local solar day. The horizon of SR and SS is 0°50′ '
-      'below the horizon, the horizon of BCMT and EECT is 6° below the '
-      'horizon. The specification defines the meaning of the window:\n'
+      'in the winter. The specification says: on these days, AA SR/SS means '
+      'active for the whole day in summer and not active in winter. AA SS/SR '
+      'is the opposite.\n'
       '\n'
+      '$_localSolarDayText\n'
+      '\n'
+      'The specification does not say more about polar regions. For the '
+      'other cases openair-lint uses these choices:\n'
+      '\n'
+      'The position of the sun: for SR and SS, the centre of the sun is '
+      '0°50′ below the horizon (the usual value for the radius of the sun '
+      'and the refraction). For BCMT and EECT, it is 6° below the horizon.\n'
       'From a morning event to an evening event (SR/SS, BCMT/EECT): if the '
-      'sun stays above the horizon all day, the window is active for the '
-      'whole local solar day. If it stays below, the window is not active.\n'
-      'From an evening event to a morning event (SS/SR): if the sun stays '
-      'above the horizon all day, the window is not active. If it stays '
-      'below, the window is active for the whole local solar day.\n'
+      'sun stays above the horizon of the event all day, the window is '
+      'active for the whole local solar day. If it stays below, the window '
+      'is not active.\n'
+      'From an evening event to a morning event (SS/SR, EECT/BCMT): if the '
+      'sun stays above the horizon of the event all day, the window is not '
+      'active. If it stays below, the window is active for the whole local '
+      'solar day. If the evening event happens but the morning event of the '
+      'same day does not, the window ends at the morning event of the next '
+      'day.\n'
       'A sun event and a fixed time (07:00Z/SS): if the sun stays above the '
-      'horizon all day, a missing morning event is the start of the local '
-      'solar day, and a missing evening event is the end of the local solar '
-      'day. If it stays below, the window is not active.\n'
+      'horizon of the event all day, a missing morning event is the start of '
+      'the local solar day, and a missing evening event is the end of the '
+      'local solar day. If it stays below, the window is not active.\n'
       '\n'
       'This rule tells you on which days this happens and what the window '
       'means on these days, so that you can check that this is what you '
@@ -1397,10 +1525,9 @@ final Rule _sunEventMissingDay = Rule(
       final r = _sunCheck(ctx, a, w);
       if (r.polar.isEmpty) continue;
       final parts = <String>[];
-      for (final MapEntry(key: (allDay, outcome), value: g)
+      for (final MapEntry(key: (allDay, outcome, _), value: g)
           in r.polar.entries) {
-        final events = g.events.toList()
-          ..sort((x, y) => x.index.compareTo(y.index));
+        final events = g.events;
         final names = [
           for (final e in events) '${e.keyword} (${e.description})'
         ];

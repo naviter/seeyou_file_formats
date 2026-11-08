@@ -384,8 +384,8 @@ IsoParse<int> parseIsoTime(
       fractionMs;
   if (hour == 24) {
     if (ms != msPerDay) {
-      invalid('"$text" is not a valid time. With the hour 24, only 24:00Z is '
-          'allowed.');
+      invalid('"$text" is not a valid time. With the hour 24, only 24:00Z or '
+          '24:00:00Z is allowed.');
       return const IsoParse(null);
     }
     if (!isEnd) {

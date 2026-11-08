@@ -46,7 +46,7 @@ void main() {
       final r = findRule(id)!;
       expect(r.specUrl, startsWith('https://github.com/naviter/'));
     }
-    expect(attributeIds(), hasLength(19));
+    expect(attributeIds(), hasLength(24));
   });
 
   test('the tables match the specification', () {
@@ -381,7 +381,18 @@ void main() {
         final d = single(id, airspace('AF $v\n'));
         expect(d.message, contains('more than one'), reason: v);
         expect(d.message, contains('"AF 123.3'), reason: v);
+        expect(d.message, contains('one AF command for each frequency'),
+            reason: v);
+        expect(d.message, contains('and "AF 124.5'), reason: v);
+        expect(d.message, isNot(contains('main frequency')), reason: v);
       }
+    });
+    test('three frequencies', () {
+      final d = single(id, airspace('AF 123.500 124.000 125.000\n'));
+      expect(
+          d.message,
+          endsWith('Write one AF command for each frequency: "AF 123.500", '
+              '"AF 124.000" and "AF 125.000".'));
     });
     test('one frequency and other text', () {
       final d = single(id, airspace('AF 122.100 INFO\n'));
@@ -702,6 +713,70 @@ void main() {
       final ids = attributeIds();
       expect(lintAll(text).where((d) => ids.contains(d.ruleId)), isEmpty);
       expect(linesOf('case-not-upper-case', text), [3, 4]);
+    });
+    test('a unit after AF is reported only by af-invalid-format', () {
+      final text = airspace('AF 123.500 MHz\nAX 7000 mode s\n');
+      expect(linesOf('af-invalid-format', text), [4]);
+      expect(linesOf('ax-not-four-digits', text), [5]);
+      expect(linesOf('case-not-upper-case', text), isEmpty);
+      // A valid value in lower case is still reported.
+      expect(linesOf('case-not-upper-case', airspace('AY ctr\n')), [4]);
+    });
+  });
+
+  group('version 2.1 parts (-v21)', () {
+    String v21(String attributes) => airspace(attributes, version: '2.1');
+
+    test('"*" in AN and AG is a warning in version 2.1', () {
+      final text = v21('AN TMA *TWR* 118.7\nAG Station * note\n');
+      final an = single('an-contains-asterisk-v21', text);
+      expect(an.severity, Severity.warning);
+      expect(an.line, 4);
+      expect(an.message, contains('only the name "TMA"'));
+      // The 2.1 text does not forbid a comment after AN.
+      expect(an.message, isNot(contains('not allowed')));
+      expect(an.specUrl, contains('v2.1.5'));
+      final ag = single('ag-contains-asterisk-v21', text);
+      expect(ag.severity, Severity.warning);
+      expect(ag.line, 5);
+      expect(linesOf('an-contains-asterisk', text), isEmpty);
+      expect(linesOf('ag-contains-asterisk', text), isEmpty);
+    });
+    test('the -v21 rules do not check version 3.0 files', () {
+      final text = airspace('AN TMA *TWR*\nAG Station * note\n');
+      expect(linesOf('an-contains-asterisk', text), [4]);
+      expect(linesOf('an-contains-asterisk-v21', text), isEmpty);
+      expect(linesOf('ag-contains-asterisk-v21', text), isEmpty);
+    });
+    test('AF and AX values are warnings in version 2.1', () {
+      final text = v21('AF 123.520\nAF 140.000\nAX 7778\n');
+      for (final (id, line) in [
+        ('af-invalid-channel-v21', 4),
+        ('af-outside-air-band-v21', 5),
+        ('ax-not-octal-v21', 6),
+      ]) {
+        final d = single(id, text);
+        expect(d.severity, Severity.warning, reason: id);
+        expect(d.line, line, reason: id);
+        expect(d.message, endsWith('In version 3.0 this is an error.'),
+            reason: id);
+        final base = id.replaceFirst('-v21', '');
+        expect(lintRule(base, text), isEmpty, reason: base);
+        expect(lintRule(id, airspace('AF 123.520\nAF 140.000\nAX 7778\n')),
+            isEmpty,
+            reason: '$id in a 3.0 file');
+      }
+    });
+    test('AF with one or two decimals is not checked in version 2.1', () {
+      expect(lintRule('af-not-three-decimals', v21('AF 123.5\n')), isEmpty);
+    });
+    test('every -v21 rule checks only version 2.1', () {
+      for (final r in allRules.where((r) => r.id.endsWith('-v21'))) {
+        expect(r.versions, SpecVersion.only21, reason: r.id);
+        final base = findRule(r.id.replaceFirst(RegExp(r'-v21$'), ''));
+        expect(base, isNotNull, reason: r.id);
+        expect(base!.versions, SpecVersion.only3, reason: base.id);
+      }
     });
   });
 }
