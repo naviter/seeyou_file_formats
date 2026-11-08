@@ -63,7 +63,7 @@ For this reason:
 
 \* Each airspace must have at least one geometry command: `DP`, `DA`, `DB`, `DC` or `DY`. `V` alone is not a geometry.
 
-Each airspace can have at most one `AC`, `AN`, `AY`, `AG`, `AX`, `AH` and `AL` command. `AF` and the `AA`, `D` and `V` commands can be used more than once.
+Each airspace must not have more than one `AC`, `AN`, `AY`, `AG`, `AX`, `AH` or `AL` command. `AF` and the `AA`, `D` and `V` commands can be used more than once.
 
 ## Units
 
@@ -79,6 +79,16 @@ Geographic coordinates can be represented in two formats:
 Use a consistent format for each command or data point, either DMS  `45:40:30N 014:18:20E` or DDM `45:40.500N 014:18.333E`.
 
 You can write one space between the number and the letter `N`, `S`, `E` or `W`. Both forms are valid and have the same meaning: `45:40:30N 014:18:20E` and `45:40:30 N 014:18:20 E`. The original WinPilot format uses the space.
+
+Writers should write every part with its full number of digits, with leading zeros:
+
+* Degrees of latitude: 2 digits, for example `05:30:00N`.
+* Degrees of longitude: 3 digits, for example `014:18:20E`.
+* Minutes and whole seconds: 2 digits, for example `045:05:08E`.
+
+Readers must also accept fewer digits, for example `14:18:20E` or `45:5:8N`. The colons separate the parts, so the meaning is clear.
+
+Seconds should be whole numbers in the DMS format. For parts of a minute, use the DDM format.
 
 ### Altitude
 
@@ -204,9 +214,9 @@ Format:
 AN Name
 ```
 
-Here `Name` is the designated name for the airspace. For example `CTR Muenchen`. Any UTF-8 character is allowed, but to avoid issues with some older systems that might not display special characters correctly, it's better to use simpler versions (for example, change `ü` to `ue`).
+Here `Name` is the designated name for the airspace. For example `CTR Muenchen`. Any UTF-8 character except `*` is allowed, but to avoid issues with some older systems that might not display special characters correctly, it's better to use simpler versions (for example, change `ü` to `ue`).
 
-The name cannot contain `*`, because `*` starts a comment. Do not write a comment on the same line as `AN`. An airspace can have at most one `AN` command.
+The name cannot contain `*`, because `*` starts a comment. Do not write a comment on the same line as `AN`. An airspace must not have more than one `AN` command.
 
 Example:
 ```
@@ -215,7 +225,7 @@ AN ED-R6 Brokdorf H24
 
 #### AY: Airspace Type
 
-Identifies the type of airspace or a special-use airspace. Typically used immediately after the `AC` command. An airspace can have at most one `AY` command. Only the types in the table below are allowed.
+Identifies the type of airspace or a special-use airspace. Typically used immediately after the `AC` command. An airspace must not have more than one `AY` command. Only the types in the table below are allowed.
 
 Format:
 ```
@@ -310,7 +320,7 @@ Format:
 AG Station Name
 ```
 
-The station name cannot contain `*`, because `*` starts a comment. Do not write a comment on the same line as `AG`. An airspace can have at most one `AG` command.
+The station name cannot contain `*`, because `*` starts a comment. Do not write a comment on the same line as `AG`. An airspace must not have more than one `AG` command.
 
 Example:
 ```
@@ -409,10 +419,10 @@ AA MON-FRI 07:00Z/15:00Z                       * Every working day, 07:00-15:00 
 AA SAT,SUN 08:00Z/18:00Z                       * Weekends, 08:00-18:00 UTC
 AA 06:00Z/20:00Z                               * Every day, 06:00-20:00 UTC
 AA FRI 22:00Z/02:00Z                           * Friday 22:00 to Saturday 02:00 UTC
-AA MON-FRI 06:00Z/14:00Z 2026-03-29/2026-10-24 * Working days in summer only
 AA SR/SS                                       * Every day, sunrise to sunset
 AA SS/SR                                       * Every night, sunset to sunrise of the next day
 AA SAT,SUN BCMT/EECT                           * Weekends, from morning civil twilight to evening civil twilight
+AA MON-FRI 06:00Z/14:00Z 2026-03-29/2026-10-24 * Working days in summer only
 AA MON-FRI 07:00Z/SS 2026-04-01/2026-09-30     * Working days, 07:00 UTC to sunset, April to September
 ```
 
@@ -480,7 +490,7 @@ In this case the reader must ignore **all** `AA` commands of that airspace and t
 
 #### AX: Transponder Code
 
-*Optional* Transponder code to be used with the airspace. Must be a code with exactly 4 digits. Transponder codes are octal, so each digit must be from `0` to `7`. The digits `8` and `9` are not allowed. Write the leading zeros, for example `0424`. An airspace can have at most one `AX` command.
+*Optional* Transponder code to be used with the airspace. Must be a code with exactly 4 digits. Transponder codes are octal, so each digit must be from `0` to `7`. The digits `8` and `9` are not allowed. Write the leading zeros, for example `0424`. An airspace must not have more than one `AX` command.
 
 ```
 AX 7000
