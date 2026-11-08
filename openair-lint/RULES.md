@@ -3483,6 +3483,8 @@ Degrees, minutes and seconds should have a fixed number of digits.
 
 The latitude has 2 digits for the degrees (DD), the longitude has 3 digits (DDD). Minutes and seconds have 2 digits (MM, SS). Add leading zeros where needed: write 014:08:05E, not 14:8:5E. Fixed widths make the files easy to read and to compare.
 
+This is a warning, not an error. The colons separate the parts, so the meaning is clear, and readers must accept fewer digits.
+
 Correct:
 
 ```

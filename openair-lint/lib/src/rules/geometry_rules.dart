@@ -515,7 +515,10 @@ final Rule _coordinateDigitCount = _coordinateRule(
   explanation: 'The latitude has 2 digits for the degrees (DD), the '
       'longitude has 3 digits (DDD). Minutes and seconds have 2 digits '
       '(MM, SS). Add leading zeros where needed: write 014:08:05E, not '
-      '14:8:5E. Fixed widths make the files easy to read and to compare.',
+      '14:8:5E. Fixed widths make the files easy to read and to compare.\n'
+      '\n'
+      'This is a warning, not an error. The colons separate the parts, so '
+      'the meaning is clear, and readers must accept fewer digits.',
   correctExample: 'DP 45:40:30N 014:08:05E',
   incorrectExample: 'DP 45:40:30N 14:8:5E',
 );
