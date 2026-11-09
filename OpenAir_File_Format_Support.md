@@ -214,7 +214,7 @@ Format:
 AN Name
 ```
 
-Here `Name` is the designated name for the airspace. For example `CTR Muenchen`. Any UTF-8 character except `*` is allowed, but to avoid issues with some older systems that might not display special characters correctly, it's better to use simpler versions (for example, change `ü` to `ue`).
+Here `Name` is the designated name for the airspace. For example `CTR Muenchen`. Any UTF-8 character except `*` is allowed.
 
 The name cannot contain `*`, because `*` starts a comment. Do not write a comment on the same line as `AN`. An airspace must not have more than one `AN` command.
 

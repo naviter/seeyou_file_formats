@@ -79,7 +79,7 @@ final Rule _fileInvalidUtf8 = Rule(
       'Windows-1252. When the bytes do not show which encoding is right, the '
       'message names two encodings. openair-lint does not convert the file, '
       'because a wrong guess gives wrong letters without any error.',
-  correctExample: 'AN Muenchen CTR\n'
+  correctExample:
       'AN München CTR      * saved as UTF-8: "ü" is the bytes C3 BC',
   incorrectExample: 'AN München CTR      * saved as Windows-1252: "ü" is the '
       'byte FC',
@@ -364,11 +364,10 @@ final Rule _fileGarbledText = Rule(
       'became "Ã¼", and "Š" became "Å" followed by a non-breaking space. '
       'Pilots then see the garbled name.\n'
       '\n'
-      'Write the correct characters. The specification also recommends '
-      'simple letters in names, for example "ue" in place of "ü".\n'
+      'Write the correct characters.\n'
       '\n'
       'This rule checks the text after "AN" and "AG".',
-  correctExample: 'AN Muenchen CTR',
+  correctExample: 'AN München CTR',
   incorrectExample: 'AN MÃ¼nchen CTR',
   keywords: {'AN', 'AG'},
   checkCommand: (ctx, c, a) {

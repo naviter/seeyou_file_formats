@@ -18,7 +18,6 @@ final List<Rule> attributeRules = [
   _ayNotAfterAc,
   _anNameEmpty,
   _anNameTooLong,
-  _anNonAscii,
   _anContainsAsterisk,
   _anContainsAsteriskV21,
   _afInvalidFormat,
@@ -303,63 +302,6 @@ final Rule _anNameTooLong = Rule(
         'command (AF, AG, AH, AL or AA).');
   },
 );
-
-final Rule _anNonAscii = Rule(
-  id: 'an-non-ascii',
-  severity: Severity.info,
-  versions: SpecVersion.all,
-  specAnchor: 'an-airspace-name',
-  description: 'The AN name contains special (non-ASCII) characters.',
-  explanation: 'Any UTF-8 character is allowed in the name. But some older '
-      'systems cannot show special characters correctly. The specification '
-      'says that it is better to use simpler characters, for example "ue" '
-      'in place of "ü".',
-  correctExample: 'AN CTR Muenchen',
-  incorrectExample: 'AN CTR München',
-  keywords: {'AN'},
-  checkCommand: (ctx, c, a) {
-    final name = c.argument;
-    final first = _firstNonAscii(name);
-    if (first < 0) return;
-    // Double-encoded text is reported by file-garbled-text (header group).
-    if (findDoubleEncoding(name) != null) return;
-    final special = <String>{};
-    for (final rune in name.runes) {
-      if (rune > 0x7E && rune != 0xFFFD) special.add(_showChar(rune));
-    }
-    final ascii = asciiVersion(name);
-    final buffer = StringBuffer('The name contains special characters: '
-        '${special.join(' ')}. Some older systems cannot show them. '
-        'The specification recommends simpler characters.');
-    if (ascii != null && ascii != name) {
-      buffer.write(' For example: "AN $ascii".');
-    }
-    var last = name.length;
-    while (last > first && !isNonAscii(name.codeUnitAt(last - 1))) {
-      last--;
-    }
-    ctx.reportArgument(c, buffer.toString(),
-        offset: first, length: last - first);
-  },
-);
-
-/// The offset of the first non-ASCII character in [text] that is not a
-/// replacement character (invalid UTF-8 is reported by another rule), or -1.
-int _firstNonAscii(String text) {
-  for (var i = 0; i < text.length; i++) {
-    final c = text.codeUnitAt(i);
-    if (isNonAscii(c) && c != 0xFFFD) return i;
-  }
-  return -1;
-}
-
-String _showChar(int rune) {
-  if (rune == 0xA0) return '(no-break space)';
-  if (rune < 0xA0) {
-    return '(control character U+${rune.toRadixString(16).toUpperCase()})';
-  }
-  return '"${String.fromCharCode(rune)}"';
-}
 
 String _asteriskExplanation(String keyword, String what) =>
     'The "*" character always starts a comment, and the comment runs to the '

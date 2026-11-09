@@ -3,7 +3,7 @@
 ## Unreleased
 
 The linter follows the revised specification of 2026-11-08. The linter now
-has 155 rules.
+has 154 rules.
 
 Automatic fixes:
 
@@ -46,6 +46,9 @@ Removed rules:
   They are replaced by the `...-form-not-allowed` rules below.
 - `aa-sun-event-start-crosses-midnight`. A window with a sun event now uses
   the local solar day, so its start cannot move to another day.
+- `an-non-ascii`. The specification no longer recommends simple letters
+  in names (for example "ue" in place of "ü"). The file is UTF-8, so a
+  name can use any character except `*`, for example "PORTOROŽ".
 
 New rules:
 

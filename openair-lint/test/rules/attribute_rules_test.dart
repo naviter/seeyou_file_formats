@@ -46,7 +46,7 @@ void main() {
       final r = findRule(id)!;
       expect(r.specUrl, startsWith('https://github.com/naviter/'));
     }
-    expect(attributeIds(), hasLength(24));
+    expect(attributeIds(), hasLength(23));
   });
 
   test('the tables match the specification', () {
@@ -218,46 +218,22 @@ void main() {
     });
   });
 
-  group('an-non-ascii', () {
-    const id = 'an-non-ascii';
-    test('ASCII name', () {
-      expect(lintRule(id, airspace('AN CTR Muenchen\n')), isEmpty);
-    });
-    test('umlaut', () {
-      final d = single(id, airspace('AN CTR München\n'));
-      expect(d.line, 4);
-      expect(d.column, 4 + 'CTR M'.length);
-      expect(d.endColumn, d.column + 1);
-      expect(d.message, contains('"ü"'));
-      expect(d.message, contains('"AN CTR Muenchen"'));
-    });
-    test('no suggestion for Cyrillic', () {
-      final d = single(id, airspace('AN ТМА\n'));
-      expect(d.message, isNot(contains('For example')));
-    });
-    test('double-encoded names are left to file-garbled-text', () {
-      expect(lintRule(id, airspace('AN VÃ–SLAU\n')), isEmpty);
-    });
-    test('the replacement character (invalid UTF-8) is ignored', () {
-      expect(lintRule(id, airspace('AN M�NCHEN\n')), isEmpty);
-    });
-    test('AG is not checked', () {
-      expect(lintRule(id, airspace('AG München Radar\n')), isEmpty);
-    });
-    test('correct Czech and Slovak names are not double-encoded', () {
-      expect(
-          single(id, airspace('AN Úštěk\n')).message, contains('"AN Ustek"'));
-      expect(
-          single(id, airspace('AN NÍŽINA\n')).message, contains('"AN NIZINA"'));
-    });
-    test('the suggestion keeps the case of the word', () {
-      expect(single(id, airspace('AN CTR Ölberg\n')).message,
-          contains('"AN CTR Oelberg"'));
-      expect(single(id, airspace('AN Überlingen\n')).message,
-          contains('"AN Ueberlingen"'));
-      expect(single(id, airspace('AN ÜBERLINGEN\n')).message,
-          contains('"AN UEBERLINGEN"'));
-    });
+  group('names with special characters', () {
+    // The file is UTF-8, so a name can use any character except "*". A
+    // correct name gets no message, also not from file-garbled-text.
+    for (final name in [
+      'CTR PORTOROŽ',
+      'CTR München',
+      'Úštěk',
+      'NÍŽINA',
+      'ТМА',
+    ]) {
+      test(name, () {
+        final found = lintString(airspace('AN $name\n'))
+            .where((d) => d.ruleId != 'header-version-draft');
+        expect(found.map((d) => '${d.ruleId}: ${d.message}'), isEmpty);
+      });
+    }
   });
 
   group('an-contains-asterisk', () {
@@ -631,14 +607,6 @@ void main() {
     test('nearestChannelNames', () {
       expect(nearestChannelNames(118020), (118015, 118025));
       expect(nearestChannelNames(118045), (118040, 118050));
-    });
-    test('asciiVersion', () {
-      expect(asciiVersion('Øresund Ålesund Straße Łódź Česká'),
-          'Oeresund Aalesund Strasse Lodz Ceska');
-      expect(
-          asciiVersion('ØRESUND ÅLESUND Þ Ö-X'), 'OERESUND AALESUND TH OE-X');
-      expect(asciiVersion('Æblø Þorlákshöfn'), 'Aebloe Thorlakshoefn');
-      expect(asciiVersion('ТМА'), isNull);
     });
     test('frequencyFormatProblem', () {
       expect(frequencyFormatProblem('123.300'), isNull);
