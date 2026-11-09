@@ -9,6 +9,9 @@ final Rule _fileNotUtf8 = Rule(
   severity: Severity.error,
   versions: SpecVersion.all,
   specAnchor: _generalAnchor,
+  fixDescription: '--fix saves a file with a UTF-16 byte order mark as '
+      'UTF-8. It does not change a UTF-16 file without a byte order mark, '
+      'because then the encoding is only a guess.',
   description: 'The file must use the UTF-8 encoding, not UTF-16.',
   explanation: 'The specification requires the UTF-8 encoding. This file '
       'uses UTF-16. Many readers cannot read UTF-16 files at all.\n'
@@ -34,7 +37,8 @@ final Rule _fileNotUtf8 = Rule(
       ctx.report(
           'The file uses the ${encoding.label} encoding. The specification '
           'requires UTF-8. Save the file as UTF-8.',
-          line: 1);
+          line: 1,
+          fix: const Fix([ConvertToUtf8()]));
       return;
     }
     final utf16 = _looksLikeUtf16(ctx);
@@ -65,7 +69,16 @@ final Rule _fileInvalidUtf8 = Rule(
       '\n'
       'Open the file in an editor with the correct old encoding, and save it '
       'again as UTF-8. openair-lint reports one problem for each line with '
-      'invalid bytes.',
+      'invalid bytes.\n'
+      '\n'
+      'The message names the probable encoding (Windows-1250, 1251, 1252, '
+      '1253, 1254 or 1257), and shows the line as it reads in this encoding. '
+      'This is only a guess from the bytes: check that the names are correct '
+      'before you save the file. Some bytes are different letters in two '
+      'encodings. For example, the byte E8 is "č" in Windows-1250 and "è" in '
+      'Windows-1252. When the bytes do not show which encoding is right, the '
+      'message names two encodings. openair-lint does not convert the file, '
+      'because a wrong guess gives wrong letters without any error.',
   correctExample: 'AN Muenchen CTR\n'
       'AN München CTR      * saved as UTF-8: "ü" is the bytes C3 BC',
   incorrectExample: 'AN München CTR      * saved as Windows-1252: "ü" is the '
@@ -75,9 +88,12 @@ final Rule _fileInvalidUtf8 = Rule(
     if (invalid.isEmpty) return;
     // file-not-utf8 reports a UTF-16 file without a byte order mark.
     if (_looksLikeUtf16(ctx) != null) return;
+    final guess = ctx
+        .memo(('header-legacy-encoding',), () => guessLegacyEncoding(ctx.file));
     var i = 0;
     while (i < invalid.length) {
       final first = invalid[i];
+      final start = i;
       var count = 0;
       final hex = <String>[];
       var lastColumn = first.column;
@@ -94,14 +110,64 @@ final Rule _fileInvalidUtf8 = Rule(
           : 'This line has $count parts that are not valid UTF-8 '
               '(${hex.join(', ')}${count > 3 ? ', ...' : ''}).';
       ctx.report(
-          '$where The file is probably saved in an older 8-bit encoding. '
-          'Save it as UTF-8.',
+          '$where ${_encodingAdvice(ctx, guess, invalid.sublist(start, i))}',
           line: first.line,
           column: first.column,
           endColumn: lastColumn + 1);
     }
   },
 );
+
+/// The second part of a file-invalid-utf8 message: the probable encoding,
+/// the line as it reads in this encoding, and what to do. [parts] are the
+/// invalid parts of the reported line.
+String _encodingAdvice(
+    LintContext ctx, EncodingGuess? guess, List<InvalidUtf8> parts) {
+  if (guess == null) {
+    return 'The file is probably saved in an older 8-bit encoding. '
+        'Save it as UTF-8.';
+  }
+  final text = ctx.file.lineText(parts.first.line);
+  String reading(LegacyEncoding e) =>
+      _excerpt(decodeLegacyLine(text, parts, e), parts.first.column - 1);
+  final first = reading(guess.best);
+  if (guess.isUncertain) {
+    final second = guess.encodings[1];
+    final other = reading(second);
+    final reads = other == first
+        ? 'In both encodings, the line reads "$first".'
+        : 'With ${guess.best.name}, the line reads "$first". With '
+            '${second.name}, it reads "$other".';
+    return 'The file is probably saved as ${guess.labels}. $reads Use the '
+        'encoding that shows the correct letters: open the file in a text '
+        'editor with this encoding and save it as UTF-8.';
+  }
+  final same = guess.sameText.isEmpty
+      ? ''
+      : ' ${guess.sameText.map((e) => e.label).join(' and ')} '
+          '${guess.sameText.length == 1 ? 'gives' : 'give'} the same text.';
+  return 'The file is probably saved as ${guess.best.label}.$same With this '
+      'encoding, the line reads "$first". If this is correct, open the file '
+      'in a text editor with this encoding and save it as UTF-8.';
+}
+
+/// A part of [line] around [column] (0-based) for a message: at most about
+/// 70 characters, with "..." where text is cut. Invisible characters are
+/// shown (see [_visible]).
+String _excerpt(String line, int column) {
+  final text = line.trimRight();
+  var start = column - 30;
+  if (start < 0) start = 0;
+  var end = start + 70;
+  if (end > text.length) end = text.length;
+  if (end - start < 70) start = (end - 70).clamp(0, start);
+  while (start < end && (text[start] == ' ' || text[start] == '\t')) {
+    start++;
+  }
+  return '${start > 0 ? '...' : ''}'
+      '${_visible(text.substring(start, end))}'
+      '${end < text.length ? '...' : ''}';
+}
 
 // ---------------------------------------------------------------------------
 // file-replacement-character
@@ -158,6 +224,7 @@ final Rule _fileBom = Rule(
   severity: Severity.info,
   versions: SpecVersion.all,
   specAnchor: _generalAnchor,
+  fixDescription: '--fix removes the byte order mark.',
   description: 'A UTF-8 file does not need a byte order mark (BOM).',
   explanation: 'The file starts with a UTF-8 byte order mark (the bytes '
       'EF BB BF). UTF-8 does not need it. Most readers ignore it, but some '
@@ -176,7 +243,8 @@ final Rule _fileBom = Rule(
     ctx.report(
         'The file starts with a UTF-8 byte order mark (BOM). It is not '
         'needed, and some older readers do not expect it.',
-        line: 1);
+        line: 1,
+        fix: const Fix([RemoveBom()]));
   },
 );
 
@@ -189,6 +257,7 @@ final Rule _fileMixedLineEndings = Rule(
   severity: Severity.info,
   versions: SpecVersion.all,
   specAnchor: _generalAnchor,
+  fixDescription: '--fix uses the most frequent line ending for all lines.',
   description: 'All lines should use the same line ending.',
   explanation: 'The file uses more than one kind of line ending: LF '
       '(Linux, macOS), CRLF (Windows) or CR (old Mac). This often happens '
@@ -227,7 +296,8 @@ final Rule _fileMixedLineEndings = Rule(
         'ends with ${_endingLabel(endings[firstOther - 1])}. Use one kind of '
         'line ending in the whole file.',
         line: firstOther,
-        column: ctx.file.lineText(firstOther).length + 1);
+        column: ctx.file.lineText(firstOther).length + 1,
+        fix: Fix([SetLineEndings(main)]));
   },
 );
 

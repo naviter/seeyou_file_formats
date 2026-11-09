@@ -132,7 +132,10 @@ class AltitudeIssue {
     this.length,
     this.message, {
     this.replacement,
-  });
+    int? fixOffset,
+    int? fixLength,
+  })  : fixOffset = fixOffset ?? offset,
+        fixLength = fixLength ?? length;
 
   /// The kind of problem.
   final AltitudeIssueKind kind;
@@ -146,8 +149,17 @@ class AltitudeIssue {
   /// A plain English message that says what is wrong and how to fix it.
   final String message;
 
-  /// The text that should replace the wrong part, if it is known.
+  /// The text that replaces the part from [fixOffset] with the length
+  /// [fixLength], or null. It is set only when there is exactly one correct
+  /// result with the same meaning. The rules use it for the automatic fix.
   final String? replacement;
+
+  /// The start of the part that [replacement] replaces. Usually [offset].
+  final int fixOffset;
+
+  /// The length of the part that [replacement] replaces (0 inserts the
+  /// text). Usually [length].
+  final int fixLength;
 
   @override
   String toString() => 'AltitudeIssue($kind at $offset+$length: $message)';
@@ -198,6 +210,20 @@ class AltitudeParseResult {
 
   /// True if the value has no issues.
   bool get isClean => issues.isEmpty;
+
+  /// True if the automatic fixes of the issues can be used: no part of the
+  /// value is unclear. A value with a part that cannot be read (and that
+  /// has no fix) gets no fix at all, because the user must check it.
+  bool get canFix => !issues.any((i) =>
+      i.replacement == null &&
+      const {
+        AltitudeIssueKind.empty,
+        AltitudeIssueKind.invalid,
+        AltitudeIssueKind.multipleValues,
+        AltitudeIssueKind.flightLevelInvalid,
+        AltitudeIssueKind.unknownUnit,
+        AltitudeIssueKind.unknownReference,
+      }.contains(i.kind));
 
   /// True if the value has an issue of this kind.
   bool has(AltitudeIssueKind kind) => issues.any((i) => i.kind == kind);
@@ -306,6 +332,11 @@ const Map<AltitudeReference, String> _referenceMeaning = {
 };
 
 final RegExp _numberPattern = RegExp(r'^-?\d+(\.\d+)?$');
+
+/// Words after a flight level that do not change its meaning: a flight
+/// level is in feet and uses standard pressure. `FL95 FT` and `FL95 STD`
+/// are `FL95`. Other words, for example `FL95 AMSL`, are not clear.
+const Set<String> _sameAsFlightLevel = {'FT', 'STD', 'QNE'};
 
 bool _isDigit(int c) => c >= 0x30 && c <= 0x39;
 bool _isLetter(int c) => (c >= 0x41 && c <= 0x5A) || (c >= 0x61 && c <= 0x7A);
@@ -518,9 +549,9 @@ class _Parser {
   String get _trimmed => text.trim();
 
   void _add(AltitudeIssueKind k, int offset, int length, String message,
-      {String? replacement}) {
+      {String? replacement, int? fixOffset, int? fixLength}) {
     issues.add(AltitudeIssue(k, offset, length < 1 ? 1 : length, message,
-        replacement: replacement));
+        replacement: replacement, fixOffset: fixOffset, fixLength: fixLength));
   }
 
   /// Reports the whole value as invalid.
@@ -658,7 +689,7 @@ class _Parser {
     if (!n.joined) {
       _add(AltitudeIssueKind.flightLevelSpace, fl.end, n.offset - fl.end,
           'Write the flight level without a space: "FL${n.text}".',
-          replacement: 'FL${n.text}');
+          replacement: '');
     }
     if (n.text.startsWith('-') || n.text.startsWith('+')) {
       // "FL-5": a flight level is "FL" and a whole number, without a sign.
@@ -715,7 +746,13 @@ class _Parser {
             end - start,
             'A flight level has no unit and no reference. Remove '
             '"${text.substring(start, end)}" and write only "FL${n.text}".',
-            replacement: '');
+            replacement: segs.skip(2).every((s) =>
+                    s.type == _SegType.word &&
+                    _sameAsFlightLevel.contains(s.upper))
+                ? ''
+                : null,
+            fixOffset: n.end,
+            fixLength: end - n.end);
       } else {
         _invalidFrom(2);
       }
@@ -813,7 +850,9 @@ class _Parser {
             n.offset,
             segs.last.end - n.offset,
             'Write a flight level as "FL" and the number: "$example".',
-            replacement: example);
+            replacement: example == 'FL$numText' && i == segs.length - 1
+                ? example
+                : null);
         return;
       }
       if (up == 'FL' && unitSeg != null && refSeg == null) {
@@ -1022,7 +1061,7 @@ class _Parser {
           unitSeg.text.length,
           'Write a space between the number and the unit: '
           '"$exampleNumber ${unitText ?? unitSeg.upper}".',
-          replacement: ' ${unitSeg.text}');
+          replacement: ' ${unitSeg.upper}');
     }
     if (numberValid &&
         unitText != null &&
@@ -1070,7 +1109,8 @@ class _Parser {
       final gap = norm.substring(prev.end, s.offset);
       if (gap != ' ') {
         _add(AltitudeIssueKind.extraSpace, prev.end, gap.length,
-            'Use exactly one space between "${prev.text}" and "${s.text}".');
+            'Use exactly one space between "${prev.text}" and "${s.text}".',
+            replacement: ' ');
       }
     }
   }

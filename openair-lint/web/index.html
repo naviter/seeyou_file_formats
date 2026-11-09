@@ -31,7 +31,8 @@
         <code>AF</code>, <code>AG</code>, <code>AX</code>), the altitude limits (<code>AH</code>, <code>AL</code>),
         the activation times (<code>AA</code>) and the geometry (<code>DP</code>, <code>DA</code>, <code>DB</code>,
         <code>DC</code>, <code>DY</code>, <code>V</code>).
-        It shows each problem with the line, the column and a link to the rule in the specification.</p>
+        It shows each problem with the line, the column and a link to the rule in the specification.
+        Some problems have an automatic fix: the page can fix them, and you can download the fixed file.</p>
       <ul class="legend">
         <li><strong>Error:</strong> the file breaks a "must" rule of the specification.</li>
         <li><strong>Warning:</strong> the file breaks a "should" rule.</li>
@@ -98,6 +99,15 @@
           </select>
         </span>
       </fieldset>
+
+      <div id="fix-bar" class="fix-bar" hidden>
+        <p id="fix-info" class="fix-info"></p>
+        <div class="row">
+          <button type="button" id="fix-all" class="button primary">Fix all</button>
+          <button type="button" id="download-fixed" class="button" hidden>Download the fixed file</button>
+          <button type="button" id="undo-fix" class="button" hidden>Undo the last fix</button>
+        </div>
+      </div>
 
       <p id="list-info" class="list-info"></p>
       <ol id="list" class="diagnostics" aria-label="Problems"></ol>

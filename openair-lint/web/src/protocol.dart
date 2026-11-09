@@ -25,12 +25,16 @@ extension type WorkerRequest._(JSObject _) implements JSObject {
   ///
   /// [target] is `3.0`, `2.1`, or an empty string to use the `*VERSION:`
   /// header. [name] is the name of the file, or null for pasted text.
+  ///
+  /// [fix] is a `FixRequest` as text, or null. With a fix, the answer is
+  /// for the fixed file, and [WorkerResponse.bytes] has the fixed file.
   factory WorkerRequest.lint({
     required int id,
     required String target,
     JSUint8Array? bytes,
     String? text,
     String? name,
+    String? fix,
   }) =>
       WorkerRequest._create(
           kind: RequestKind.lint,
@@ -38,7 +42,8 @@ extension type WorkerRequest._(JSObject _) implements JSObject {
           target: target,
           bytes: bytes,
           text: text,
-          name: name);
+          name: name,
+          fix: fix);
 
   /// Get [count] diagnostics from position [offset] of the report of lint
   /// request [reportId] that match [filter] (see `ReportFilter.encode`).
@@ -83,6 +88,7 @@ extension type WorkerRequest._(JSObject _) implements JSObject {
     int? offset,
     int? count,
     String? name,
+    String? fix,
   });
 
   external String get kind;
@@ -101,19 +107,26 @@ extension type WorkerRequest._(JSObject _) implements JSObject {
 
   /// The name of the file (lint), or null.
   external String? get name;
+
+  /// The fix request (lint), or null.
+  external String? get fix;
 }
 
 /// A message from the worker to the page: the answer to one request.
 ///
-/// It has [data] (JSON or text, see [RequestKind]) or [error].
+/// It has [data] (JSON or text, see [RequestKind]) or [error]. The answer
+/// to a lint request with a fix also has [bytes]: the fixed file, if it
+/// changed.
 extension type WorkerResponse._(JSObject _) implements JSObject {
   external factory WorkerResponse({
     required int id,
     String? data,
     String? error,
+    JSUint8Array? bytes,
   });
 
   external int get id;
   external String? get data;
   external String? get error;
+  external JSUint8Array? get bytes;
 }

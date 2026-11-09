@@ -10,50 +10,53 @@ openair-lint 3.0.0-dev.1 has 155 rules. Each rule has an ID, a severity and the 
 
 Use `openair-lint --explain <rule-id>` to see a rule in the terminal, and `--disable <rule-id>` to turn a rule off.
 
+38 rules have an automatic fix (column "Fix"). `openair-lint --fix` applies these fixes, and `--fix-dry-run` shows them without a change of the files. A rule fixes a problem only when there is exactly one correct result and the meaning of the file does not change. Each rule says which of its problems it fixes.
+
 ## Header and file
 
-| Rule | Severity | Versions | Description |
-| --- | --- | --- | --- |
-| [`file-not-utf8`](#file-not-utf8) | error | 2.1, 3.0 | The file must use the UTF-8 encoding, not UTF-16. |
-| [`file-invalid-utf8`](#file-invalid-utf8) | error | 2.1, 3.0 | The file must contain only valid UTF-8 text. |
-| [`file-replacement-character`](#file-replacement-character) | warning | 2.1, 3.0 | The text should not contain the replacement character "�" (U+FFFD). |
-| [`file-bom`](#file-bom) | info | 2.1, 3.0 | A UTF-8 file does not need a byte order mark (BOM). |
-| [`file-mixed-line-endings`](#file-mixed-line-endings) | info | 2.1, 3.0 | All lines should use the same line ending. |
-| [`file-no-airspace`](#file-no-airspace) | error | 2.1, 3.0 | The file must contain at least one airspace definition. |
-| [`file-garbled-text`](#file-garbled-text) | warning | 2.1, 3.0 | A name should not contain garbled characters such as "Ã¼" in place of "ü". |
-| [`file-strepla-block`](#file-strepla-block) | warning | 2.1, 3.0 | The file should not contain StrePla add-on blocks. |
-| [`file-extension-not-openair`](#file-extension-not-openair) | warning | 2.1, 3.0 | The file name should end with .openair (or .txt, the legacy extension). |
-| [`header-version-missing`](#header-version-missing) | error | 2.1, 3.0 | The header must contain a "*VERSION:" comment. |
-| [`header-version-invalid`](#header-version-invalid) | error | 2.1, 3.0 | The value of "*VERSION:" must be a version number, for example 2.1. |
-| [`header-version-old`](#header-version-old) | info | 2.1, 3.0 | Versions older than 2.1 are checked with the rules of version 2.1. |
-| [`header-version-draft`](#header-version-draft) | info | 2.1, 3.0 | Version 3.0 is a draft. Do not write "*VERSION: 3.0" in production files yet. |
-| [`header-version-unknown`](#header-version-unknown) | warning | 2.1, 3.0 | The version should be one that the specification defines: 2.1 or 3.0. |
-| [`header-written-by-missing`](#header-written-by-missing) | error | 2.1, 3.0 | The header must contain a "*WRITTEN_BY:" comment. |
-| [`header-written-by-empty`](#header-written-by-empty) | error | 2.1, 3.0 | The "*WRITTEN_BY:" comment must have a value. |
-| [`header-field-format`](#header-field-format) | warning | 2.1, 3.0 | Write header comments exactly as "*VERSION: 2.1" and "*WRITTEN_BY: Name". |
-| [`header-field-duplicate`](#header-field-duplicate) | warning | 2.1, 3.0 | The header should have only one "*VERSION:" and one "*WRITTEN_BY:" comment. |
-| [`header-after-first-command`](#header-after-first-command) | warning | 2.1, 3.0 | "*VERSION:" and "*WRITTEN_BY:" belong in the header, before the first command. |
-| [`case-not-upper-case`](#case-not-upper-case) | error | 3.0 | Commands and values must be in upper case (except the text after AN and AG, and comments). |
-| [`command-outside-airspace`](#command-outside-airspace) | error | 2.1, 3.0 | Every command must be inside an airspace definition, after an AC command. |
-| [`command-unknown`](#command-unknown) | error | 2.1, 3.0 | Every line must be a command of the specification, a comment or an empty line. |
-| [`command-not-in-spec`](#command-not-in-spec) | warning | 2.1, 3.0 | Commands of other programs (SP, SB, AT, AI, AR, TO, TC) are not part of the specification. |
-| [`airspace-ac-missing`](#airspace-ac-missing) | error | 2.1, 3.0 | Each airspace must begin with an AC command. Here an AC command is probably missing between two airspaces. |
-| [`airspace-ah-missing`](#airspace-ah-missing) | error | 2.1, 3.0 | Every airspace must have an "AH" command (the upper limit). |
-| [`airspace-al-missing`](#airspace-al-missing) | error | 2.1, 3.0 | Every airspace must have an "AL" command (the lower limit). |
-| [`airspace-ah-duplicate`](#airspace-ah-duplicate) | error | 2.1, 3.0 | An airspace must have only one "AH" command. |
-| [`airspace-al-duplicate`](#airspace-al-duplicate) | error | 2.1, 3.0 | An airspace must have only one "AL" command. |
-| [`airspace-geometry-missing`](#airspace-geometry-missing) | error | 2.1, 3.0 | Every airspace must have a geometry (DP, DA, DB, DC or DY commands). |
-| [`airspace-attribute-duplicate`](#airspace-attribute-duplicate) | error | 3.0 | An airspace must have at most one AN, AY, AG and AX command. |
-| [`airspace-attribute-duplicate-v21`](#airspace-attribute-duplicate-v21) | warning | 2.1 | An airspace should have at most one AN, AY, AG and AX command (version 2.1). |
-| [`airspace-command-order`](#airspace-command-order) | warning | 2.1, 3.0 | The "A" commands should come before the geometry (D and V commands). |
-| [`airspace-an-missing`](#airspace-an-missing) | info | 2.1, 3.0 | An airspace usually has a name (AN). |
-| [`airspace-duplicate`](#airspace-duplicate) | warning | 2.1, 3.0 | The same airspace should not be in the file two times. |
+| Rule | Severity | Versions | Fix | Description |
+| --- | --- | --- | --- | --- |
+| [`file-not-utf8`](#file-not-utf8) | error | 2.1, 3.0 | yes | The file must use the UTF-8 encoding, not UTF-16. |
+| [`file-invalid-utf8`](#file-invalid-utf8) | error | 2.1, 3.0 |  | The file must contain only valid UTF-8 text. |
+| [`file-replacement-character`](#file-replacement-character) | warning | 2.1, 3.0 |  | The text should not contain the replacement character "�" (U+FFFD). |
+| [`file-bom`](#file-bom) | info | 2.1, 3.0 | yes | A UTF-8 file does not need a byte order mark (BOM). |
+| [`file-mixed-line-endings`](#file-mixed-line-endings) | info | 2.1, 3.0 | yes | All lines should use the same line ending. |
+| [`file-no-airspace`](#file-no-airspace) | error | 2.1, 3.0 |  | The file must contain at least one airspace definition. |
+| [`file-garbled-text`](#file-garbled-text) | warning | 2.1, 3.0 |  | A name should not contain garbled characters such as "Ã¼" in place of "ü". |
+| [`file-strepla-block`](#file-strepla-block) | warning | 2.1, 3.0 |  | The file should not contain StrePla add-on blocks. |
+| [`file-extension-not-openair`](#file-extension-not-openair) | warning | 2.1, 3.0 |  | The file name should end with .openair (or .txt, the legacy extension). |
+| [`header-version-missing`](#header-version-missing) | error | 2.1, 3.0 |  | The header must contain a "*VERSION:" comment. |
+| [`header-version-invalid`](#header-version-invalid) | error | 2.1, 3.0 | yes | The value of "*VERSION:" must be a version number, for example 2.1. |
+| [`header-version-old`](#header-version-old) | info | 2.1, 3.0 |  | Versions older than 2.1 are checked with the rules of version 2.1. |
+| [`header-version-draft`](#header-version-draft) | info | 2.1, 3.0 |  | Version 3.0 is a draft. Do not write "*VERSION: 3.0" in production files yet. |
+| [`header-version-unknown`](#header-version-unknown) | warning | 2.1, 3.0 | yes | The version should be one that the specification defines: 2.1 or 3.0. |
+| [`header-written-by-missing`](#header-written-by-missing) | error | 2.1, 3.0 |  | The header must contain a "*WRITTEN_BY:" comment. |
+| [`header-written-by-empty`](#header-written-by-empty) | error | 2.1, 3.0 |  | The "*WRITTEN_BY:" comment must have a value. |
+| [`header-field-format`](#header-field-format) | warning | 2.1, 3.0 | yes | Write header comments exactly as "*VERSION: 2.1" and "*WRITTEN_BY: Name". |
+| [`header-field-duplicate`](#header-field-duplicate) | warning | 2.1, 3.0 | yes | The header should have only one "*VERSION:" and one "*WRITTEN_BY:" comment. |
+| [`header-after-first-command`](#header-after-first-command) | warning | 2.1, 3.0 |  | "*VERSION:" and "*WRITTEN_BY:" belong in the header, before the first command. |
+| [`case-not-upper-case`](#case-not-upper-case) | error | 3.0 | yes | Commands and values must be in upper case (except the text after AN and AG, and comments). |
+| [`command-outside-airspace`](#command-outside-airspace) | error | 2.1, 3.0 |  | Every command must be inside an airspace definition, after an AC command. |
+| [`command-unknown`](#command-unknown) | error | 2.1, 3.0 |  | Every line must be a command of the specification, a comment or an empty line. |
+| [`command-not-in-spec`](#command-not-in-spec) | warning | 2.1, 3.0 |  | Commands of other programs (SP, SB, AT, AI, AR, TO, TC) are not part of the specification. |
+| [`airspace-ac-missing`](#airspace-ac-missing) | error | 2.1, 3.0 |  | Each airspace must begin with an AC command. Here an AC command is probably missing between two airspaces. |
+| [`airspace-ah-missing`](#airspace-ah-missing) | error | 2.1, 3.0 |  | Every airspace must have an "AH" command (the upper limit). |
+| [`airspace-al-missing`](#airspace-al-missing) | error | 2.1, 3.0 |  | Every airspace must have an "AL" command (the lower limit). |
+| [`airspace-ah-duplicate`](#airspace-ah-duplicate) | error | 2.1, 3.0 |  | An airspace must have only one "AH" command. |
+| [`airspace-al-duplicate`](#airspace-al-duplicate) | error | 2.1, 3.0 |  | An airspace must have only one "AL" command. |
+| [`airspace-geometry-missing`](#airspace-geometry-missing) | error | 2.1, 3.0 |  | Every airspace must have a geometry (DP, DA, DB, DC or DY commands). |
+| [`airspace-attribute-duplicate`](#airspace-attribute-duplicate) | error | 3.0 |  | An airspace must have at most one AN, AY, AG and AX command. |
+| [`airspace-attribute-duplicate-v21`](#airspace-attribute-duplicate-v21) | warning | 2.1 |  | An airspace should have at most one AN, AY, AG and AX command (version 2.1). |
+| [`airspace-command-order`](#airspace-command-order) | warning | 2.1, 3.0 |  | The "A" commands should come before the geometry (D and V commands). |
+| [`airspace-an-missing`](#airspace-an-missing) | info | 2.1, 3.0 |  | An airspace usually has a name (AN). |
+| [`airspace-duplicate`](#airspace-duplicate) | warning | 2.1, 3.0 |  | The same airspace should not be in the file two times. |
 
 ### file-not-utf8
 
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [general-requirements](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#general-requirements)
+- Automatic fix: --fix saves a file with a UTF-16 byte order mark as UTF-8. It does not change a UTF-16 file without a byte order mark, because then the encoding is only a guess.
 
 The file must use the UTF-8 encoding, not UTF-16.
 
@@ -84,12 +87,15 @@ Incorrect:
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [general-requirements](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#general-requirements)
+- Automatic fix: no
 
 The file must contain only valid UTF-8 text.
 
 The specification requires the UTF-8 encoding. Some bytes in this file are not valid UTF-8. This usually means that the file was saved in an older 8-bit encoding, for example Windows-1252, Windows-1250 or ISO 8859-1. Readers show these characters wrongly, or they stop reading the file.
 
 Open the file in an editor with the correct old encoding, and save it again as UTF-8. openair-lint reports one problem for each line with invalid bytes.
+
+The message names the probable encoding (Windows-1250, 1251, 1252, 1253, 1254 or 1257), and shows the line as it reads in this encoding. This is only a guess from the bytes: check that the names are correct before you save the file. Some bytes are different letters in two encodings. For example, the byte E8 is "č" in Windows-1250 and "è" in Windows-1252. When the bytes do not show which encoding is right, the message names two encodings. openair-lint does not convert the file, because a wrong guess gives wrong letters without any error.
 
 Correct:
 
@@ -109,6 +115,7 @@ AN München CTR      * saved as Windows-1252: "ü" is the byte FC
 - Severity: **warning**
 - Versions: 2.1, 3.0
 - Specification: [general-requirements](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#general-requirements)
+- Automatic fix: no
 
 The text should not contain the replacement character "�" (U+FFFD).
 
@@ -133,6 +140,7 @@ AN M�nchen CTR
 - Severity: **info**
 - Versions: 2.1, 3.0
 - Specification: [general-requirements](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#general-requirements)
+- Automatic fix: --fix removes the byte order mark.
 
 A UTF-8 file does not need a byte order mark (BOM).
 
@@ -161,6 +169,7 @@ Incorrect:
 - Severity: **info**
 - Versions: 2.1, 3.0
 - Specification: [general-requirements](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#general-requirements)
+- Automatic fix: --fix uses the most frequent line ending for all lines.
 
 All lines should use the same line ending.
 
@@ -187,6 +196,7 @@ AN Example CTR\n
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [airspace-definition](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#airspace-definition)
+- Automatic fix: no
 
 The file must contain at least one airspace definition.
 
@@ -219,6 +229,7 @@ Incorrect:
 - Severity: **warning**
 - Versions: 2.1, 3.0
 - Specification: [an-airspace-name](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#an-airspace-name)
+- Automatic fix: no
 
 A name should not contain garbled characters such as "Ã¼" in place of "ü".
 
@@ -245,6 +256,7 @@ AN MÃ¼nchen CTR
 - Severity: **warning**
 - Versions: 2.1, 3.0
 - Specification: [airspace-definition](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#airspace-definition)
+- Automatic fix: no
 
 The file should not contain StrePla add-on blocks.
 
@@ -275,6 +287,7 @@ SP 0 1 0x0000FF
 - Severity: **warning**
 - Versions: 2.1, 3.0
 - Specification: [general-requirements](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#general-requirements)
+- Automatic fix: no
 
 The file name should end with .openair (or .txt, the legacy extension).
 
@@ -303,6 +316,7 @@ AC D
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [header](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#header)
+- Automatic fix: no
 
 The header must contain a "*VERSION:" comment.
 
@@ -338,6 +352,7 @@ AN Example CTR
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [header](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#header)
+- Automatic fix: --fix removes a "V" before the number and writes a dot in place of a comma, for example "2.1" in place of "V2.1" or "2,1". It does not change other values.
 
 The value of "*VERSION:" must be a version number, for example 2.1.
 
@@ -363,6 +378,7 @@ Incorrect:
 - Severity: **info**
 - Versions: 2.1, 3.0
 - Specification: [header](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#header)
+- Automatic fix: no
 
 Versions older than 2.1 are checked with the rules of version 2.1.
 
@@ -385,6 +401,7 @@ Incorrect:
 - Severity: **info**
 - Versions: 2.1, 3.0
 - Specification: [header](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#header)
+- Automatic fix: no
 
 Version 3.0 is a draft. Do not write "*VERSION: 3.0" in production files yet.
 
@@ -409,6 +426,7 @@ Incorrect:
 - Severity: **warning**
 - Versions: 2.1, 3.0
 - Specification: [header](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#header)
+- Automatic fix: --fix removes the extra numbers of a known version, for example "3.0" in place of "3.0.0".
 
 The version should be one that the specification defines: 2.1 or 3.0.
 
@@ -433,6 +451,7 @@ Incorrect:
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [header](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#header)
+- Automatic fix: no
 
 The header must contain a "*WRITTEN_BY:" comment.
 
@@ -457,6 +476,7 @@ Incorrect:
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [header](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#header)
+- Automatic fix: no
 
 The "*WRITTEN_BY:" comment must have a value.
 
@@ -479,6 +499,7 @@ Incorrect:
 - Severity: **warning**
 - Versions: 2.1, 3.0
 - Specification: [header](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#header)
+- Automatic fix: --fix writes the line in the exact form, for example "*VERSION: 2.1" in place of "* version = 2.1".
 
 Write header comments exactly as "*VERSION: 2.1" and "*WRITTEN_BY: Name".
 
@@ -503,6 +524,7 @@ Incorrect:
 - Severity: **warning**
 - Versions: 2.1, 3.0
 - Specification: [header](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#header)
+- Automatic fix: --fix removes a second comment that has the same value as the first one. It does not remove a comment with another value.
 
 The header should have only one "*VERSION:" and one "*WRITTEN_BY:" comment.
 
@@ -531,6 +553,7 @@ Incorrect:
 - Severity: **warning**
 - Versions: 2.1, 3.0
 - Specification: [header](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#header)
+- Automatic fix: no
 
 "*VERSION:" and "*WRITTEN_BY:" belong in the header, before the first command.
 
@@ -565,6 +588,7 @@ AN Example CTR
 - Severity: **error**
 - Versions: 3.0
 - Specification: [general-requirements](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#general-requirements)
+- Automatic fix: --fix writes the command and its value in upper case. It does not change the text after AN and AG, and it does not change comments.
 
 Commands and values must be in upper case (except the text after AN and AG, and comments).
 
@@ -596,6 +620,7 @@ AA Mon-Fri 07:00z/15:00z
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [airspace-definition](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#airspace-definition)
+- Automatic fix: no
 
 Every command must be inside an airspace definition, after an AC command.
 
@@ -628,6 +653,7 @@ AC D
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [command-reference](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#command-reference)
+- Automatic fix: no
 
 Every line must be a command of the specification, a comment or an empty line.
 
@@ -656,6 +682,7 @@ Note: changed in 2026
 - Severity: **warning**
 - Versions: 2.1, 3.0
 - Specification: [command-reference](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#command-reference)
+- Automatic fix: no
 
 Commands of other programs (SP, SB, AT, AI, AR, TO, TC) are not part of the specification.
 
@@ -687,6 +714,7 @@ AR 118.480
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [airspace-definition](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#airspace-definition)
+- Automatic fix: no
 
 Each airspace must begin with an AC command. Here an AC command is probably missing between two airspaces.
 
@@ -734,6 +762,7 @@ DP 46:30:00N 014:00:00E
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [ah-upper-altitude-limit](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#ah-upper-altitude-limit)
+- Automatic fix: no
 
 Every airspace must have an "AH" command (the upper limit).
 
@@ -767,6 +796,7 @@ DP 46:00:00N 014:00:00E
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [al-lower-altitude-limit](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#al-lower-altitude-limit)
+- Automatic fix: no
 
 Every airspace must have an "AL" command (the lower limit).
 
@@ -800,6 +830,7 @@ DP 46:00:00N 014:00:00E
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [ah-upper-altitude-limit](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#ah-upper-altitude-limit)
+- Automatic fix: no
 
 An airspace must have only one "AH" command.
 
@@ -829,6 +860,7 @@ AH FL95
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [al-lower-altitude-limit](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#al-lower-altitude-limit)
+- Automatic fix: no
 
 An airspace must have only one "AL" command.
 
@@ -858,6 +890,7 @@ AL 1000 FT AGL
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [command-reference](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#command-reference)
+- Automatic fix: no
 
 Every airspace must have a geometry (DP, DA, DB, DC or DY commands).
 
@@ -891,6 +924,7 @@ V X=46:00:00N 014:00:00E
 - Severity: **error**
 - Versions: 3.0
 - Specification: [command-reference](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#command-reference)
+- Automatic fix: no
 
 An airspace must have at most one AN, AY, AG and AX command.
 
@@ -923,6 +957,7 @@ AF 118.480
 - Severity: **warning**
 - Versions: 2.1
 - Specification: [command-reference](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#command-reference)
+- Automatic fix: no
 
 An airspace should have at most one AN, AY, AG and AX command (version 2.1).
 
@@ -957,6 +992,7 @@ AF 118.480
 - Severity: **warning**
 - Versions: 2.1, 3.0
 - Specification: [airspace-definition](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#airspace-definition)
+- Automatic fix: no
 
 The "A" commands should come before the geometry (D and V commands).
 
@@ -991,6 +1027,7 @@ AL GND
 - Severity: **info**
 - Versions: 2.1, 3.0
 - Specification: [an-airspace-name](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#an-airspace-name)
+- Automatic fix: no
 
 An airspace usually has a name (AN).
 
@@ -1016,6 +1053,7 @@ AH 4500 FT AMSL
 - Severity: **warning**
 - Versions: 2.1, 3.0
 - Specification: [airspace-definition](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#airspace-definition)
+- Automatic fix: no
 
 The same airspace should not be in the file two times.
 
@@ -1059,38 +1097,39 @@ DC 5
 
 ## Airspace attributes (AC, AY, AN, AF, AG, AX)
 
-| Rule | Severity | Versions | Description |
-| --- | --- | --- | --- |
-| [`ac-class-missing`](#ac-class-missing) | error | 2.1, 3.0 | The AC command must contain an airspace class. |
-| [`ac-unknown-class`](#ac-unknown-class) | error | 2.1, 3.0 | The AC class must be A, B, C, D, E, F, G or UNC. |
-| [`ay-type-missing`](#ay-type-missing) | error | 2.1, 3.0 | The AY command must contain an airspace type. |
-| [`ay-unknown-type`](#ay-unknown-type) | error | 2.1, 3.0 | The AY type must be a type from the table in the specification. |
-| [`ay-not-after-ac`](#ay-not-after-ac) | info | 2.1, 3.0 | AY is usually written directly after the AC command. |
-| [`an-name-empty`](#an-name-empty) | error | 2.1, 3.0 | The AN command must contain a name. |
-| [`an-name-too-long`](#an-name-too-long) | info | 2.1, 3.0 | The AN name is very long (more than 100 characters). |
-| [`an-non-ascii`](#an-non-ascii) | info | 2.1, 3.0 | The AN name contains special (non-ASCII) characters. |
-| [`an-contains-asterisk`](#an-contains-asterisk) | error | 3.0 | An AN line must not contain "*". The "*" starts a comment, and a comment is not allowed on the same line as AN. |
-| [`an-contains-asterisk-v21`](#an-contains-asterisk-v21) | warning | 2.1 | An AN line should not contain "*" (version 2.1). The "*" starts a comment, so readers cut the name there. |
-| [`af-invalid-format`](#af-invalid-format) | error | 2.1, 3.0 | The AF frequency must be one number in MHz, with a dot as the decimal separator and without a unit. |
-| [`af-outside-air-band`](#af-outside-air-band) | error | 3.0 | The AF frequency must be in the VHF air band (118.000 to 136.990 MHz). |
-| [`af-outside-air-band-v21`](#af-outside-air-band-v21) | warning | 2.1 | The AF frequency should be in the VHF air band (118.000 to 136.990 MHz) (version 2.1). |
-| [`af-invalid-channel`](#af-invalid-channel) | error | 3.0 | The AF frequency must be a valid 25 kHz or 8.33 kHz channel name. |
-| [`af-invalid-channel-v21`](#af-invalid-channel-v21) | warning | 2.1 | The AF frequency should be a valid 25 kHz or 8.33 kHz channel name (version 2.1). |
-| [`af-not-three-decimals`](#af-not-three-decimals) | error | 3.0 | The AF frequency must have exactly three decimals. |
-| [`ag-station-empty`](#ag-station-empty) | error | 2.1, 3.0 | The AG command must contain a station name. |
-| [`ag-station-is-frequency`](#ag-station-is-frequency) | warning | 2.1, 3.0 | The AG station name should be a name, not a frequency. |
-| [`ag-contains-asterisk`](#ag-contains-asterisk) | error | 3.0 | An AG line must not contain "*". The "*" starts a comment, and a comment is not allowed on the same line as AG. |
-| [`ag-contains-asterisk-v21`](#ag-contains-asterisk-v21) | warning | 2.1 | An AG line should not contain "*" (version 2.1). The "*" starts a comment, so readers cut the station name there. |
-| [`ax-not-four-digits`](#ax-not-four-digits) | error | 2.1, 3.0 | The AX transponder code must have exactly 4 digits. |
-| [`ax-not-octal`](#ax-not-octal) | error | 3.0 | The AX transponder code must use only the digits 0 to 7. |
-| [`ax-not-octal-v21`](#ax-not-octal-v21) | warning | 2.1 | The AX transponder code should use only the digits 0 to 7 (version 2.1). |
-| [`ax-emergency-code`](#ax-emergency-code) | warning | 2.1, 3.0 | The AX transponder code should not be an emergency code (7500, 7600 or 7700). |
+| Rule | Severity | Versions | Fix | Description |
+| --- | --- | --- | --- | --- |
+| [`ac-class-missing`](#ac-class-missing) | error | 2.1, 3.0 |  | The AC command must contain an airspace class. |
+| [`ac-unknown-class`](#ac-unknown-class) | error | 2.1, 3.0 | yes | The AC class must be A, B, C, D, E, F, G or UNC. |
+| [`ay-type-missing`](#ay-type-missing) | error | 2.1, 3.0 |  | The AY command must contain an airspace type. |
+| [`ay-unknown-type`](#ay-unknown-type) | error | 2.1, 3.0 | yes | The AY type must be a type from the table in the specification. |
+| [`ay-not-after-ac`](#ay-not-after-ac) | info | 2.1, 3.0 |  | AY is usually written directly after the AC command. |
+| [`an-name-empty`](#an-name-empty) | error | 2.1, 3.0 |  | The AN command must contain a name. |
+| [`an-name-too-long`](#an-name-too-long) | info | 2.1, 3.0 |  | The AN name is very long (more than 100 characters). |
+| [`an-non-ascii`](#an-non-ascii) | info | 2.1, 3.0 |  | The AN name contains special (non-ASCII) characters. |
+| [`an-contains-asterisk`](#an-contains-asterisk) | error | 3.0 |  | An AN line must not contain "*". The "*" starts a comment, and a comment is not allowed on the same line as AN. |
+| [`an-contains-asterisk-v21`](#an-contains-asterisk-v21) | warning | 2.1 |  | An AN line should not contain "*" (version 2.1). The "*" starts a comment, so readers cut the name there. |
+| [`af-invalid-format`](#af-invalid-format) | error | 2.1, 3.0 | yes | The AF frequency must be one number in MHz, with a dot as the decimal separator and without a unit. |
+| [`af-outside-air-band`](#af-outside-air-band) | error | 3.0 |  | The AF frequency must be in the VHF air band (118.000 to 136.990 MHz). |
+| [`af-outside-air-band-v21`](#af-outside-air-band-v21) | warning | 2.1 |  | The AF frequency should be in the VHF air band (118.000 to 136.990 MHz) (version 2.1). |
+| [`af-invalid-channel`](#af-invalid-channel) | error | 3.0 |  | The AF frequency must be a valid 25 kHz or 8.33 kHz channel name. |
+| [`af-invalid-channel-v21`](#af-invalid-channel-v21) | warning | 2.1 |  | The AF frequency should be a valid 25 kHz or 8.33 kHz channel name (version 2.1). |
+| [`af-not-three-decimals`](#af-not-three-decimals) | error | 3.0 | yes | The AF frequency must have exactly three decimals. |
+| [`ag-station-empty`](#ag-station-empty) | error | 2.1, 3.0 |  | The AG command must contain a station name. |
+| [`ag-station-is-frequency`](#ag-station-is-frequency) | warning | 2.1, 3.0 |  | The AG station name should be a name, not a frequency. |
+| [`ag-contains-asterisk`](#ag-contains-asterisk) | error | 3.0 |  | An AG line must not contain "*". The "*" starts a comment, and a comment is not allowed on the same line as AG. |
+| [`ag-contains-asterisk-v21`](#ag-contains-asterisk-v21) | warning | 2.1 |  | An AG line should not contain "*" (version 2.1). The "*" starts a comment, so readers cut the station name there. |
+| [`ax-not-four-digits`](#ax-not-four-digits) | error | 2.1, 3.0 |  | The AX transponder code must have exactly 4 digits. |
+| [`ax-not-octal`](#ax-not-octal) | error | 3.0 |  | The AX transponder code must use only the digits 0 to 7. |
+| [`ax-not-octal-v21`](#ax-not-octal-v21) | warning | 2.1 |  | The AX transponder code should use only the digits 0 to 7 (version 2.1). |
+| [`ax-emergency-code`](#ax-emergency-code) | warning | 2.1, 3.0 |  | The AX transponder code should not be an emergency code (7500, 7600 or 7700). |
 
 ### ac-class-missing
 
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [ac-airspace-class](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#ac-airspace-class)
+- Automatic fix: no
 
 The AC command must contain an airspace class.
 
@@ -1115,6 +1154,7 @@ AN Example CTR
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [ac-airspace-class](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#ac-airspace-class)
+- Automatic fix: --fix writes "UNC" in place of an old word for "unclassified": UNCLASSIFIED, UNCL, UNK, UKN or UNKNOWN. It does not change other values.
 
 The AC class must be A, B, C, D, E, F, G or UNC.
 
@@ -1142,6 +1182,7 @@ AN Example restricted area
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [ay-airspace-type](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#ay-airspace-type)
+- Automatic fix: no
 
 The AY command must contain an airspace type.
 
@@ -1166,6 +1207,7 @@ AY
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [ay-airspace-type](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#ay-airspace-type)
+- Automatic fix: --fix writes the type of the table in place of a word with the same meaning, for example "R" in place of "RESTRICTED" and "GSEC" in place of "GLIDING_SECTOR". It does not change a value when the type is only a guess.
 
 The AY type must be a type from the table in the specification.
 
@@ -1192,6 +1234,7 @@ AY RESTRICTED
 - Severity: **info**
 - Versions: 2.1, 3.0
 - Specification: [ay-airspace-type](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#ay-airspace-type)
+- Automatic fix: no
 
 AY is usually written directly after the AC command.
 
@@ -1218,6 +1261,7 @@ AY RMZ
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [an-airspace-name](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#an-airspace-name)
+- Automatic fix: no
 
 The AN command must contain a name.
 
@@ -1242,6 +1286,7 @@ AN
 - Severity: **info**
 - Versions: 2.1, 3.0
 - Specification: [an-airspace-name](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#an-airspace-name)
+- Automatic fix: no
 
 The AN name is very long (more than 100 characters).
 
@@ -1267,6 +1312,7 @@ AN TSA EXAMPLE 22 135.63 125.00 125.78 129.65 132.125 129.425 134.455 135.80 122
 - Severity: **info**
 - Versions: 2.1, 3.0
 - Specification: [an-airspace-name](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#an-airspace-name)
+- Automatic fix: no
 
 The AN name contains special (non-ASCII) characters.
 
@@ -1289,6 +1335,7 @@ AN CTR München
 - Severity: **error**
 - Versions: 3.0
 - Specification: [an-airspace-name](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#an-airspace-name)
+- Automatic fix: no
 
 An AN line must not contain "*". The "*" starts a comment, and a comment is not allowed on the same line as AN.
 
@@ -1316,6 +1363,7 @@ AN EKR664 ZONE 1 (*NOTAM*) * part in France
 - Severity: **warning**
 - Versions: 2.1
 - Specification: [seeyou-openair-file-format-specification](https://github.com/naviter/seeyou_file_formats/blob/v2.1.5/OpenAir_File_Format_Support.md#seeyou-openair-file-format-specification)
+- Automatic fix: no
 
 An AN line should not contain "*" (version 2.1). The "*" starts a comment, so readers cut the name there.
 
@@ -1343,6 +1391,7 @@ AN EKR664 ZONE 1 (*NOTAM*) * part in France
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [af-airspace-frequency](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#af-airspace-frequency)
+- Automatic fix: --fix writes a dot in place of a decimal comma ("123.300" in place of "123,300"), and removes the unit MHz ("123.300" in place of "123.300 MHz"). It does not change other values.
 
 The AF frequency must be one number in MHz, with a dot as the decimal separator and without a unit.
 
@@ -1368,6 +1417,7 @@ AF 123,300 MHz
 - Severity: **error**
 - Versions: 3.0
 - Specification: [af-airspace-frequency](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#af-airspace-frequency)
+- Automatic fix: no
 
 The AF frequency must be in the VHF air band (118.000 to 136.990 MHz).
 
@@ -1390,6 +1440,7 @@ AF 114.880
 - Severity: **warning**
 - Versions: 2.1
 - Specification: [af-airspace-frequency](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#af-airspace-frequency)
+- Automatic fix: no
 
 The AF frequency should be in the VHF air band (118.000 to 136.990 MHz) (version 2.1).
 
@@ -1414,6 +1465,7 @@ AF 114.880
 - Severity: **error**
 - Versions: 3.0
 - Specification: [af-airspace-frequency](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#af-airspace-frequency)
+- Automatic fix: no
 
 The AF frequency must be a valid 25 kHz or 8.33 kHz channel name.
 
@@ -1440,6 +1492,7 @@ AF 122.47
 - Severity: **warning**
 - Versions: 2.1
 - Specification: [af-airspace-frequency](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#af-airspace-frequency)
+- Automatic fix: no
 
 The AF frequency should be a valid 25 kHz or 8.33 kHz channel name (version 2.1).
 
@@ -1468,6 +1521,7 @@ AF 122.47
 - Severity: **error**
 - Versions: 3.0
 - Specification: [af-airspace-frequency](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#af-airspace-frequency)
+- Automatic fix: --fix writes the frequency with three decimals, for example "126.100" in place of "126.1" or "126.1000". It does not change a radio frequency such as 118.0083 to a channel name.
 
 The AF frequency must have exactly three decimals.
 
@@ -1494,6 +1548,7 @@ AF 126.1
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [ag-station-name](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#ag-station-name)
+- Automatic fix: no
 
 The AG command must contain a station name.
 
@@ -1518,6 +1573,7 @@ AG
 - Severity: **warning**
 - Versions: 2.1, 3.0
 - Specification: [ag-station-name](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#ag-station-name)
+- Automatic fix: no
 
 The AG station name should be a name, not a frequency.
 
@@ -1543,6 +1599,7 @@ AG 118.655
 - Severity: **error**
 - Versions: 3.0
 - Specification: [ag-station-name](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#ag-station-name)
+- Automatic fix: no
 
 An AG line must not contain "*". The "*" starts a comment, and a comment is not allowed on the same line as AG.
 
@@ -1570,6 +1627,7 @@ AG Langen Information (*FIS*) * only in summer
 - Severity: **warning**
 - Versions: 2.1
 - Specification: [seeyou-openair-file-format-specification](https://github.com/naviter/seeyou_file_formats/blob/v2.1.5/OpenAir_File_Format_Support.md#seeyou-openair-file-format-specification)
+- Automatic fix: no
 
 An AG line should not contain "*" (version 2.1). The "*" starts a comment, so readers cut the station name there.
 
@@ -1597,6 +1655,7 @@ AG Langen Information (*FIS*) * only in summer
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [ax-transponder-code](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#ax-transponder-code)
+- Automatic fix: no
 
 The AX transponder code must have exactly 4 digits.
 
@@ -1619,6 +1678,7 @@ AX 424
 - Severity: **error**
 - Versions: 3.0
 - Specification: [ax-transponder-code](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#ax-transponder-code)
+- Automatic fix: no
 
 The AX transponder code must use only the digits 0 to 7.
 
@@ -1641,6 +1701,7 @@ AX 4810
 - Severity: **warning**
 - Versions: 2.1
 - Specification: [ax-transponder-code](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#ax-transponder-code)
+- Automatic fix: no
 
 The AX transponder code should use only the digits 0 to 7 (version 2.1).
 
@@ -1665,6 +1726,7 @@ AX 4810
 - Severity: **warning**
 - Versions: 2.1, 3.0
 - Specification: [ax-transponder-code](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#ax-transponder-code)
+- Automatic fix: no
 
 The AX transponder code should not be an emergency code (7500, 7600 or 7700).
 
@@ -1686,33 +1748,34 @@ AX 7700
 
 ## Altitude limits (AH, AL)
 
-| Rule | Severity | Versions | Description |
-| --- | --- | --- | --- |
-| [`altitude-empty`](#altitude-empty) | error | 2.1, 3.0 | AH and AL must have a value. |
-| [`altitude-invalid`](#altitude-invalid) | error | 2.1, 3.0 | The altitude must have one of the forms of the specification. |
-| [`altitude-legacy-keyword`](#altitude-legacy-keyword) | error | 2.1, 3.0 | Write "GND" and "UNL", not old forms such as "SFC" or "UNLIM". |
-| [`altitude-gnd-in-ah`](#altitude-gnd-in-ah) | error | 2.1, 3.0 | GND is only allowed in AL, not in AH. |
-| [`altitude-unl-in-al`](#altitude-unl-in-al) | error | 2.1, 3.0 | UNL is only allowed in AH, not in AL. |
-| [`altitude-unit-missing`](#altitude-unit-missing) | error | 2.1, 3.0 | An altitude must have the unit FT or M. |
-| [`altitude-unknown-unit`](#altitude-unknown-unit) | error | 2.1, 3.0 | The unit of an altitude must be FT or M. |
-| [`altitude-reference-missing`](#altitude-reference-missing) | error | 2.1, 3.0 | An altitude must have the reference AMSL, AGL or STD. |
-| [`altitude-unknown-reference`](#altitude-unknown-reference) | error | 2.1, 3.0 | The altitude reference must be AMSL, AGL or STD. |
-| [`altitude-msl-alias`](#altitude-msl-alias) | warning | 2.1, 3.0 | Write "AMSL", not "MSL". |
-| [`altitude-multiple-values`](#altitude-multiple-values) | error | 2.1, 3.0 | AH and AL must have only one altitude. |
-| [`altitude-flight-level-invalid`](#altitude-flight-level-invalid) | error | 2.1, 3.0 | A flight level must be "FL" and a whole number, for example "FL95". |
-| [`altitude-flight-level-space`](#altitude-flight-level-space) | warning | 2.1, 3.0 | Write a flight level without a space: "FL95", not "FL 95". |
-| [`altitude-unit-no-space`](#altitude-unit-no-space) | error | 3.0 | Write a space between the number and the unit. |
-| [`altitude-spacing`](#altitude-spacing) | info | 2.1, 3.0 | Use one space between the parts of an altitude. |
-| [`altitude-out-of-range`](#altitude-out-of-range) | warning | 2.1, 3.0 | An altitude should be a realistic value. |
-| [`altitude-zero-agl`](#altitude-zero-agl) | warning | 2.1, 3.0 | For a lower limit at the ground, write "AL GND". |
-| [`altitude-lower-not-below-upper`](#altitude-lower-not-below-upper) | error | 2.1, 3.0 | The lower limit (AL) must be below the upper limit (AH). |
-| [`altitude-unit-metres`](#altitude-unit-metres) | info | 2.1, 3.0 | Feet (FT) are recommended for altitudes. Metres (M) are allowed. |
+| Rule | Severity | Versions | Fix | Description |
+| --- | --- | --- | --- | --- |
+| [`altitude-empty`](#altitude-empty) | error | 2.1, 3.0 |  | AH and AL must have a value. |
+| [`altitude-invalid`](#altitude-invalid) | error | 2.1, 3.0 | yes | The altitude must have one of the forms of the specification. |
+| [`altitude-legacy-keyword`](#altitude-legacy-keyword) | error | 2.1, 3.0 | yes | Write "GND" and "UNL", not old forms such as "SFC" or "UNLIM". |
+| [`altitude-gnd-in-ah`](#altitude-gnd-in-ah) | error | 2.1, 3.0 |  | GND is only allowed in AL, not in AH. |
+| [`altitude-unl-in-al`](#altitude-unl-in-al) | error | 2.1, 3.0 |  | UNL is only allowed in AH, not in AL. |
+| [`altitude-unit-missing`](#altitude-unit-missing) | error | 2.1, 3.0 | yes | An altitude must have the unit FT or M. |
+| [`altitude-unknown-unit`](#altitude-unknown-unit) | error | 2.1, 3.0 | yes | The unit of an altitude must be FT or M. |
+| [`altitude-reference-missing`](#altitude-reference-missing) | error | 2.1, 3.0 |  | An altitude must have the reference AMSL, AGL or STD. |
+| [`altitude-unknown-reference`](#altitude-unknown-reference) | error | 2.1, 3.0 | yes | The altitude reference must be AMSL, AGL or STD. |
+| [`altitude-msl-alias`](#altitude-msl-alias) | warning | 2.1, 3.0 | yes | Write "AMSL", not "MSL". |
+| [`altitude-multiple-values`](#altitude-multiple-values) | error | 2.1, 3.0 |  | AH and AL must have only one altitude. |
+| [`altitude-flight-level-invalid`](#altitude-flight-level-invalid) | error | 2.1, 3.0 | yes | A flight level must be "FL" and a whole number, for example "FL95". |
+| [`altitude-flight-level-space`](#altitude-flight-level-space) | warning | 2.1, 3.0 | yes | Write a flight level without a space: "FL95", not "FL 95". |
+| [`altitude-unit-no-space`](#altitude-unit-no-space) | error | 3.0 | yes | Write a space between the number and the unit. |
+| [`altitude-spacing`](#altitude-spacing) | info | 2.1, 3.0 | yes | Use one space between the parts of an altitude. |
+| [`altitude-out-of-range`](#altitude-out-of-range) | warning | 2.1, 3.0 |  | An altitude should be a realistic value. |
+| [`altitude-zero-agl`](#altitude-zero-agl) | warning | 2.1, 3.0 | yes | For a lower limit at the ground, write "AL GND". |
+| [`altitude-lower-not-below-upper`](#altitude-lower-not-below-upper) | error | 2.1, 3.0 |  | The lower limit (AL) must be below the upper limit (AH). |
+| [`altitude-unit-metres`](#altitude-unit-metres) | info | 2.1, 3.0 |  | Feet (FT) are recommended for altitudes. Metres (M) are allowed. |
 
 ### altitude-empty
 
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [a-altitude-definitions](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#a-altitude-definitions)
+- Automatic fix: no
 
 AH and AL must have a value.
 
@@ -1737,6 +1800,7 @@ AL GND
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [altitude](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#altitude)
+- Automatic fix: --fix writes a normal space in place of a special space character, and removes a thousands separator ("5000" in place of "5,000" or "5 000"). It does not change other values.
 
 The altitude must have one of the forms of the specification.
 
@@ -1776,6 +1840,7 @@ AL 1000 FT AMSL (SFC)
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [supported-altitude-references](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#supported-altitude-references)
+- Automatic fix: --fix writes "GND" or "UNL" in place of the old word, for example "GND" in place of "SFC". It does not change "SFC" in AH or "UNLIM" in AL.
 
 Write "GND" and "UNL", not old forms such as "SFC" or "UNLIM".
 
@@ -1800,6 +1865,7 @@ AL SFC
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [supported-altitude-references](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#supported-altitude-references)
+- Automatic fix: no
 
 GND is only allowed in AL, not in AH.
 
@@ -1826,6 +1892,7 @@ AL 1000 FT AGL
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [supported-altitude-references](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#supported-altitude-references)
+- Automatic fix: no
 
 UNL is only allowed in AH, not in AL.
 
@@ -1852,6 +1919,7 @@ AL UNL
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [altitude](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#altitude)
+- Automatic fix: --fix writes "AL GND" for a lower limit of 0 above the ground without a unit, for example "AL 0 AGL". It does not add a unit to other values, because FT and M are both possible.
 
 An altitude must have the unit FT or M.
 
@@ -1878,6 +1946,7 @@ AL 1000 AGL
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [altitude](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#altitude)
+- Automatic fix: --fix writes "FT" or "M" in place of an old unit word, for example "FT" in place of "FEET" or "F".
 
 The unit of an altitude must be FT or M.
 
@@ -1900,6 +1969,7 @@ AH 3500 F AMSL
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [altitude](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#altitude)
+- Automatic fix: no
 
 An altitude must have the reference AMSL, AGL or STD.
 
@@ -1928,6 +1998,7 @@ AH 3500 FT
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [supported-altitude-references](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#supported-altitude-references)
+- Automatic fix: --fix writes the reference of the specification in place of an old word: AMSL for ASL, ALT and QNH, AGL for GND, SFC and ASFC after a number, and STD for QNE. For "AL 0 FT GND" it writes "AL GND". It does not change a word that is not known.
 
 The altitude reference must be AMSL, AGL or STD.
 
@@ -1956,6 +2027,7 @@ AL 1000 FT GND
 - Severity: **warning**
 - Versions: 2.1, 3.0
 - Specification: [supported-altitude-references](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#supported-altitude-references)
+- Automatic fix: --fix writes "AMSL" in place of "MSL".
 
 Write "AMSL", not "MSL".
 
@@ -1978,6 +2050,7 @@ AH 3500 FT MSL
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [ah-upper-altitude-limit](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#ah-upper-altitude-limit)
+- Automatic fix: no
 
 AH and AL must have only one altitude.
 
@@ -2002,6 +2075,7 @@ AH 100 M AGL/423 M AMSL
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [altitude](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#altitude)
+- Automatic fix: --fix writes "FL95" in place of "95 FL", and removes FT or STD after a flight level ("FL95" in place of "FL95 FT"). It does not change other values.
 
 A flight level must be "FL" and a whole number, for example "FL95".
 
@@ -2026,6 +2100,7 @@ AH FL95.5
 - Severity: **warning**
 - Versions: 2.1, 3.0
 - Specification: [supported-altitude-references](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#supported-altitude-references)
+- Automatic fix: --fix removes the space: "FL95" in place of "FL 95".
 
 Write a flight level without a space: "FL95", not "FL 95".
 
@@ -2048,6 +2123,7 @@ AH FL 145
 - Severity: **error**
 - Versions: 3.0
 - Specification: [altitude](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#altitude)
+- Automatic fix: --fix adds the space: "1000 FT" in place of "1000FT".
 
 Write a space between the number and the unit.
 
@@ -2070,6 +2146,7 @@ AL 1000FT AMSL
 - Severity: **info**
 - Versions: 2.1, 3.0
 - Specification: [altitude](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#altitude)
+- Automatic fix: --fix writes one space between the parts.
 
 Use one space between the parts of an altitude.
 
@@ -2092,6 +2169,7 @@ AH 1000  FT   AMSL
 - Severity: **warning**
 - Versions: 2.1, 3.0
 - Specification: [altitude](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#altitude)
+- Automatic fix: no
 
 An altitude should be a realistic value.
 
@@ -2118,6 +2196,7 @@ AH FL999
 - Severity: **warning**
 - Versions: 2.1, 3.0
 - Specification: [al-lower-altitude-limit](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#al-lower-altitude-limit)
+- Automatic fix: --fix writes "AL GND".
 
 For a lower limit at the ground, write "AL GND".
 
@@ -2142,6 +2221,7 @@ AL 0 FT AGL
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [al-lower-altitude-limit](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#al-lower-altitude-limit)
+- Automatic fix: no
 
 The lower limit (AL) must be below the upper limit (AH).
 
@@ -2168,6 +2248,7 @@ AL FL95
 - Severity: **info**
 - Versions: 2.1, 3.0
 - Specification: [altitude](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#altitude)
+- Automatic fix: no
 
 Feet (FT) are recommended for altitudes. Metres (M) are allowed.
 
@@ -2189,55 +2270,56 @@ AH 1500 M AMSL
 
 ## Activation times (AA)
 
-| Rule | Severity | Versions | Description |
-| --- | --- | --- | --- |
-| [`aa-missing-value`](#aa-missing-value) | error | 2.1, 3.0 | An AA command must have a value. |
-| [`aa-invalid-syntax`](#aa-invalid-syntax) | error | 2.1, 3.0 | The AA command must have one of the forms of the specification. |
-| [`aa-invalid-date`](#aa-invalid-date) | error | 2.1, 3.0 | A date in an AA command must be a valid ISO 8601 date. |
-| [`aa-invalid-time`](#aa-invalid-time) | error | 2.1, 3.0 | A time in an AA command must be a valid ISO 8601 time. |
-| [`aa-invalid-duration`](#aa-invalid-duration) | error | 2.1 | In version 2.1, a duration in an interval must be a valid ISO 8601 duration. |
-| [`aa-time-missing-z`](#aa-time-missing-z) | error | 2.1, 3.0 | Every time of day must end with Z (UTC). |
-| [`aa-time-zone-not-z`](#aa-time-zone-not-z) | error | 2.1, 3.0 | Times must use Z, not a time zone offset or a zone name. |
-| [`aa-time-24-as-start`](#aa-time-24-as-start) | error | 2.1, 3.0 | 24:00Z is allowed only as an end time. |
-| [`aa-value-form-not-allowed`](#aa-value-form-not-allowed) | error | 3.0 | Dates and times must use one of the allowed forms. |
-| [`aa-value-form-not-allowed-v21`](#aa-value-form-not-allowed-v21) | warning | 2.1 | In version 2.1, dates and times should use a form that version 3.0 allows. |
-| [`aa-none-not-allowed`](#aa-none-not-allowed) | error | 2.1, 3.0 | NONE is allowed only where the specification allows it. |
-| [`aa-none-none`](#aa-none-none) | error | 2.1, 3.0 | AA NONE/NONE is not allowed. Write AA NONE. |
-| [`aa-interval-end-before-start`](#aa-interval-end-before-start) | error | 2.1, 3.0 | The end of an interval must be after its start. |
-| [`aa-interval-form-not-allowed`](#aa-interval-form-not-allowed) | error | 3.0 | Intervals must have the form StartDateTime/EndDateTime. |
-| [`aa-interval-form-not-allowed-v21`](#aa-interval-form-not-allowed-v21) | warning | 2.1 | In version 2.1, intervals should have the form StartDateTime/EndDateTime. |
-| [`aa-intervals-overlap`](#aa-intervals-overlap) | warning | 2.1, 3.0 | Activation intervals should not overlap. |
-| [`aa-intervals-adjacent`](#aa-intervals-adjacent) | info | 2.1, 3.0 | Adjacent intervals can be merged into one interval. |
-| [`aa-intervals-not-sorted`](#aa-intervals-not-sorted) | warning | 3.0 | Interval AA commands should be sorted by their start time. |
-| [`aa-intervals-not-sorted-v21`](#aa-intervals-not-sorted-v21) | error | 2.1 | In version 2.1, interval AA commands must be sorted by their start time. |
-| [`aa-weekday-invalid-name`](#aa-weekday-invalid-name) | error | 2.1, 3.0 | Weekdays must be MON, TUE, WED, THU, FRI, SAT or SUN. |
-| [`aa-weekday-range-same-day`](#aa-weekday-range-same-day) | error | 2.1, 3.0 | The first and the last day of a weekday range must be different. |
-| [`aa-weekday-list-has-spaces`](#aa-weekday-list-has-spaces) | error | 2.1, 3.0 | The list of weekdays must not contain spaces. |
-| [`aa-weekday-duplicate-day`](#aa-weekday-duplicate-day) | info | 2.1, 3.0 | A weekday should be in the list only once. |
-| [`aa-weekday-every-day`](#aa-weekday-every-day) | info | 2.1, 3.0 | Leave the weekdays out when the command is for every day. |
-| [`aa-date-range-end-before-start`](#aa-date-range-end-before-start) | error | 2.1, 3.0 | The end date of a weekday date range must not be before the start date. |
-| [`aa-date-range-none-none`](#aa-date-range-none-none) | warning | 2.1, 3.0 | A weekday date range should not be NONE/NONE. |
-| [`aa-weekday-never-active`](#aa-weekday-never-active) | warning | 2.1, 3.0 | A weekday command should have at least one window in its date range. |
-| [`aa-except-end-before-start`](#aa-except-end-before-start) | error | 2.1, 3.0 | The end date of an AA EXCEPT range must not be before the start date. |
-| [`aa-except-without-weekday`](#aa-except-without-weekday) | error | 2.1, 3.0 | AA EXCEPT can be used only in an airspace with a weekday AA command. |
-| [`aa-except-no-effect`](#aa-except-no-effect) | warning | 2.1, 3.0 | An AA EXCEPT command should remove at least one weekday window. |
-| [`aa-sun-event-not-allowed`](#aa-sun-event-not-allowed) | error | 2.1, 3.0 | Sun events are allowed only in the time window of a weekday command. |
-| [`aa-sun-event-order-changes`](#aa-sun-event-order-changes) | error | 2.1, 3.0 | The order of a fixed time and a sun event must be the same on every day of the schedule. |
-| [`aa-sun-event-near-fixed-time`](#aa-sun-event-near-fixed-time) | warning | 2.1, 3.0 | A fixed time and a sun event of one window should not be less than 5 minutes apart. |
-| [`aa-sun-event-fixed-start-near-day-start`](#aa-sun-event-fixed-start-near-day-start) | warning | 2.1, 3.0 | In a window with a sun event, a fixed start time should not be less than 2 minutes from the start of the local solar day. |
-| [`aa-sun-event-near-date-line`](#aa-sun-event-near-date-line) | warning | 2.1, 3.0 | The centre of an airspace with a sun event should not be less than 0.5° from longitude 180°. |
-| [`aa-sun-event-missing-day`](#aa-sun-event-missing-day) | info | 2.1, 3.0 | A sun event does not happen on some days of the schedule. |
-| [`aa-sun-event-no-position`](#aa-sun-event-no-position) | info | 2.1, 3.0 | Sun events need the position of the airspace. |
-| [`aa-none-combined`](#aa-none-combined) | error | 2.1, 3.0 | AA NONE cannot be combined with other AA commands. |
-| [`aa-duplicate`](#aa-duplicate) | warning | 2.1, 3.0 | An airspace should not have the same AA command twice. |
-| [`aa-order-not-recommended`](#aa-order-not-recommended) | info | 2.1, 3.0 | AA commands should be in the recommended order. |
-| [`aa-needs-version-3`](#aa-needs-version-3) | error | 2.1 | Weekday commands, AA EXCEPT and sun events need version 3.0. |
+| Rule | Severity | Versions | Fix | Description |
+| --- | --- | --- | --- | --- |
+| [`aa-missing-value`](#aa-missing-value) | error | 2.1, 3.0 |  | An AA command must have a value. |
+| [`aa-invalid-syntax`](#aa-invalid-syntax) | error | 2.1, 3.0 | yes | The AA command must have one of the forms of the specification. |
+| [`aa-invalid-date`](#aa-invalid-date) | error | 2.1, 3.0 |  | A date in an AA command must be a valid ISO 8601 date. |
+| [`aa-invalid-time`](#aa-invalid-time) | error | 2.1, 3.0 |  | A time in an AA command must be a valid ISO 8601 time. |
+| [`aa-invalid-duration`](#aa-invalid-duration) | error | 2.1 |  | In version 2.1, a duration in an interval must be a valid ISO 8601 duration. |
+| [`aa-time-missing-z`](#aa-time-missing-z) | error | 2.1, 3.0 |  | Every time of day must end with Z (UTC). |
+| [`aa-time-zone-not-z`](#aa-time-zone-not-z) | error | 2.1, 3.0 |  | Times must use Z, not a time zone offset or a zone name. |
+| [`aa-time-24-as-start`](#aa-time-24-as-start) | error | 2.1, 3.0 |  | 24:00Z is allowed only as an end time. |
+| [`aa-value-form-not-allowed`](#aa-value-form-not-allowed) | error | 3.0 | yes | Dates and times must use one of the allowed forms. |
+| [`aa-value-form-not-allowed-v21`](#aa-value-form-not-allowed-v21) | warning | 2.1 | yes | In version 2.1, dates and times should use a form that version 3.0 allows. |
+| [`aa-none-not-allowed`](#aa-none-not-allowed) | error | 2.1, 3.0 |  | NONE is allowed only where the specification allows it. |
+| [`aa-none-none`](#aa-none-none) | error | 2.1, 3.0 | yes | AA NONE/NONE is not allowed. Write AA NONE. |
+| [`aa-interval-end-before-start`](#aa-interval-end-before-start) | error | 2.1, 3.0 |  | The end of an interval must be after its start. |
+| [`aa-interval-form-not-allowed`](#aa-interval-form-not-allowed) | error | 3.0 | yes | Intervals must have the form StartDateTime/EndDateTime. |
+| [`aa-interval-form-not-allowed-v21`](#aa-interval-form-not-allowed-v21) | warning | 2.1 | yes | In version 2.1, intervals should have the form StartDateTime/EndDateTime. |
+| [`aa-intervals-overlap`](#aa-intervals-overlap) | warning | 2.1, 3.0 |  | Activation intervals should not overlap. |
+| [`aa-intervals-adjacent`](#aa-intervals-adjacent) | info | 2.1, 3.0 |  | Adjacent intervals can be merged into one interval. |
+| [`aa-intervals-not-sorted`](#aa-intervals-not-sorted) | warning | 3.0 |  | Interval AA commands should be sorted by their start time. |
+| [`aa-intervals-not-sorted-v21`](#aa-intervals-not-sorted-v21) | error | 2.1 |  | In version 2.1, interval AA commands must be sorted by their start time. |
+| [`aa-weekday-invalid-name`](#aa-weekday-invalid-name) | error | 2.1, 3.0 |  | Weekdays must be MON, TUE, WED, THU, FRI, SAT or SUN. |
+| [`aa-weekday-range-same-day`](#aa-weekday-range-same-day) | error | 2.1, 3.0 |  | The first and the last day of a weekday range must be different. |
+| [`aa-weekday-list-has-spaces`](#aa-weekday-list-has-spaces) | error | 2.1, 3.0 | yes | The list of weekdays must not contain spaces. |
+| [`aa-weekday-duplicate-day`](#aa-weekday-duplicate-day) | info | 2.1, 3.0 |  | A weekday should be in the list only once. |
+| [`aa-weekday-every-day`](#aa-weekday-every-day) | info | 2.1, 3.0 | yes | Leave the weekdays out when the command is for every day. |
+| [`aa-date-range-end-before-start`](#aa-date-range-end-before-start) | error | 2.1, 3.0 |  | The end date of a weekday date range must not be before the start date. |
+| [`aa-date-range-none-none`](#aa-date-range-none-none) | warning | 2.1, 3.0 |  | A weekday date range should not be NONE/NONE. |
+| [`aa-weekday-never-active`](#aa-weekday-never-active) | warning | 2.1, 3.0 |  | A weekday command should have at least one window in its date range. |
+| [`aa-except-end-before-start`](#aa-except-end-before-start) | error | 2.1, 3.0 |  | The end date of an AA EXCEPT range must not be before the start date. |
+| [`aa-except-without-weekday`](#aa-except-without-weekday) | error | 2.1, 3.0 |  | AA EXCEPT can be used only in an airspace with a weekday AA command. |
+| [`aa-except-no-effect`](#aa-except-no-effect) | warning | 2.1, 3.0 |  | An AA EXCEPT command should remove at least one weekday window. |
+| [`aa-sun-event-not-allowed`](#aa-sun-event-not-allowed) | error | 2.1, 3.0 |  | Sun events are allowed only in the time window of a weekday command. |
+| [`aa-sun-event-order-changes`](#aa-sun-event-order-changes) | error | 2.1, 3.0 |  | The order of a fixed time and a sun event must be the same on every day of the schedule. |
+| [`aa-sun-event-near-fixed-time`](#aa-sun-event-near-fixed-time) | warning | 2.1, 3.0 |  | A fixed time and a sun event of one window should not be less than 5 minutes apart. |
+| [`aa-sun-event-fixed-start-near-day-start`](#aa-sun-event-fixed-start-near-day-start) | warning | 2.1, 3.0 |  | In a window with a sun event, a fixed start time should not be less than 2 minutes from the start of the local solar day. |
+| [`aa-sun-event-near-date-line`](#aa-sun-event-near-date-line) | warning | 2.1, 3.0 |  | The centre of an airspace with a sun event should not be less than 0.5° from longitude 180°. |
+| [`aa-sun-event-missing-day`](#aa-sun-event-missing-day) | info | 2.1, 3.0 |  | A sun event does not happen on some days of the schedule. |
+| [`aa-sun-event-no-position`](#aa-sun-event-no-position) | info | 2.1, 3.0 |  | Sun events need the position of the airspace. |
+| [`aa-none-combined`](#aa-none-combined) | error | 2.1, 3.0 |  | AA NONE cannot be combined with other AA commands. |
+| [`aa-duplicate`](#aa-duplicate) | warning | 2.1, 3.0 | yes | An airspace should not have the same AA command twice. |
+| [`aa-order-not-recommended`](#aa-order-not-recommended) | info | 2.1, 3.0 |  | AA commands should be in the recommended order. |
+| [`aa-needs-version-3`](#aa-needs-version-3) | error | 2.1 |  | Weekday commands, AA EXCEPT and sun events need version 3.0. |
 
 ### aa-missing-value
 
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [aa-airspace-activation-times](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#aa-airspace-activation-times)
+- Automatic fix: no
 
 An AA command must have a value.
 
@@ -2260,6 +2342,7 @@ AA
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [aa-airspace-activation-times](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#aa-airspace-activation-times)
+- Automatic fix: --fix writes "-" in place of other dashes (for example the en dash "–"), removes the spaces around "/", and writes "/" in place of "-" between two times ("07:00Z/15:00Z" in place of "07:00Z-15:00Z"). It does not change other problems.
 
 The AA command must have one of the forms of the specification.
 
@@ -2291,6 +2374,7 @@ AA HJ
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [time](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#time)
+- Automatic fix: no
 
 A date in an AA command must be a valid ISO 8601 date.
 
@@ -2315,6 +2399,7 @@ AA EXCEPT 2026-02-30
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [time](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#time)
+- Automatic fix: no
 
 A time in an AA command must be a valid ISO 8601 time.
 
@@ -2337,6 +2422,7 @@ AA MON 9:00Z/25:00Z
 - Severity: **error**
 - Versions: 2.1
 - Specification: [aa-airspace-activation-times](https://github.com/naviter/seeyou_file_formats/blob/v2.1.5/OpenAir_File_Format_Support.md#aa-airspace-activation-times)
+- Automatic fix: no
 
 In version 2.1, a duration in an interval must be a valid ISO 8601 duration.
 
@@ -2365,6 +2451,7 @@ AA 2026-07-04T08:00Z/P8H
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [time](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#time)
+- Automatic fix: no
 
 Every time of day must end with Z (UTC).
 
@@ -2387,6 +2474,7 @@ AA 2026-07-04T08:00/2026-07-04T16:00
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [time](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#time)
+- Automatic fix: no
 
 Times must use Z, not a time zone offset or a zone name.
 
@@ -2409,6 +2497,7 @@ AA MON-FRI 08:00+02:00/16:00+02:00
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [time](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#time)
+- Automatic fix: no
 
 24:00Z is allowed only as an end time.
 
@@ -2431,6 +2520,7 @@ AA 2026-07-04T24:00Z/2026-07-05T06:00Z
 - Severity: **error**
 - Versions: 3.0
 - Specification: [time](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#time)
+- Automatic fix: --fix writes the same date or time in an allowed form, for example "2026-07-04T08:00Z" in place of "20260704T0800Z". It does not change a value with a decimal fraction.
 
 Dates and times must use one of the allowed forms.
 
@@ -2461,6 +2551,7 @@ AA 20260704T0800Z/20260704T1600Z
 - Severity: **warning**
 - Versions: 2.1
 - Specification: [time](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#time)
+- Automatic fix: --fix writes the same date or time in an allowed form, for example "2026-07-04T08:00Z" in place of "20260704T0800Z". It does not change a value with a decimal fraction.
 
 In version 2.1, dates and times should use a form that version 3.0 allows.
 
@@ -2495,6 +2586,7 @@ AA 20260704T0800Z/20260704T1600Z
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [aa-airspace-activation-times](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#aa-airspace-activation-times)
+- Automatic fix: no
 
 NONE is allowed only where the specification allows it.
 
@@ -2517,6 +2609,7 @@ AA MON-FRI 07:00Z/NONE
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [interval-activation](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#interval-activation)
+- Automatic fix: --fix writes "AA NONE".
 
 AA NONE/NONE is not allowed. Write AA NONE.
 
@@ -2539,6 +2632,7 @@ AA NONE/NONE
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [interval-activation](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#interval-activation)
+- Automatic fix: no
 
 The end of an interval must be after its start.
 
@@ -2561,6 +2655,7 @@ AA 2026-07-04T16:00Z/2026-07-04T08:00Z
 - Severity: **error**
 - Versions: 3.0
 - Specification: [interval-activation](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#interval-activation)
+- Automatic fix: --fix writes the same interval as StartDateTime/EndDateTime, for example "2026-07-04T08:00Z/2026-07-04T16:00Z" in place of "2026-07-04T08:00Z/PT8H".
 
 Intervals must have the form StartDateTime/EndDateTime.
 
@@ -2585,6 +2680,7 @@ AA 2026-07-04T08:00Z/PT8H
 - Severity: **warning**
 - Versions: 2.1
 - Specification: [interval-activation](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#interval-activation)
+- Automatic fix: --fix writes the same interval as StartDateTime/EndDateTime, for example "2026-07-04T08:00Z/2026-07-04T16:00Z" in place of "2026-07-04T08:00Z/PT8H".
 
 In version 2.1, intervals should have the form StartDateTime/EndDateTime.
 
@@ -2613,6 +2709,7 @@ AA 2026-07-04T08:00Z/PT8H
 - Severity: **warning**
 - Versions: 2.1, 3.0
 - Specification: [interval-activation](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#interval-activation)
+- Automatic fix: no
 
 Activation intervals should not overlap.
 
@@ -2637,6 +2734,7 @@ AA 2026-07-04T10:00Z/2026-07-04T16:00Z
 - Severity: **info**
 - Versions: 2.1, 3.0
 - Specification: [interval-activation](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#interval-activation)
+- Automatic fix: no
 
 Adjacent intervals can be merged into one interval.
 
@@ -2660,6 +2758,7 @@ AA 2026-07-04T12:00Z/2026-07-04T16:00Z
 - Severity: **warning**
 - Versions: 3.0
 - Specification: [interval-activation](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#interval-activation)
+- Automatic fix: no
 
 Interval AA commands should be sorted by their start time.
 
@@ -2686,6 +2785,7 @@ AA 2026-07-04T08:00Z/2026-07-04T12:00Z
 - Severity: **error**
 - Versions: 2.1
 - Specification: [aa-airspace-activation-times](https://github.com/naviter/seeyou_file_formats/blob/v2.1.5/OpenAir_File_Format_Support.md#aa-airspace-activation-times)
+- Automatic fix: no
 
 In version 2.1, interval AA commands must be sorted by their start time.
 
@@ -2716,6 +2816,7 @@ AA 2026-07-04T08:00Z/2026-07-04T12:00Z
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [weekday-activation](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#weekday-activation)
+- Automatic fix: no
 
 Weekdays must be MON, TUE, WED, THU, FRI, SAT or SUN.
 
@@ -2738,6 +2839,7 @@ AA MO-FR 07:00Z/15:00Z
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [weekday-activation](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#weekday-activation)
+- Automatic fix: no
 
 The first and the last day of a weekday range must be different.
 
@@ -2760,6 +2862,7 @@ AA MON-MON 09:00Z/11:30Z
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [weekday-activation](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#weekday-activation)
+- Automatic fix: --fix removes the spaces when the list has a "," or "-" at each space, for example "MON,WED,FRI" in place of "MON, WED, FRI". It does not change "MON FRI", because it can mean MON,FRI or MON-FRI.
 
 The list of weekdays must not contain spaces.
 
@@ -2782,6 +2885,7 @@ AA MON, WED, FRI 09:00Z/11:30Z
 - Severity: **info**
 - Versions: 2.1, 3.0
 - Specification: [weekday-activation](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#weekday-activation)
+- Automatic fix: no
 
 A weekday should be in the list only once.
 
@@ -2804,6 +2908,7 @@ AA MON-FRI,WED 07:00Z/15:00Z
 - Severity: **info**
 - Versions: 2.1, 3.0
 - Specification: [weekday-activation](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#weekday-activation)
+- Automatic fix: --fix removes the weekdays.
 
 Leave the weekdays out when the command is for every day.
 
@@ -2826,6 +2931,7 @@ AA MON-SUN 06:00Z/20:00Z
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [weekday-activation](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#weekday-activation)
+- Automatic fix: no
 
 The end date of a weekday date range must not be before the start date.
 
@@ -2848,6 +2954,7 @@ AA MON-FRI 06:00Z/14:00Z 2026-10-24/2026-03-29
 - Severity: **warning**
 - Versions: 2.1, 3.0
 - Specification: [weekday-activation](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#weekday-activation)
+- Automatic fix: no
 
 A weekday date range should not be NONE/NONE.
 
@@ -2870,6 +2977,7 @@ AA MON-FRI 07:00Z/15:00Z NONE/NONE
 - Severity: **warning**
 - Versions: 2.1, 3.0
 - Specification: [weekday-activation](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#weekday-activation)
+- Automatic fix: no
 
 A weekday command should have at least one window in its date range.
 
@@ -2894,6 +3002,7 @@ AA SAT,SUN 08:00Z/18:00Z 2026-07-06/2026-07-10
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [exceptions](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#exceptions)
+- Automatic fix: no
 
 The end date of an AA EXCEPT range must not be before the start date.
 
@@ -2918,6 +3027,7 @@ AA EXCEPT 2027-01-01/2026-12-31
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [exceptions](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#exceptions)
+- Automatic fix: no
 
 AA EXCEPT can be used only in an airspace with a weekday AA command.
 
@@ -2942,6 +3052,7 @@ AA EXCEPT 2026-12-25
 - Severity: **warning**
 - Versions: 2.1, 3.0
 - Specification: [exceptions](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#exceptions)
+- Automatic fix: no
 
 An AA EXCEPT command should remove at least one weekday window.
 
@@ -2968,6 +3079,7 @@ AA EXCEPT 2026-12-26
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [sun-events](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#sun-events)
+- Automatic fix: no
 
 Sun events are allowed only in the time window of a weekday command.
 
@@ -2990,6 +3102,7 @@ AA 2026-07-04T08:00Z/SS
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [weekday-activation](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#weekday-activation)
+- Automatic fix: no
 
 The order of a fixed time and a sun event must be the same on every day of the schedule.
 
@@ -3020,6 +3133,7 @@ AA 06:00Z/SR
 - Severity: **warning**
 - Versions: 2.1, 3.0
 - Specification: [weekday-activation](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#weekday-activation)
+- Automatic fix: no
 
 A fixed time and a sun event of one window should not be less than 5 minutes apart.
 
@@ -3048,6 +3162,7 @@ AA 03:12Z/SR 2026-06-20/2026-06-22
 - Severity: **warning**
 - Versions: 2.1, 3.0
 - Specification: [sun-events](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#sun-events)
+- Automatic fix: no
 
 In a window with a sun event, a fixed start time should not be less than 2 minutes from the start of the local solar day.
 
@@ -3082,6 +3197,7 @@ DC 5
 - Severity: **warning**
 - Versions: 2.1, 3.0
 - Specification: [sun-events](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#sun-events)
+- Automatic fix: no
 
 The centre of an airspace with a sun event should not be less than 0.5° from longitude 180°.
 
@@ -3114,6 +3230,7 @@ DC 5
 - Severity: **info**
 - Versions: 2.1, 3.0
 - Specification: [sun-events](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#sun-events)
+- Automatic fix: no
 
 A sun event does not happen on some days of the schedule.
 
@@ -3153,6 +3270,7 @@ DC 5
 - Severity: **info**
 - Versions: 2.1, 3.0
 - Specification: [sun-events](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#sun-events)
+- Automatic fix: no
 
 Sun events need the position of the airspace.
 
@@ -3178,6 +3296,7 @@ DC 5
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [combining-aa-commands](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#combining-aa-commands)
+- Automatic fix: no
 
 AA NONE cannot be combined with other AA commands.
 
@@ -3201,6 +3320,7 @@ AA 2026-07-04T08:00Z/2026-07-04T16:00Z
 - Severity: **warning**
 - Versions: 2.1, 3.0
 - Specification: [combining-aa-commands](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#combining-aa-commands)
+- Automatic fix: --fix removes the second command when its line has no comment.
 
 An airspace should not have the same AA command twice.
 
@@ -3224,6 +3344,7 @@ AA MON-FRI 07:00Z/15:00Z
 - Severity: **info**
 - Versions: 2.1, 3.0
 - Specification: [combining-aa-commands](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#combining-aa-commands)
+- Automatic fix: no
 
 AA commands should be in the recommended order.
 
@@ -3256,6 +3377,7 @@ AA 2026-07-04T08:00Z/2026-07-04T16:00Z
 - Severity: **error**
 - Versions: 2.1
 - Specification: [aa-commands-a-reader-does-not-understand](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#aa-commands-a-reader-does-not-understand)
+- Automatic fix: no
 
 Weekday commands, AA EXCEPT and sun events need version 3.0.
 
@@ -3281,51 +3403,52 @@ AA MON 07:00Z/15:00Z
 
 ## Geometry (DP, DA, DB, DC, DY, V)
 
-| Rule | Severity | Versions | Description |
-| --- | --- | --- | --- |
-| [`coordinate-syntax`](#coordinate-syntax) | error | 2.1, 3.0 | A coordinate must have the form DD:MM:SS[N\|S] DDD:MM:SS[E\|W] or DD:MM.mmm[N\|S] DDD:MM.mmm[E\|W]. |
-| [`coordinate-hemisphere-invalid`](#coordinate-hemisphere-invalid) | error | 2.1, 3.0 | The latitude must end with N or S, and the longitude with E or W. |
-| [`coordinate-out-of-range`](#coordinate-out-of-range) | error | 2.1, 3.0 | The latitude must be at most 90 degrees, the longitude at most 180 degrees, and minutes and seconds must be less than 60. |
-| [`coordinate-decimal-degrees`](#coordinate-decimal-degrees) | error | 2.1, 3.0 | Decimal degrees are not allowed. Use DMS or DDM. |
-| [`coordinate-trailing-text`](#coordinate-trailing-text) | error | 2.1, 3.0 | A coordinate must not have more text after the longitude. |
-| [`coordinate-space-between-parts`](#coordinate-space-between-parts) | warning | 2.1, 3.0 | Write one space between the latitude and the longitude, and at most one space before the letter N, S, E or W. |
-| [`coordinate-digit-count`](#coordinate-digit-count) | warning | 2.1, 3.0 | Degrees, minutes and seconds should have a fixed number of digits. |
-| [`coordinate-decimal-seconds`](#coordinate-decimal-seconds) | warning | 2.1, 3.0 | DMS seconds should be whole numbers. |
-| [`coordinate-mixed-notation`](#coordinate-mixed-notation) | warning | 2.1, 3.0 | The parts of a coordinate, and the two points of a DB arc, should use the same notation. |
-| [`coordinate-file-mixed-notation`](#coordinate-file-mixed-notation) | warning | 2.1, 3.0 | Use one notation (DMS or DDM) for all coordinates of a file. |
-| [`geometry-polygon-too-few-points`](#geometry-polygon-too-few-points) | error | 2.1, 3.0 | A polygon must have at least 3 different points that are not on one line. |
-| [`geometry-polygon-not-closed`](#geometry-polygon-not-closed) | warning | 2.1, 3.0 | The last point of a polygon should be the same as the first point. |
-| [`dp-duplicate-point`](#dp-duplicate-point) | warning | 2.1, 3.0 | Two DP commands in a row should not have the same point. |
-| [`geometry-polygon-counter-clockwise`](#geometry-polygon-counter-clockwise) | warning | 2.1, 3.0 | The points of a polygon are expected in clockwise order. |
-| [`geometry-polygon-self-intersection`](#geometry-polygon-self-intersection) | warning | 2.1, 3.0 | The boundary of an airspace should not cross itself. |
-| [`geometry-center-missing`](#geometry-center-missing) | error | 2.1, 3.0 | DA, DB and DC need a "V X=" centre before them in the same airspace. |
-| [`da-wrong-format`](#da-wrong-format) | error | 2.1, 3.0 | DA needs three numbers separated by commas: radius, start bearing and end bearing. |
-| [`da-radius-not-positive`](#da-radius-not-positive) | error | 2.1, 3.0 | The radius of a DA arc must be greater than 0. |
-| [`da-bearing-out-of-range`](#da-bearing-out-of-range) | error | 2.1, 3.0 | The bearings of a DA arc must be from 0 to 360 degrees. |
-| [`da-combined-with-dp`](#da-combined-with-dp) | warning | 2.1, 3.0 | Avoid DA arcs in an airspace that also has DP points. |
-| [`da-not-recommended`](#da-not-recommended) | info | 2.1, 3.0 | Avoid DA arcs if possible. DB arcs are clearer. |
-| [`db-wrong-format`](#db-wrong-format) | error | 2.1, 3.0 | DB needs two points separated by a comma. |
-| [`db-radius-mismatch`](#db-radius-mismatch) | error | 3.0 | Both points of a DB arc must have the same distance from the centre. |
-| [`db-radius-mismatch-v21`](#db-radius-mismatch-v21) | warning | 2.1 | Both points of a DB arc should have the same distance from the centre (version 2.1). |
-| [`dc-wrong-format`](#dc-wrong-format) | error | 2.1, 3.0 | DC needs one number: the radius in nautical miles. |
-| [`dc-radius-not-positive`](#dc-radius-not-positive) | error | 2.1, 3.0 | The radius of a DC circle must be greater than 0. |
-| [`dc-mixed-with-other-geometry`](#dc-mixed-with-other-geometry) | error | 3.0 | A DC circle must be the only geometry command of its airspace. |
-| [`dc-mixed-with-other-geometry-v21`](#dc-mixed-with-other-geometry-v21) | warning | 2.1 | A DC circle should be the only geometry command of its airspace (version 2.1). |
-| [`dy-deprecated`](#dy-deprecated) | warning | 2.1, 3.0 | DY airway segments are not recommended. Use DP points. |
-| [`dy-width-missing`](#dy-width-missing) | error | 2.1, 3.0 | DY needs a "V W=" airway width before it in the same airspace. |
-| [`v-wrong-format`](#v-wrong-format) | error | 2.1, 3.0 | V must have the form "V Name=Value". |
-| [`v-space-around-equals`](#v-space-around-equals) | warning | 2.1, 3.0 | Write "V Name=Value" without blanks around "=". |
-| [`v-unknown-variable`](#v-unknown-variable) | error | 2.1, 3.0 | The V variable must be X, D or W. |
-| [`v-invalid-direction`](#v-invalid-direction) | error | 2.1, 3.0 | V D= must be "+" (clockwise) or "-" (counter-clockwise). |
-| [`v-invalid-width`](#v-invalid-width) | error | 2.1, 3.0 | V W= must be a number greater than 0. |
-| [`v-width-without-airway`](#v-width-without-airway) | warning | 2.1, 3.0 | V W= should only be used in an airspace with DY segments. |
-| [`v-center-unused`](#v-center-unused) | info | 2.1, 3.0 | A V X= centre should be used by a DA, DB or DC command. |
+| Rule | Severity | Versions | Fix | Description |
+| --- | --- | --- | --- | --- |
+| [`coordinate-syntax`](#coordinate-syntax) | error | 2.1, 3.0 |  | A coordinate must have the form DD:MM:SS[N\|S] DDD:MM:SS[E\|W] or DD:MM.mmm[N\|S] DDD:MM.mmm[E\|W]. |
+| [`coordinate-hemisphere-invalid`](#coordinate-hemisphere-invalid) | error | 2.1, 3.0 |  | The latitude must end with N or S, and the longitude with E or W. |
+| [`coordinate-out-of-range`](#coordinate-out-of-range) | error | 2.1, 3.0 |  | The latitude must be at most 90 degrees, the longitude at most 180 degrees, and minutes and seconds must be less than 60. |
+| [`coordinate-decimal-degrees`](#coordinate-decimal-degrees) | error | 2.1, 3.0 |  | Decimal degrees are not allowed. Use DMS or DDM. |
+| [`coordinate-trailing-text`](#coordinate-trailing-text) | error | 2.1, 3.0 |  | A coordinate must not have more text after the longitude. |
+| [`coordinate-space-between-parts`](#coordinate-space-between-parts) | warning | 2.1, 3.0 | yes | Write one space between the latitude and the longitude, and at most one space before the letter N, S, E or W. |
+| [`coordinate-digit-count`](#coordinate-digit-count) | warning | 2.1, 3.0 | yes | Degrees, minutes and seconds should have a fixed number of digits. |
+| [`coordinate-decimal-seconds`](#coordinate-decimal-seconds) | warning | 2.1, 3.0 |  | DMS seconds should be whole numbers. |
+| [`coordinate-mixed-notation`](#coordinate-mixed-notation) | warning | 2.1, 3.0 |  | The parts of a coordinate, and the two points of a DB arc, should use the same notation. |
+| [`coordinate-file-mixed-notation`](#coordinate-file-mixed-notation) | warning | 2.1, 3.0 |  | Use one notation (DMS or DDM) for all coordinates of a file. |
+| [`geometry-polygon-too-few-points`](#geometry-polygon-too-few-points) | error | 2.1, 3.0 |  | A polygon must have at least 3 different points that are not on one line. |
+| [`geometry-polygon-not-closed`](#geometry-polygon-not-closed) | warning | 2.1, 3.0 | yes | The last point of a polygon should be the same as the first point. |
+| [`dp-duplicate-point`](#dp-duplicate-point) | warning | 2.1, 3.0 | yes | Two DP commands in a row should not have the same point. |
+| [`geometry-polygon-counter-clockwise`](#geometry-polygon-counter-clockwise) | warning | 2.1, 3.0 | yes | The points of a polygon are expected in clockwise order. |
+| [`geometry-polygon-self-intersection`](#geometry-polygon-self-intersection) | warning | 2.1, 3.0 |  | The boundary of an airspace should not cross itself. |
+| [`geometry-center-missing`](#geometry-center-missing) | error | 2.1, 3.0 |  | DA, DB and DC need a "V X=" centre before them in the same airspace. |
+| [`da-wrong-format`](#da-wrong-format) | error | 2.1, 3.0 |  | DA needs three numbers separated by commas: radius, start bearing and end bearing. |
+| [`da-radius-not-positive`](#da-radius-not-positive) | error | 2.1, 3.0 |  | The radius of a DA arc must be greater than 0. |
+| [`da-bearing-out-of-range`](#da-bearing-out-of-range) | error | 2.1, 3.0 |  | The bearings of a DA arc must be from 0 to 360 degrees. |
+| [`da-combined-with-dp`](#da-combined-with-dp) | warning | 2.1, 3.0 |  | Avoid DA arcs in an airspace that also has DP points. |
+| [`da-not-recommended`](#da-not-recommended) | info | 2.1, 3.0 |  | Avoid DA arcs if possible. DB arcs are clearer. |
+| [`db-wrong-format`](#db-wrong-format) | error | 2.1, 3.0 |  | DB needs two points separated by a comma. |
+| [`db-radius-mismatch`](#db-radius-mismatch) | error | 3.0 |  | Both points of a DB arc must have the same distance from the centre. |
+| [`db-radius-mismatch-v21`](#db-radius-mismatch-v21) | warning | 2.1 |  | Both points of a DB arc should have the same distance from the centre (version 2.1). |
+| [`dc-wrong-format`](#dc-wrong-format) | error | 2.1, 3.0 |  | DC needs one number: the radius in nautical miles. |
+| [`dc-radius-not-positive`](#dc-radius-not-positive) | error | 2.1, 3.0 |  | The radius of a DC circle must be greater than 0. |
+| [`dc-mixed-with-other-geometry`](#dc-mixed-with-other-geometry) | error | 3.0 |  | A DC circle must be the only geometry command of its airspace. |
+| [`dc-mixed-with-other-geometry-v21`](#dc-mixed-with-other-geometry-v21) | warning | 2.1 |  | A DC circle should be the only geometry command of its airspace (version 2.1). |
+| [`dy-deprecated`](#dy-deprecated) | warning | 2.1, 3.0 |  | DY airway segments are not recommended. Use DP points. |
+| [`dy-width-missing`](#dy-width-missing) | error | 2.1, 3.0 |  | DY needs a "V W=" airway width before it in the same airspace. |
+| [`v-wrong-format`](#v-wrong-format) | error | 2.1, 3.0 |  | V must have the form "V Name=Value". |
+| [`v-space-around-equals`](#v-space-around-equals) | warning | 2.1, 3.0 | yes | Write "V Name=Value" without blanks around "=". |
+| [`v-unknown-variable`](#v-unknown-variable) | error | 2.1, 3.0 |  | The V variable must be X, D or W. |
+| [`v-invalid-direction`](#v-invalid-direction) | error | 2.1, 3.0 |  | V D= must be "+" (clockwise) or "-" (counter-clockwise). |
+| [`v-invalid-width`](#v-invalid-width) | error | 2.1, 3.0 |  | V W= must be a number greater than 0. |
+| [`v-width-without-airway`](#v-width-without-airway) | warning | 2.1, 3.0 |  | V W= should only be used in an airspace with DY segments. |
+| [`v-center-unused`](#v-center-unused) | info | 2.1, 3.0 |  | A V X= centre should be used by a DA, DB or DC command. |
 
 ### coordinate-syntax
 
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [geographic-position](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#geographic-position)
+- Automatic fix: no
 
 A coordinate must have the form DD:MM:SS[N|S] DDD:MM:SS[E|W] or DD:MM.mmm[N|S] DDD:MM.mmm[E|W].
 
@@ -3353,6 +3476,7 @@ DP 45:40:30:10N 014:18:20E
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [geographic-position](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#geographic-position)
+- Automatic fix: no
 
 The latitude must end with N or S, and the longitude with E or W.
 
@@ -3378,17 +3502,18 @@ DP 45:40:30Q 014:18:20E
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [geographic-position](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#geographic-position)
+- Automatic fix: no
 
 The latitude must be at most 90 degrees, the longitude at most 180 degrees, and minutes and seconds must be less than 60.
 
-A latitude greater than 90 degrees or a longitude greater than 180 degrees is not a position on the earth. Minutes and seconds go from 0 to 59. The value 60 is not allowed: write the next minute or degree in its place. For example, write 41:09:00N, not 41:08:60N.
+A latitude greater than 90 degrees or a longitude greater than 180 degrees is not a position on the earth. Minutes and seconds go from 0 to 59. The value 60 is not allowed.
 
-The value 60 often comes from a program that rounds the seconds without carrying them to the minutes. Fix the program that writes the file.
+Such a value is probably a typing error. Find the correct value in the source data, for example in the AIP, and correct it by hand. openair-lint does not change the value, because it cannot know the correct one.
 
 Correct:
 
 ```
-DP 41:09:00N 019:06:00E
+DP 41:08:50N 019:06:00E
 ```
 
 Incorrect:
@@ -3403,6 +3528,7 @@ DP 91:00:00N 019:06:00E
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [geographic-position](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#geographic-position)
+- Automatic fix: no
 
 Decimal degrees are not allowed. Use DMS or DDM.
 
@@ -3429,6 +3555,7 @@ DP 46N 014E
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [geographic-position](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#geographic-position)
+- Automatic fix: no
 
 A coordinate must not have more text after the longitude.
 
@@ -3451,6 +3578,7 @@ DP 45:40:30N 014:18:20E near the river
 - Severity: **warning**
 - Versions: 2.1, 3.0
 - Specification: [geographic-position](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#geographic-position)
+- Automatic fix: --fix writes one space between the latitude and the longitude, and one space in place of two or more blanks before the letter N, S, E or W.
 
 Write one space between the latitude and the longitude, and at most one space before the letter N, S, E or W.
 
@@ -3478,6 +3606,7 @@ DP 45:40:30  N 014:18:20  E
 - Severity: **warning**
 - Versions: 2.1, 3.0
 - Specification: [geographic-position](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#geographic-position)
+- Automatic fix: --fix adds the leading zeros, and removes extra zeros at the start ("45" in place of "045"). It does not change a part with too many digits that are not zeros.
 
 Degrees, minutes and seconds should have a fixed number of digits.
 
@@ -3502,6 +3631,7 @@ DP 45:40:30N 14:8:5E
 - Severity: **warning**
 - Versions: 2.1, 3.0
 - Specification: [geographic-position](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#geographic-position)
+- Automatic fix: no
 
 DMS seconds should be whole numbers.
 
@@ -3525,6 +3655,7 @@ DP 45:40:30.5N 014:18:20.5E
 - Severity: **warning**
 - Versions: 2.1, 3.0
 - Specification: [geographic-position](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#geographic-position)
+- Automatic fix: no
 
 The parts of a coordinate, and the two points of a DB arc, should use the same notation.
 
@@ -3553,6 +3684,7 @@ DB 46:10:00N 014:00:00E, 46:00.000N 014:14.400E
 - Severity: **warning**
 - Versions: 2.1, 3.0
 - Specification: [dp-polygon-point](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#dp-polygon-point)
+- Automatic fix: no
 
 Use one notation (DMS or DDM) for all coordinates of a file.
 
@@ -3579,6 +3711,7 @@ DP 46:00.000N 014:10.000E
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [dp-polygon-point](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#dp-polygon-point)
+- Automatic fix: no
 
 A polygon must have at least 3 different points that are not on one line.
 
@@ -3617,6 +3750,7 @@ DP 46:00:00N 014:00:00E
 - Severity: **warning**
 - Versions: 2.1, 3.0
 - Specification: [dp-polygon-point](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#dp-polygon-point)
+- Automatic fix: --fix adds the first point again as the last point ("DP" and the same coordinates). It does this only when the polygon starts with a DP point that is written correctly, and when the gap is 0.1 NM or more. A smaller gap is probably a typing error in a coordinate, which the user must check.
 
 The last point of a polygon should be the same as the first point.
 
@@ -3656,6 +3790,7 @@ DP 45:55:00N 014:00:00E
 - Severity: **warning**
 - Versions: 2.1, 3.0
 - Specification: [dp-polygon-point](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#dp-polygon-point)
+- Automatic fix: --fix removes the second point when both points have exactly the same position and the second line has no comment.
 
 Two DP commands in a row should not have the same point.
 
@@ -3691,6 +3826,7 @@ DP 45:55:00N 014:10:00E
 - Severity: **warning**
 - Versions: 2.1, 3.0
 - Specification: [dp-polygon-point](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#dp-polygon-point)
+- Automatic fix: --fix writes the DP points in the opposite order. It does this only for a closed polygon of DP points without comments between or after the points. A boundary with arcs (DA, DB) or V commands is not changed, because the arcs would need other changes too.
 
 The points of a polygon are expected in clockwise order.
 
@@ -3727,6 +3863,7 @@ DP 46:00:00N 014:00:00E
 - Severity: **warning**
 - Versions: 2.1, 3.0
 - Specification: [d-geometric-definitions](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#d-geometric-definitions)
+- Automatic fix: no
 
 The boundary of an airspace should not cross itself.
 
@@ -3765,6 +3902,7 @@ DP 46:00:00N 014:00:00E
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [v-variable-assignment](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#v-variable-assignment)
+- Automatic fix: no
 
 DA, DB and DC need a "V X=" centre before them in the same airspace.
 
@@ -3791,6 +3929,7 @@ V X=50:35:36N 007:56:42E
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [da-arc-between-start-and-end-bearing](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#da-arc-between-start-and-end-bearing)
+- Automatic fix: no
 
 DA needs three numbers separated by commas: radius, start bearing and end bearing.
 
@@ -3817,6 +3956,7 @@ DA 2,5, 270, 290
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [da-arc-between-start-and-end-bearing](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#da-arc-between-start-and-end-bearing)
+- Automatic fix: no
 
 The radius of a DA arc must be greater than 0.
 
@@ -3841,6 +3981,7 @@ DA 0, 270, 290
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [da-arc-between-start-and-end-bearing](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#da-arc-between-start-and-end-bearing)
+- Automatic fix: no
 
 The bearings of a DA arc must be from 0 to 360 degrees.
 
@@ -3865,6 +4006,7 @@ DA 10, -90, 380
 - Severity: **warning**
 - Versions: 2.1, 3.0
 - Specification: [da-arc-between-start-and-end-bearing](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#da-arc-between-start-and-end-bearing)
+- Automatic fix: no
 
 Avoid DA arcs in an airspace that also has DP points.
 
@@ -3895,6 +4037,7 @@ DP 39:03:00N 118:13:00W
 - Severity: **info**
 - Versions: 2.1, 3.0
 - Specification: [da-arc-between-start-and-end-bearing](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#da-arc-between-start-and-end-bearing)
+- Automatic fix: no
 
 Avoid DA arcs if possible. DB arcs are clearer.
 
@@ -3923,6 +4066,7 @@ DA 10, 90, 0
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [db-arc-between-start-and-end-point](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#db-arc-between-start-and-end-point)
+- Automatic fix: no
 
 DB needs two points separated by a comma.
 
@@ -3947,6 +4091,7 @@ DB 46:10:00N 014:00:00E 46:00:00N 014:14:24E
 - Severity: **error**
 - Versions: 3.0
 - Specification: [db-arc-between-start-and-end-point](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#db-arc-between-start-and-end-point)
+- Automatic fix: no
 
 Both points of a DB arc must have the same distance from the centre.
 
@@ -3973,6 +4118,7 @@ DB 46:10:00N 014:00:00E, 46:00:00N 014:20:00E
 - Severity: **warning**
 - Versions: 2.1
 - Specification: [db-arc-between-start-and-end-point](https://github.com/naviter/seeyou_file_formats/blob/v2.1.5/OpenAir_File_Format_Support.md#db-arc-between-start-and-end-point)
+- Automatic fix: no
 
 Both points of a DB arc should have the same distance from the centre (version 2.1).
 
@@ -3999,6 +4145,7 @@ DB 46:10:00N 014:00:00E, 46:00:00N 014:20:00E
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [dc-circular-area](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#dc-circular-area)
+- Automatic fix: no
 
 DC needs one number: the radius in nautical miles.
 
@@ -4023,6 +4170,7 @@ DC 2 NM
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [dc-circular-area](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#dc-circular-area)
+- Automatic fix: no
 
 The radius of a DC circle must be greater than 0.
 
@@ -4047,6 +4195,7 @@ DC 0
 - Severity: **error**
 - Versions: 3.0
 - Specification: [dc-circular-area](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#dc-circular-area)
+- Automatic fix: no
 
 A DC circle must be the only geometry command of its airspace.
 
@@ -4086,6 +4235,7 @@ DP 50:40:00N 007:56:42E
 - Severity: **warning**
 - Versions: 2.1
 - Specification: [dc-circular-area](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#dc-circular-area)
+- Automatic fix: no
 
 A DC circle should be the only geometry command of its airspace (version 2.1).
 
@@ -4127,6 +4277,7 @@ DP 50:40:00N 007:56:42E
 - Severity: **warning**
 - Versions: 2.1, 3.0
 - Specification: [dy-airway-segment](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#dy-airway-segment)
+- Automatic fix: no
 
 DY airway segments are not recommended. Use DP points.
 
@@ -4167,6 +4318,7 @@ DY 46:00:00N 015:00:00E
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [v-variable-assignment](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#v-variable-assignment)
+- Automatic fix: no
 
 DY needs a "V W=" airway width before it in the same airspace.
 
@@ -4196,6 +4348,7 @@ DY 46:00:00N 015:00:00E
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [v-variable-assignment](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#v-variable-assignment)
+- Automatic fix: no
 
 V must have the form "V Name=Value".
 
@@ -4220,6 +4373,7 @@ V D=
 - Severity: **warning**
 - Versions: 2.1, 3.0
 - Specification: [v-variable-assignment](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#v-variable-assignment)
+- Automatic fix: --fix removes the blanks: "V X=..." in place of "V X = ...".
 
 Write "V Name=Value" without blanks around "=".
 
@@ -4244,6 +4398,7 @@ V D= -
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [v-variable-assignment](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#v-variable-assignment)
+- Automatic fix: no
 
 The V variable must be X, D or W.
 
@@ -4266,6 +4421,7 @@ V C=39:29.9N 119:46.1W
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [v-variable-assignment](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#v-variable-assignment)
+- Automatic fix: no
 
 V D= must be "+" (clockwise) or "-" (counter-clockwise).
 
@@ -4292,6 +4448,7 @@ DA 5, 200, 270
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [v-variable-assignment](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#v-variable-assignment)
+- Automatic fix: no
 
 V W= must be a number greater than 0.
 
@@ -4315,6 +4472,7 @@ V W=0
 - Severity: **warning**
 - Versions: 2.1, 3.0
 - Specification: [v-variable-assignment](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#v-variable-assignment)
+- Automatic fix: no
 
 V W= should only be used in an airspace with DY segments.
 
@@ -4342,6 +4500,7 @@ DP 45:58:00N 015:00:00E
 - Severity: **info**
 - Versions: 2.1, 3.0
 - Specification: [v-variable-assignment](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#v-variable-assignment)
+- Automatic fix: no
 
 A V X= centre should be used by a DA, DB or DC command.
 

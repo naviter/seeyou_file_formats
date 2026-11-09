@@ -38,6 +38,8 @@ library;
 
 export 'src/activation/activation.dart';
 export 'src/diagnostic.dart';
+export 'src/fix.dart';
+export 'src/fixer.dart';
 export 'src/geometry/arcs.dart'
     show arcByBearings, arcByPoints, arcSweep, circlePoints, defaultArcStepDeg;
 export 'src/geometry/boundary.dart'
@@ -59,6 +61,7 @@ export 'src/geometry/lat_lng.dart';
 export 'src/lint_context.dart';
 export 'src/linter.dart';
 export 'src/model/openair_file.dart';
+export 'src/parser/legacy_encoding.dart';
 export 'src/parser/parser.dart' show parseOpenAir, parseOpenAirBytes;
 export 'src/rules/registry.dart' show RuleGroup, allRules, findRule, ruleGroups;
 export 'src/rules/rule.dart';

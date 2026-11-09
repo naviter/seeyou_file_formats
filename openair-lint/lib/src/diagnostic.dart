@@ -1,3 +1,5 @@
+import 'fix.dart';
+
 /// How serious a diagnostic is.
 ///
 /// The order of the values is from low to high, so `index` can be compared:
@@ -42,6 +44,7 @@ class Diagnostic implements Comparable<Diagnostic> {
     required this.endColumn,
     required this.message,
     required this.specUrl,
+    this.fix,
   });
 
   /// The ID of the rule, for example `header-version-missing`.
@@ -71,6 +74,13 @@ class Diagnostic implements Comparable<Diagnostic> {
   /// A link to the section of the specification that the rule is about.
   final String specUrl;
 
+  /// The automatic fix, or null if the problem has no safe automatic fix.
+  /// See [Fix].
+  final Fix? fix;
+
+  /// True if [fix] is not null.
+  bool get fixable => fix != null;
+
   @override
   int compareTo(Diagnostic other) {
     if (line != other.line) return line.compareTo(other.line);
@@ -87,6 +97,7 @@ class Diagnostic implements Comparable<Diagnostic> {
         'rule': ruleId,
         'message': message,
         'specUrl': specUrl,
+        'fixable': fixable,
       };
 
   @override

@@ -165,8 +165,14 @@ void main() {
         ]));
     expect(d['rule'], 'header-version-missing');
     expect(d['severity'], 'error');
-    expect(
-        json['summary'], {'files': 2, 'errors': 1, 'warnings': 0, 'info': 1});
+    expect(json['summary'], {
+      'files': 2,
+      'errors': 1,
+      'warnings': 0,
+      'info': 1,
+      'fixable': 0,
+      'fixed': 0,
+    });
   });
 
   test('--format github', () {

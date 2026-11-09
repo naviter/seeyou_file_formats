@@ -665,3 +665,29 @@ select {
     display: none !important;
   }
 }
+
+/* Automatic fixes */
+
+.fix-bar {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 0.75rem;
+  margin: 0 0 1rem;
+}
+
+.fix-info {
+  margin: 0 0 0.6rem;
+}
+
+.fix-bar .row {
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.button.fix-one {
+  min-height: 1.75rem;
+  padding: 0.1rem 0.7rem;
+  margin-left: auto;
+  font-size: 0.85rem;
+}

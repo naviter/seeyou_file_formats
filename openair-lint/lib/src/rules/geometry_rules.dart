@@ -1,4 +1,5 @@
 import '../diagnostic.dart';
+import '../fix.dart';
 import '../geometry/boundary.dart' show isClockwise;
 import '../geometry/geo_math.dart';
 import '../lint_context.dart';
@@ -207,6 +208,7 @@ Rule _coordinateRule({
   required String explanation,
   required String correctExample,
   required String incorrectExample,
+  String? fixDescription,
   String Function(List<_Found> found)? groupMessage,
   String Function(CommandCoordinate coordinate, CoordinateIssue issue)? message,
   bool Function(CommandCoordinate coordinate, CoordinateIssue issue)? include,
@@ -218,6 +220,7 @@ Rule _coordinateRule({
     severity: severity,
     versions: SpecVersion.all,
     specAnchor: 'geographic-position',
+    fixDescription: fixDescription,
     description: description,
     explanation: explanation,
     correctExample: correctExample,
@@ -252,16 +255,37 @@ void _reportFound(
       message == null ? i.message : message(cc, i);
   if (groupMessage == null || found.length == 1) {
     for (final (cc, i) in found) {
+      final edit = _coordinateEdit(c, cc, i);
       ctx.reportArgument(c, text(cc, i),
-          offset: cc.offset + i.offset, length: i.length);
+          offset: cc.offset + i.offset,
+          length: i.length,
+          fix: edit == null ? null : Fix([edit]));
     }
     return;
   }
   final start = found.first.$1.offset + found.first.$2.offset;
   final last = found.last;
   final end = last.$1.offset + last.$2.offset + last.$2.length;
+  final edits = [
+    for (final (cc, i) in found)
+      if (_coordinateEdit(c, cc, i) case final edit?) edit,
+  ];
   ctx.reportArgument(c, groupMessage(found),
-      offset: start, length: end - start);
+      offset: start,
+      length: end - start,
+      fix: edits.isEmpty ? null : Fix(edits));
+}
+
+/// The edit that fixes [issue] of [cc] in [c], or null.
+///
+/// Only a coordinate with a position gets a fix. If a part of the coordinate
+/// cannot be read, the user must check it.
+ReplaceText? _coordinateEdit(
+    Command c, CommandCoordinate cc, CoordinateIssue issue) {
+  final text = issue.replacement;
+  if (text == null || !cc.result.isValid) return null;
+  final start = c.argumentColumn + cc.offset + issue.offset;
+  return ReplaceText(c.line, start, start + issue.length, text);
 }
 
 /// The text of [issue] in its coordinate.
@@ -335,58 +359,6 @@ final Rule _coordinateHemisphere = _coordinateRule(
   },
 );
 
-/// A fix for minutes or seconds that are exactly 60, for example
-/// `41:08:60` -> `41:09:00`. Returns null if there is no simple fix.
-String? _carryFix(CommandCoordinate cc, CoordinateIssue issue) {
-  final text = cc.text;
-  bool isPartChar(int c) => (c >= 0x30 && c <= 0x39) || c == 0x3A || c == 0x2E;
-  var s = issue.offset;
-  while (s > 0 && isPartChar(text.codeUnitAt(s - 1))) {
-    s--;
-  }
-  var e = issue.offset + issue.length;
-  while (e < text.length && isPartChar(text.codeUnitAt(e))) {
-    e++;
-  }
-  final part = text.substring(s, e);
-  final groups = part.split(':');
-  if (groups.length < 2 || groups.any((g) => g.isEmpty)) return null;
-  final isSeconds = issue.kind == CoordinateIssueKind.secondsOutOfRange;
-  final index = isSeconds ? 2 : 1;
-  if (index >= groups.length) return null;
-  final bad = double.tryParse(groups[index]);
-  if (bad != 60) return null;
-  String zero(String g) => g.replaceAll(RegExp(r'\d'), '0');
-  String plusOne(String g, int width) {
-    final dot = g.indexOf('.');
-    final intText = dot < 0 ? g : g.substring(0, dot);
-    final frac = dot < 0 ? '' : g.substring(dot);
-    final v = int.tryParse(intText);
-    if (v == null) return g;
-    return '${(v + 1).toString().padLeft(width, '0')}$frac';
-  }
-
-  final out = [...groups];
-  // DMS seconds are whole numbers (see coordinate-decimal-seconds). So the
-  // fix drops a fraction of the seconds, which is all zeros here: 60.0000
-  // becomes 00.
-  out[index] =
-      isSeconds ? zero(groups[index].split('.').first) : zero(groups[index]);
-  var carry = index - 1;
-  while (carry >= 0) {
-    final g = out[carry];
-    final next = plusOne(g, g.split('.').first.length);
-    if (carry > 0 && (double.tryParse(next) ?? 0) >= 60) {
-      out[carry] = zero(g);
-      carry--;
-      continue;
-    }
-    out[carry] = next;
-    break;
-  }
-  return 'Write "${out.join(':')}" in place of "$part".';
-}
-
 final Rule _coordinateOutOfRange = _coordinateRule(
   id: 'coordinate-out-of-range',
   severity: Severity.error,
@@ -400,23 +372,17 @@ final Rule _coordinateOutOfRange = _coordinateRule(
       'most 180 degrees, and minutes and seconds must be less than 60.',
   explanation: 'A latitude greater than 90 degrees or a longitude greater '
       'than 180 degrees is not a position on the earth. Minutes and seconds '
-      'go from 0 to 59. The value 60 is not allowed: write the next minute '
-      'or degree in its place. For example, write 41:09:00N, not 41:08:60N.\n'
+      'go from 0 to 59. The value 60 is not allowed.\n'
       '\n'
-      'The value 60 often comes from a program that rounds the seconds '
-      'without carrying them to the minutes. Fix the program that writes '
-      'the file.',
-  correctExample: 'DP 41:09:00N 019:06:00E',
+      'Such a value is probably a typing error. Find the correct value in '
+      'the source data, for example in the AIP, and correct it by hand. '
+      'openair-lint does not change the value, because it cannot know the '
+      'correct one.',
+  correctExample: 'DP 41:08:50N 019:06:00E',
   incorrectExample: 'DP 41:08:60N 019:06:00E\n'
       'DP 91:00:00N 019:06:00E',
-  message: (cc, i) {
-    if (i.kind == CoordinateIssueKind.minutesOutOfRange ||
-        i.kind == CoordinateIssueKind.secondsOutOfRange) {
-      final fix = _carryFix(cc, i);
-      if (fix != null) return '${i.message} $fix';
-    }
-    return i.message;
-  },
+  message: (cc, i) => '${i.message} This is probably a typing error. Find '
+      'the correct value in the source data, for example in the AIP.',
 );
 
 final Rule _coordinateDecimalDegrees = _coordinateRule(
@@ -477,6 +443,9 @@ final Rule _coordinateTrailingText = _coordinateRule(
 final Rule _coordinateSpaceBetweenParts = _coordinateRule(
   id: 'coordinate-space-between-parts',
   severity: Severity.warning,
+  fixDescription: '--fix writes one space between the latitude and the '
+      'longitude, and one space in place of two or more blanks before the '
+      'letter N, S, E or W.',
   kinds: {
     CoordinateIssueKind.missingSpace,
     CoordinateIssueKind.extraSpace,
@@ -502,6 +471,9 @@ final Rule _coordinateSpaceBetweenParts = _coordinateRule(
 final Rule _coordinateDigitCount = _coordinateRule(
   id: 'coordinate-digit-count',
   severity: Severity.warning,
+  fixDescription: '--fix adds the leading zeros, and removes extra zeros at '
+      'the start ("45" in place of "045"). It does not change a part with '
+      'too many digits that are not zeros.',
   kinds: {
     CoordinateIssueKind.missingLeadingZero,
     CoordinateIssueKind.tooManyDigits,
@@ -721,6 +693,11 @@ final Rule _polygonNotClosed = Rule(
   severity: Severity.warning,
   versions: SpecVersion.all,
   specAnchor: 'dp-polygon-point',
+  fixDescription: '--fix adds the first point again as the last point '
+      '("DP" and the same coordinates). It does this only when the polygon '
+      'starts with a DP point that is written correctly, and when the gap is '
+      '0.1 NM or more. A smaller gap is probably a typing error in a '
+      'coordinate, which the user must check.',
   description: 'The last point of a polygon should be the same as the first '
       'point.',
   explanation: 'The specification says that polygons are expected to be '
@@ -775,7 +752,10 @@ final Rule _polygonNotClosed = Rule(
         lastCmd,
         'The polygon is not closed. The last point is '
         '${formatNmAndMetres(gap)} from the first point (line '
-        '${firstCmd.line}). $fix');
+        '${firstCmd.line}). $fix',
+        fix: gap >= 0.1 && firstCmd.upperKeyword == 'DP' && cc.result.isClean
+            ? Fix([InsertLine(lastCmd.line, '${firstCmd.keyword} ${cc.text}')])
+            : null);
   },
 );
 
@@ -784,6 +764,8 @@ final Rule _dpDuplicatePoint = Rule(
   severity: Severity.warning,
   versions: SpecVersion.all,
   specAnchor: 'dp-polygon-point',
+  fixDescription: '--fix removes the second point when both points have '
+      'exactly the same position and the second line has no comment.',
   description: 'Two DP commands in a row should not have the same point.',
   explanation: 'A DP point that is the same as the DP point before it adds '
       'nothing to the polygon. It is often a copy error. Remove one of the '
@@ -814,7 +796,10 @@ final Rule _dpDuplicatePoint = Rule(
           ctx.reportCommand(
               c,
               'This point is the same as the point on line ${prev.line}. '
-              'Remove one of them.');
+              'Remove one of them.',
+              fix: _isExactDuplicate(ctx, prev, c, a)
+                  ? Fix.deleteLine(c.line)
+                  : null);
         }
       }
       prev = c;
@@ -822,11 +807,26 @@ final Rule _dpDuplicatePoint = Rule(
   },
 );
 
+/// True if the DP points [first] and [second] have exactly the same
+/// position, and [second] has no comment. Then the automatic fix can remove
+/// [second] without a change of the polygon and without a lost comment.
+bool _isExactDuplicate(
+    LintContext ctx, Command first, Command second, Airspace a) {
+  if (second.comment != null) return false;
+  final p = coordinatesOf(ctx, first, a).first.result.value;
+  final q = coordinatesOf(ctx, second, a).first.result.value;
+  return p != null && q != null && p.lat == q.lat && p.lon == q.lon;
+}
+
 final Rule _polygonCounterClockwise = Rule(
   id: 'geometry-polygon-counter-clockwise',
   severity: Severity.warning,
   versions: SpecVersion.all,
   specAnchor: 'dp-polygon-point',
+  fixDescription: '--fix writes the DP points in the opposite order. It does '
+      'this only for a closed polygon of DP points without comments between '
+      'or after the points. A boundary with arcs (DA, DB) or V commands is '
+      'not changed, because the arcs would need other changes too.',
   description: 'The points of a polygon are expected in clockwise order.',
   explanation: 'The specification says that polygon points are expected to '
       'be mapped clockwise and closed. Most readers draw the airspace '
@@ -856,10 +856,60 @@ final Rule _polygonCounterClockwise = Rule(
       ctx.reportCommand(
           shape.commands.first,
           'The boundary of ${a.label} goes counter-clockwise. The '
-          'specification expects clockwise order.');
+          'specification expects clockwise order.',
+          fix: _reverseFix(ctx, a));
     }
   },
 );
+
+/// The fix that writes the DP points of [a] in the opposite order, or null.
+///
+/// The fix swaps the text of the DP lines (the first with the last, the
+/// second with the second last, and so on), so each coordinate keeps its
+/// exact text. The polygon has the same points and the same area.
+///
+/// There is a fix only when all of these are true:
+///
+/// - The geometry has only DP points. Arcs (DA, DB) and V commands would
+///   need other changes (for example the direction "V D="), so they get no
+///   fix.
+/// - Between the first and the last DP line there are only DP lines and
+///   empty lines, and no DP line has a comment. A comment often describes
+///   one part of the boundary, and it would then be at the wrong place.
+/// - All coordinates are valid.
+/// - The polygon is closed: the last point has the same position as the
+///   first point. Then the first and the last line stay the same. An open
+///   polygon is first closed by the fix of geometry-polygon-not-closed.
+Fix? _reverseFix(LintContext ctx, Airspace a) {
+  const geometry = {'DP', 'DA', 'DB', 'DC', 'DY', 'V'};
+  final points = [
+    for (final c in a.commands)
+      if (geometry.contains(c.upperKeyword)) c
+  ];
+  if (points.length < 4) return null;
+  if (points.any((c) => c.upperKeyword != 'DP' || c.comment != null)) {
+    return null;
+  }
+  final lines = {for (final c in points) c.line};
+  for (var n = points.first.line; n <= points.last.line; n++) {
+    if (!lines.contains(n) && ctx.file.lineText(n).trim().isNotEmpty) {
+      return null;
+    }
+  }
+  final positions = [
+    for (final c in points) coordinatesOf(ctx, c, a).first.result.value
+  ];
+  if (positions.any((p) => p == null)) return null;
+  final first = positions.first!;
+  final last = positions.last!;
+  if (first.lat != last.lat || first.lon != last.lon) return null;
+  final texts = [for (final c in points) ctx.file.lineText(c.line)];
+  final n = points.length;
+  return Fix([
+    for (var i = 0; i < n; i++)
+      ReplaceText(points[i].line, 1, texts[i].length + 1, texts[n - 1 - i]),
+  ]);
+}
 
 String _edgeText(PolygonRing ring, int i) {
   if (i == ring.length - 1 && !ring.explicitlyClosed) {
@@ -1547,6 +1597,8 @@ final Rule _vSpaceAroundEquals = Rule(
   severity: Severity.warning,
   versions: SpecVersion.all,
   specAnchor: 'v-variable-assignment',
+  fixDescription: '--fix removes the blanks: "V X=..." in place of '
+      '"V X = ...".',
   description: 'Write "V Name=Value" without blanks around "=".',
   explanation: 'The format of the V command is "V Command=Value". The '
       'specification writes the name, the "=" sign and the value without '
@@ -1565,7 +1617,10 @@ final Rule _vSpaceAroundEquals = Rule(
     if (v.valueOffset == nameEnd + 1) return; // `Name=Value`
     ctx.reportArgument(
         c, 'Do not write blanks around "=". Write "V ${v.name}=${v.value}".',
-        offset: nameEnd, length: v.valueOffset - nameEnd);
+        offset: nameEnd,
+        length: v.valueOffset - nameEnd,
+        fix: argumentFix(c, '=',
+            offset: nameEnd, length: v.valueOffset - nameEnd));
   },
 );
 

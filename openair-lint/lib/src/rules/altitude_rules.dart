@@ -1,5 +1,6 @@
 import '../altitude/altitude.dart';
 import '../diagnostic.dart';
+import '../fix.dart';
 import '../lint_context.dart';
 import '../model/openair_file.dart';
 import '../spec_version.dart';
@@ -41,11 +42,26 @@ AltitudeParseResult _parsed(LintContext ctx, Command c) =>
 /// "upper" or "lower", for messages.
 String _limitName(Command c) => c.upperKeyword == 'AH' ? 'upper' : 'lower';
 
+/// The automatic fix of [issue] in the value of [c], or null.
+///
+/// There is a fix only if the issue has a replacement and the value has no
+/// part that cannot be read (see [AltitudeParseResult.canFix]).
+Fix? _fixOf(LintContext ctx, Command c, AltitudeIssue issue) {
+  final text = issue.replacement;
+  if (text == null || !_parsed(ctx, c).canFix) return null;
+  return argumentFix(c, text, offset: issue.fixOffset, length: issue.fixLength);
+}
+
+/// The fix that writes "GND" for a lower limit of 0 above the ground (see
+/// [_isZeroGroundInAl]), or null.
+Fix? _groundFix(LintContext ctx, Command c) =>
+    _parsed(ctx, c).canFix ? argumentFix(c, 'GND') : null;
+
 /// Reports every issue of [kind] in the value of [c].
 void _reportIssues(LintContext ctx, Command c, AltitudeIssueKind kind) {
   for (final issue in _parsed(ctx, c).issuesOf(kind)) {
     ctx.reportArgument(c, issue.message,
-        offset: issue.offset, length: issue.length);
+        offset: issue.offset, length: issue.length, fix: _fixOf(ctx, c, issue));
   }
 }
 
@@ -60,6 +76,7 @@ Rule _issueRule({
   required String correctExample,
   required String incorrectExample,
   required AltitudeIssueKind kind,
+  String? fixDescription,
   CommandCheck? checkCommand,
 }) =>
     Rule(
@@ -67,6 +84,7 @@ Rule _issueRule({
       severity: severity,
       versions: versions,
       specAnchor: specAnchor,
+      fixDescription: fixDescription,
       description: description,
       explanation: explanation,
       correctExample: correctExample,
@@ -117,6 +135,9 @@ final Rule _invalid = Rule(
   id: 'altitude-invalid',
   severity: Severity.error,
   specAnchor: 'altitude',
+  fixDescription: '--fix writes a normal space in place of a special space '
+      'character, and removes a thousands separator ("5000" in place of '
+      '"5,000" or "5 000"). It does not change other values.',
   keywords: _altitudeKeywords,
   checkCommand: (ctx, c, a) {
     final p = _parsed(ctx, c);
@@ -129,7 +150,9 @@ final Rule _invalid = Rule(
             : ' If the airspace starts at the ground, write "GND".';
     for (final issue in p.issuesOf(AltitudeIssueKind.invalid)) {
       ctx.reportArgument(c, '${issue.message}$notamHint',
-          offset: issue.offset, length: issue.length);
+          offset: issue.offset,
+          length: issue.length,
+          fix: _fixOf(ctx, c, issue));
     }
   },
   description: 'The altitude must have one of the forms of the '
@@ -166,6 +189,9 @@ final Rule _legacyKeyword = Rule(
   id: 'altitude-legacy-keyword',
   severity: Severity.error,
   specAnchor: 'supported-altitude-references',
+  fixDescription: '--fix writes "GND" or "UNL" in place of the old word, '
+      'for example "GND" in place of "SFC". It does not change "SFC" in AH '
+      'or "UNLIM" in AL.',
   description: 'Write "GND" and "UNL", not old forms such as "SFC" or '
       '"UNLIM".',
   explanation: 'Old files use other words for the ground and for no upper '
@@ -244,6 +270,9 @@ final Rule _unitMissing = Rule(
   id: 'altitude-unit-missing',
   severity: Severity.error,
   specAnchor: 'altitude',
+  fixDescription: '--fix writes "AL GND" for a lower limit of 0 above the '
+      'ground without a unit, for example "AL 0 AGL". It does not add a '
+      'unit to other values, because FT and M are both possible.',
   description: 'An altitude must have the unit FT or M.',
   explanation: 'An altitude has a number, a unit and a reference. The unit '
       'is required: FT (feet) or M (metres). Feet are recommended. An '
@@ -269,7 +298,9 @@ final Rule _unitMissing = Rule(
               'at the ground, write "AL GND".'
           : issue.message;
       ctx.reportArgument(c, message,
-          offset: issue.offset, length: issue.length);
+          offset: issue.offset,
+          length: issue.length,
+          fix: zero ? _groundFix(ctx, c) : null);
     }
   },
   correctExample: 'AH 3500 FT AMSL\n'
@@ -297,6 +328,8 @@ bool _isZeroGroundInAl(LintContext ctx, Command c) {
 final Rule _unknownUnit = _issueRule(
   id: 'altitude-unknown-unit',
   severity: Severity.error,
+  fixDescription: '--fix writes "FT" or "M" in place of an old unit word, '
+      'for example "FT" in place of "FEET" or "F".',
   description: 'The unit of an altitude must be FT or M.',
   explanation: 'The specification defines two units for altitudes: FT '
       '(feet, recommended) and M (metres). Other forms, such as "F" or '
@@ -312,7 +345,9 @@ final Rule _unknownUnit = _issueRule(
       final glued = _gluedUnitAt(ctx, c, issue.offset);
       ctx.reportArgument(c,
           glued == null ? issue.message : '${issue.message} ${glued.message}',
-          offset: issue.offset, length: issue.length);
+          offset: issue.offset,
+          length: issue.length,
+          fix: _fixOf(ctx, c, issue));
     }
   },
 );
@@ -344,6 +379,10 @@ final Rule _unknownReference = Rule(
   id: 'altitude-unknown-reference',
   severity: Severity.error,
   specAnchor: 'supported-altitude-references',
+  fixDescription: '--fix writes the reference of the specification in '
+      'place of an old word: AMSL for ASL, ALT and QNH, AGL for GND, SFC and '
+      'ASFC after a number, and STD for QNE. For "AL 0 FT GND" it writes '
+      '"AL GND". It does not change a word that is not known.',
   keywords: _altitudeKeywords,
   checkCommand: (ctx, c, a) {
     final p = _parsed(ctx, c);
@@ -355,7 +394,9 @@ final Rule _unknownReference = Rule(
               'the ground, write "AL GND".'
           : issue.message;
       ctx.reportArgument(c, message,
-          offset: issue.offset, length: issue.length);
+          offset: issue.offset,
+          length: issue.length,
+          fix: zero ? _groundFix(ctx, c) : _fixOf(ctx, c, issue));
     }
   },
   description: 'The altitude reference must be AMSL, AGL or STD.',
@@ -380,6 +421,7 @@ final Rule _mslAlias = _issueRule(
   id: 'altitude-msl-alias',
   severity: Severity.warning,
   specAnchor: 'supported-altitude-references',
+  fixDescription: '--fix writes "AMSL" in place of "MSL".',
   description: 'Write "AMSL", not "MSL".',
   explanation: '"MSL" is an alias of "AMSL" (above mean sea level). A reader '
       'must read "MSL" as "AMSL", so the meaning is the same. But writers '
@@ -410,6 +452,9 @@ final Rule _multipleValues = _issueRule(
 final Rule _flightLevelInvalid = _issueRule(
   id: 'altitude-flight-level-invalid',
   severity: Severity.error,
+  fixDescription: '--fix writes "FL95" in place of "95 FL", and '
+      'removes FT or STD after a flight level ("FL95" in place of '
+      '"FL95 FT"). It does not change other values.',
   description: 'A flight level must be "FL" and a whole number, for '
       'example "FL95".',
   explanation: 'A flight level is written as "FL" and a whole number, '
@@ -429,6 +474,7 @@ final Rule _flightLevelSpace = _issueRule(
   id: 'altitude-flight-level-space',
   severity: Severity.warning,
   specAnchor: 'supported-altitude-references',
+  fixDescription: '--fix removes the space: "FL95" in place of "FL 95".',
   description: 'Write a flight level without a space: "FL95", not "FL 95".',
   explanation: '"FL 145" (with a space) has the same meaning as "FL145". A '
       'reader must accept it, but writers should write "FL145", without a '
@@ -442,6 +488,7 @@ final Rule _unitNoSpace = _issueRule(
   id: 'altitude-unit-no-space',
   severity: Severity.error,
   versions: SpecVersion.only3,
+  fixDescription: '--fix adds the space: "1000 FT" in place of "1000FT".',
   description: 'Write a space between the number and the unit.',
   explanation: 'In version 3.0, an altitude has a space between the number '
       'and the unit: "1000 FT", not "1000FT". Version 2.1 allowed both '
@@ -458,7 +505,9 @@ final Rule _unitNoSpace = _issueRule(
       // altitude-unknown-unit reports "7000F" with both fixes.
       if (unknown.contains(issue.offset)) continue;
       ctx.reportArgument(c, issue.message,
-          offset: issue.offset, length: issue.length);
+          offset: issue.offset,
+          length: issue.length,
+          fix: _fixOf(ctx, c, issue));
     }
   },
 );
@@ -466,6 +515,7 @@ final Rule _unitNoSpace = _issueRule(
 final Rule _spacing = _issueRule(
   id: 'altitude-spacing',
   severity: Severity.info,
+  fixDescription: '--fix writes one space between the parts.',
   description: 'Use one space between the parts of an altitude.',
   explanation: 'Write exactly one space between the number, the unit and '
       'the reference. Two or more spaces, or a tab, make the file harder to '
@@ -584,6 +634,7 @@ final Rule _zeroAgl = Rule(
   id: 'altitude-zero-agl',
   severity: Severity.warning,
   specAnchor: 'al-lower-altitude-limit',
+  fixDescription: '--fix writes "AL GND".',
   description: 'For a lower limit at the ground, write "AL GND".',
   explanation: 'The specification says: for areas that extend to the '
       'ground, use GND, without an altitude. "AL 0 FT AGL" means the same, '
@@ -606,7 +657,8 @@ final Rule _zeroAgl = Rule(
     ctx.reportArgument(
         c,
         '"${_parsed(ctx, c).text.trim()}" is the ground. Write "AL GND" for '
-        'a lower limit at the ground.');
+        'a lower limit at the ground.',
+        fix: _groundFix(ctx, c));
   },
 );
 

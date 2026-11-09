@@ -1,5 +1,6 @@
 import '../attributes/attribute_values.dart';
 import '../diagnostic.dart';
+import '../fix.dart';
 import '../lint_context.dart';
 import '../model/openair_file.dart';
 import '../spec_version.dart';
@@ -71,6 +72,9 @@ final Rule _acUnknownClass = Rule(
   severity: Severity.error,
   versions: SpecVersion.all,
   specAnchor: 'ac-airspace-class',
+  fixDescription: '--fix writes "UNC" in place of an old word for '
+      '"unclassified": UNCLASSIFIED, UNCL, UNK, UKN or UNKNOWN. It does not '
+      'change other values.',
   description: 'The AC class must be A, B, C, D, E, F, G or UNC.',
   explanation: 'AC contains only the airspace class. The classes are '
       '$_classList (unclassified).\n'
@@ -87,7 +91,9 @@ final Rule _acUnknownClass = Rule(
     if (value.isEmpty) return;
     final upper = value.toUpperCase();
     if (airspaceClasses.contains(upper)) return;
-    ctx.reportArgument(c, _unknownClassMessage(value, upper, a));
+    ctx.reportArgument(c, _unknownClassMessage(value, upper, a),
+        fix:
+            unclassifiedAliases.contains(upper) ? argumentFix(c, 'UNC') : null);
   },
 );
 
@@ -167,6 +173,10 @@ final Rule _ayUnknownType = Rule(
   severity: Severity.error,
   versions: SpecVersion.all,
   specAnchor: 'ay-airspace-type',
+  fixDescription: '--fix writes the type of the table in place of a word '
+      'with the same meaning, for example "R" in place of "RESTRICTED" and '
+      '"GSEC" in place of "GLIDING_SECTOR". It does not change a value '
+      'when the type is only a guess.',
   description: 'The AY type must be a type from the table in the '
       'specification.',
   explanation: 'AY accepts only the types in the table of the specification, '
@@ -184,7 +194,14 @@ final Rule _ayUnknownType = Rule(
     if (value.isEmpty) return;
     final upper = value.toUpperCase();
     if (isAirspaceType(upper)) return;
-    ctx.reportArgument(c, _unknownTypeMessage(value, upper));
+    final hint = typeHintFor(upper);
+    ctx.reportArgument(c, _unknownTypeMessage(value, upper),
+        fix: hint != null &&
+                hint.certain &&
+                !airspaceClasses.contains(upper) &&
+                !unclassifiedAliases.contains(upper)
+            ? argumentFix(c, hint.type)
+            : null);
   },
 );
 
@@ -512,6 +529,10 @@ final Rule _afInvalidFormat = Rule(
   severity: Severity.error,
   versions: SpecVersion.all,
   specAnchor: 'af-airspace-frequency',
+  fixDescription: '--fix writes a dot in place of a decimal comma '
+      '("123.300" in place of "123,300"), and removes the unit MHz '
+      '("123.300" in place of "123.300 MHz"). It does not change other '
+      'values.',
   description: 'The AF frequency must be one number in MHz, with a dot as '
       'the decimal separator and without a unit.',
   explanation: 'AF gives the radio frequency that pilots use for this '
@@ -532,7 +553,10 @@ final Rule _afInvalidFormat = Rule(
     if (c.argument.isEmpty) {
       ctx.reportCommand(c, problem);
     } else {
-      ctx.reportArgument(c, problem);
+      ctx.reportArgument(c, problem,
+          fix: frequencyFormatFix(c.argument) == null
+              ? null
+              : argumentFix(c, frequencyFormatFix(c.argument)!));
     }
   },
 );
@@ -639,6 +663,9 @@ final Rule _afNotThreeDecimals = Rule(
   severity: Severity.error,
   versions: SpecVersion.only3,
   specAnchor: 'af-airspace-frequency',
+  fixDescription: '--fix writes the frequency with three decimals, for '
+      'example "126.100" in place of "126.1" or "126.1000". It does not '
+      'change a radio frequency such as 118.0083 to a channel name.',
   description: 'The AF frequency must have exactly three decimals.',
   explanation: 'The specification requires one number with a dot and '
       'exactly three decimals, for example "AF 123.300" or "AF 118.005". '
@@ -662,7 +689,8 @@ final Rule _afNotThreeDecimals = Rule(
     if (channel == null) return;
     if (f.khz != null) {
       ctx.reportArgument(c,
-          'Write the frequency with three decimals: "AF ${formatKhz(channel)}".');
+          'Write the frequency with three decimals: "AF ${formatKhz(channel)}".',
+          fix: argumentFix(c, formatKhz(channel)));
     } else {
       ctx.reportArgument(
           c,

@@ -1,4 +1,5 @@
 import 'diagnostic.dart';
+import 'fix.dart';
 import 'geometry/boundary.dart';
 import 'model/openair_file.dart';
 import 'rules/rule.dart';
@@ -56,8 +57,12 @@ class LintContext {
   /// [line] and [column] start at 1. [endColumn] is the column after the
   /// last character of the problem. If it is null or not greater than
   /// [column], the problem has a length of 1.
+  ///
+  /// [fix] is the automatic fix, if the problem has a safe one. Only a rule
+  /// with [Rule.fixable] can give a fix.
   void report(String message,
-      {required int line, int column = 1, int? endColumn}) {
+      {required int line, int column = 1, int? endColumn, Fix? fix}) {
+    assert(fix == null || rule.fixable, 'Rule ${rule.id} is not fixable');
     final l = line < 1 ? 1 : line;
     final c = column < 1 ? 1 : column;
     final e = (endColumn == null || endColumn <= c) ? c + 1 : endColumn;
@@ -70,19 +75,26 @@ class LintContext {
       message:
           rule.messageNote == null ? message : '$message ${rule.messageNote}',
       specUrl: rule.specUrl,
+      fix: fix,
     ));
   }
 
   /// Reports a problem for a whole command: from the keyword to the end of
   /// the argument (the comment is not included).
-  void reportCommand(Command command, String message) => report(message,
-      line: command.line, column: command.column, endColumn: command.endColumn);
+  void reportCommand(Command command, String message, {Fix? fix}) =>
+      report(message,
+          line: command.line,
+          column: command.column,
+          endColumn: command.endColumn,
+          fix: fix);
 
   /// Reports a problem for the keyword of a command.
-  void reportKeyword(Command command, String message) => report(message,
-      line: command.line,
-      column: command.column,
-      endColumn: command.keywordEndColumn);
+  void reportKeyword(Command command, String message, {Fix? fix}) =>
+      report(message,
+          line: command.line,
+          column: command.column,
+          endColumn: command.keywordEndColumn,
+          fix: fix);
 
   /// Reports a problem for the argument of a command, or for a part of it.
   ///
@@ -90,30 +102,33 @@ class LintContext {
   /// the length of the wrong part; null means "to the end of the argument".
   /// If the argument is empty, the problem points to the end of the keyword.
   void reportArgument(Command command, String message,
-      {int offset = 0, int? length}) {
+      {int offset = 0, int? length, Fix? fix}) {
     if (command.argument.isEmpty) {
       report(message,
           line: command.line,
           column: command.keywordEndColumn,
-          endColumn: command.keywordEndColumn + 1);
+          endColumn: command.keywordEndColumn + 1,
+          fix: fix);
       return;
     }
     final start = command.argumentColumn + offset;
     final len = length ?? (command.argument.length - offset);
-    report(message, line: command.line, column: start, endColumn: start + len);
+    report(message,
+        line: command.line, column: start, endColumn: start + len, fix: fix);
   }
 
   /// Reports a problem for a whole line (from column 1 to the end of the
   /// text). Use it for problems that are not about one command.
-  void reportLine(int line, String message) {
+  void reportLine(int line, String message, {Fix? fix}) {
     final text =
         (line >= 1 && line <= file.lineCount) ? file.lineText(line) : '';
-    report(message, line: line, column: 1, endColumn: text.length + 1);
+    report(message,
+        line: line, column: 1, endColumn: text.length + 1, fix: fix);
   }
 
   /// Reports a problem for an airspace at its `AC` command.
-  void reportAirspace(Airspace airspace, String message) =>
-      reportCommand(airspace.ac, message);
+  void reportAirspace(Airspace airspace, String message, {Fix? fix}) =>
+      reportCommand(airspace.ac, message, fix: fix);
 
   /// Computes a value once per file and keeps it for other rules.
   ///

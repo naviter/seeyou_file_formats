@@ -4,6 +4,7 @@ import '../activation/civil_date.dart';
 import '../activation/sun.dart';
 import '../activation/sun_window.dart';
 import '../diagnostic.dart';
+import '../fix.dart';
 import '../geometry/lat_lng.dart';
 import '../lint_context.dart';
 import '../model/openair_file.dart';
@@ -100,12 +101,14 @@ Rule _issueRule(
   required String explanation,
   required String correctExample,
   required String incorrectExample,
+  String? fixDescription,
 }) =>
     Rule(
       id: id ?? kind.ruleId,
       severity: severity,
       versions: versions,
       specAnchor: specAnchor,
+      fixDescription: fixDescription,
       anchorInVersion21Text: anchorInVersion21Text,
       description: description,
       explanation: explanation,
@@ -118,8 +121,14 @@ Rule _issueRule(
           if (issue.kind != kind) continue;
           final message =
               v21 ? (issue.v21Message ?? issue.message) : issue.message;
+          final text = issue.replacement;
           ctx.reportArgument(c, message,
-              offset: issue.offset, length: issue.length);
+              offset: issue.offset,
+              length: issue.length,
+              fix: text == null
+                  ? null
+                  : argumentFix(c, text,
+                      offset: issue.fixOffset, length: issue.fixLength));
         }
       },
     );
@@ -272,6 +281,10 @@ final Rule _invalidSyntax = _issueRule(
   AaIssueKind.invalidSyntax,
   severity: Severity.error,
   specAnchor: 'aa-airspace-activation-times',
+  fixDescription: '--fix writes "-" in place of other dashes (for example '
+      'the en dash "–"), removes the spaces around "/", and writes "/" in '
+      'place of "-" between two times ("07:00Z/15:00Z" in place of '
+      '"07:00Z-15:00Z"). It does not change other problems.',
   description: 'The AA command must have one of the forms of the '
       'specification.',
   explanation: 'There are four forms of AA command:\n'
@@ -406,6 +419,9 @@ final Rule _valueFormNotAllowed = _issueRule(
   severity: Severity.error,
   versions: SpecVersion.only3,
   specAnchor: 'time',
+  fixDescription: '--fix writes the same date or time in an allowed form, '
+      'for example "2026-07-04T08:00Z" in place of "20260704T0800Z". It '
+      'does not change a value with a decimal fraction.',
   description: 'Dates and times must use one of the allowed forms.',
   explanation: '$_allowedValueForms\n'
       '\n'
@@ -422,6 +438,9 @@ final Rule _valueFormNotAllowedV21 = _issueRule(
   severity: Severity.warning,
   versions: SpecVersion.only21,
   specAnchor: 'time',
+  fixDescription: '--fix writes the same date or time in an allowed form, '
+      'for example "2026-07-04T08:00Z" in place of "20260704T0800Z". It '
+      'does not change a value with a decimal fraction.',
   description: 'In version 2.1, dates and times should use a form that '
       'version 3.0 allows.',
   explanation: 'Version 2.1 of the specification says that times use the '
@@ -457,6 +476,7 @@ final Rule _noneNone = _issueRule(
   AaIssueKind.noneNone,
   severity: Severity.error,
   specAnchor: 'interval-activation',
+  fixDescription: '--fix writes "AA NONE".',
   description: 'AA NONE/NONE is not allowed. Write AA NONE.',
   explanation: 'An older draft of the specification used AA NONE/NONE for '
       'an airspace without known activation times. The specification '
@@ -497,6 +517,10 @@ final Rule _intervalFormNotAllowed = _issueRule(
   severity: Severity.error,
   versions: SpecVersion.only3,
   specAnchor: 'interval-activation',
+  fixDescription: '--fix writes the same interval as '
+      'StartDateTime/EndDateTime, for example '
+      '"2026-07-04T08:00Z/2026-07-04T16:00Z" in place of '
+      '"2026-07-04T08:00Z/PT8H".',
   description: 'Intervals must have the form StartDateTime/EndDateTime.',
   explanation: '$_allowedIntervalForms\n'
       '\n'
@@ -513,6 +537,10 @@ final Rule _intervalFormNotAllowedV21 = _issueRule(
   severity: Severity.warning,
   versions: SpecVersion.only21,
   specAnchor: 'interval-activation',
+  fixDescription: '--fix writes the same interval as '
+      'StartDateTime/EndDateTime, for example '
+      '"2026-07-04T08:00Z/2026-07-04T16:00Z" in place of '
+      '"2026-07-04T08:00Z/PT8H".',
   description: 'In version 2.1, intervals should have the form '
       'StartDateTime/EndDateTime.',
   explanation: 'Version 2.1 of the specification says that AA uses the ISO '
@@ -719,6 +747,10 @@ final Rule _weekdayListHasSpaces = _issueRule(
   AaIssueKind.weekdayListHasSpaces,
   severity: Severity.error,
   specAnchor: 'weekday-activation',
+  fixDescription: '--fix removes the spaces when the list has a "," or '
+      '"-" at each space, for example "MON,WED,FRI" in place of '
+      '"MON, WED, FRI". It does not change "MON FRI", because it can mean '
+      'MON,FRI or MON-FRI.',
   description: 'The list of weekdays must not contain spaces.',
   explanation: 'Write the weekdays as one word, without spaces: MON,WED,FRI '
       'or MON-FRI,SUN. A reader uses the spaces to find the parts of the '
@@ -743,6 +775,7 @@ final Rule _weekdayEveryDay = _issueRule(
   AaIssueKind.weekdayEveryDay,
   severity: Severity.info,
   specAnchor: 'weekday-activation',
+  fixDescription: '--fix removes the weekdays.',
   description: 'Leave the weekdays out when the command is for every day.',
   explanation: 'If the weekdays are left out, the schedule applies to every '
       'day. A list with all seven days, such as MON-SUN, means the same. '
@@ -1632,6 +1665,8 @@ final Rule _duplicate = Rule(
   id: 'aa-duplicate',
   severity: Severity.warning,
   specAnchor: 'combining-aa-commands',
+  fixDescription: '--fix removes the second command when its line has no '
+      'comment.',
   description: 'An airspace should not have the same AA command twice.',
   explanation: 'Two AA commands with the same meaning in one airspace are '
       'usually a copy error. Remove one of them. The check compares the '
@@ -1650,7 +1685,8 @@ final Rule _duplicate = Rule(
         ctx.reportCommand(
             c,
             'This AA command has the same meaning as the AA command on line '
-            '${first.line}. Remove one of them.');
+            '${first.line}. Remove one of them.',
+            fix: c.comment == null ? Fix.deleteLine(c.line) : null);
       }
     }
   },

@@ -5,6 +5,34 @@
 The linter follows the revised specification of 2026-11-08. The linter now
 has 155 rules.
 
+Automatic fixes:
+
+- New option `--fix`: fixes the problems that have a safe automatic fix
+  and saves the files. New option `--fix-dry-run`: shows the same changes
+  as a diff and does not change the files. 38 rules have a fix. A rule
+  fixes a problem only when there is exactly one correct result and the
+  meaning of the file does not change. See "Automatic fixes" in the README.
+- Without `--fix`, the summary says how many problems have a fix.
+- `--list-rules` shows `fix` for the rules with a fix. `--explain` and
+  RULES.md say what each fix does.
+- JSON output: each diagnostic has `fixable`, the summary has `fixable` and
+  `fixed`, and with `--fix` or `--fix-dry-run` each file has a `fix`
+  object.
+- Library: `Diagnostic.fix`, `Rule.fixDescription`, `fixBytes` and
+  `fixString`.
+- Web page: a "Fix" button for each problem with a fix, "Fix N problems",
+  "Undo the last fix" and "Download the fixed file".
+
+Encoding hint:
+
+- `file-invalid-utf8` now names the probable old 8-bit encoding of the
+  file (Windows-1250, 1251, 1252, 1253, 1254, 1257, or DOS 437, 850, 852)
+  and shows the line as it reads in this encoding, for example "AN
+  Kočevje". When the bytes fit two encodings, the message names both and
+  shows the line in both. openair-lint does not convert the file: the
+  user checks the text and saves the file as UTF-8. The web page also
+  shows the probable encoding above the results.
+
 Removed rules:
 
 - `coordinate-space-before-hemisphere`. One space between the number and

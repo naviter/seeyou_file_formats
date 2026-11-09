@@ -111,7 +111,8 @@ enum CoordinateIssueKind {
 /// One problem that [parseCoordinate] found.
 class CoordinateIssue {
   const CoordinateIssue(
-      this.kind, this.part, this.offset, this.length, this.message);
+      this.kind, this.part, this.offset, this.length, this.message,
+      {this.replacement});
 
   /// What is wrong.
   final CoordinateIssueKind kind;
@@ -130,6 +131,12 @@ class CoordinateIssue {
   /// A short explanation in plain English, for example
   /// `The minutes must be less than 60.`.
   final String message;
+
+  /// The text that replaces the wrong text (from [offset], with [length]),
+  /// or null. It is set only when there is exactly one correct result with
+  /// the same meaning, for example a leading zero. The rules use it for the
+  /// automatic fix.
+  final String? replacement;
 
   /// True if this issue means that no position could be computed.
   bool get fatal => kind.fatal;
@@ -233,14 +240,16 @@ CoordinateParseResult parseCoordinate(String text) {
         CoordinatePart.both,
         pos,
         1,
-        'Write one space between the latitude and the longitude.'));
+        'Write one space between the latitude and the longitude.',
+        replacement: ' ${text[pos]}'));
   } else if (gap > 1 || text.substring(gapStart, pos) != ' ') {
     issues.add(CoordinateIssue(
         CoordinateIssueKind.extraSpace,
         CoordinatePart.both,
         gapStart,
         gap,
-        'Write exactly one space between the latitude and the longitude.'));
+        'Write exactly one space between the latitude and the longitude.',
+        replacement: ' '));
   }
   final lon = _parsePart(text, pos, false, issues);
   pos = lon.end;
@@ -383,7 +392,8 @@ _Part _parsePart(
           numberEnd,
           hPos - numberEnd,
           'Write no space or one space between the $partName and its letter '
-          '"${hemisphere.toUpperCase()}".'));
+          '"${hemisphere.toUpperCase()}".',
+          replacement: ' '));
     }
     part.end = hPos + 1;
   } else {
@@ -522,10 +532,15 @@ void _checkDigits(_Group g, int expected, CoordinatePart cp, String what,
         g.start,
         g.end - g.start,
         'Write the $what with $expected digits '
-        '(add a leading zero).'));
+        '(add a leading zero).',
+        replacement: '${'0' * (expected - g.intDigits)}${g.text}'));
   } else if (g.intDigits > expected) {
+    // Only zeros at the start can be removed without a change of the value.
+    final extra = g.intDigits - expected;
+    final onlyZeros = g.text.substring(0, extra) == '0' * extra;
     issues.add(CoordinateIssue(CoordinateIssueKind.tooManyDigits, cp, g.start,
-        g.end - g.start, 'Write the $what with $expected digits.'));
+        g.end - g.start, 'Write the $what with $expected digits.',
+        replacement: onlyZeros ? g.text.substring(extra) : null));
   }
 }
 

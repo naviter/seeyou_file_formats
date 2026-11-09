@@ -17,6 +17,9 @@ final Rule _caseNotUpperCase = Rule(
   severity: Severity.error,
   versions: SpecVersion.only3,
   specAnchor: _generalAnchor,
+  fixDescription: '--fix writes the command and its value in upper case. '
+      'It does not change the text after AN and AG, and it does not change '
+      'comments.',
   description: 'Commands and values must be in upper case (except the text '
       'after AN and AG, and comments).',
   explanation: 'Version 3.0 requires upper case for everything: commands, '
@@ -48,6 +51,17 @@ final Rule _caseNotUpperCase = Rule(
     final upperLine = _short(
         '$keyword ${freeCase ? arg : arg.toUpperCase()}'.trimRight(), 60);
     final lineHint = ' Write the line in upper case: "$upperLine".';
+    // The fix: the keyword and the argument in upper case (only the
+    // keyword for AN and AG). The comment does not change.
+    final upperArg = arg.toUpperCase();
+    final edits = [
+      if (!c.isUpperCaseKeyword)
+        ReplaceText(c.line, c.column, c.keywordEndColumn, keyword),
+      if (!freeCase && upperArg != arg)
+        ReplaceText(
+            c.line, c.argumentColumn, c.argumentColumn + arg.length, upperArg),
+    ];
+    final fix = edits.isEmpty ? null : Fix(edits);
     if (!c.isUpperCaseKeyword) {
       var first = 0;
       while (!_isLowerCaseChar(c.keyword[first])) {
@@ -59,7 +73,8 @@ final Rule _caseNotUpperCase = Rule(
           '${more ? lineHint : ''}',
           line: c.line,
           column: c.column + first,
-          endColumn: c.keywordEndColumn);
+          endColumn: c.keywordEndColumn,
+          fix: fix);
       return;
     }
     if (freeCase) return;
@@ -103,7 +118,8 @@ final Rule _caseNotUpperCase = Rule(
           '"${_short(letters.toUpperCase())}".${more ? lineHint : ''} Only '
           'the text after AN and AG and comments can use lower case.',
           offset: i,
-          length: end - i);
+          length: end - i,
+          fix: fix);
       return;
     }
   },

@@ -94,7 +94,9 @@ enum AaIssueKind {
 /// One problem in an `AA` command.
 class AaIssue {
   const AaIssue(this.kind, this.offset, this.length, this.message,
-      {this.v21Message});
+      {this.v21Message, this.replacement, int? fixOffset, int? fixLength})
+      : fixOffset = fixOffset ?? offset,
+        fixLength = fixLength ?? length;
 
   /// The kind of problem.
   final AaIssueKind kind;
@@ -113,9 +115,25 @@ class AaIssue {
   /// version 3.0 does not allow.
   final String? v21Message;
 
-  /// This issue at another place in the text.
-  AaIssue at(int offset, int length) =>
-      AaIssue(kind, offset, length, message, v21Message: v21Message);
+  /// The text that replaces the part from [fixOffset] with the length
+  /// [fixLength], or null. It is set only when there is exactly one correct
+  /// result with the same meaning. The rules use it for the automatic fix.
+  final String? replacement;
+
+  /// The start of the part that [replacement] replaces. Usually [offset].
+  final int fixOffset;
+
+  /// The length of the part that [replacement] replaces. Usually [length].
+  final int fixLength;
+
+  /// This issue at another place in the text. The part that [replacement]
+  /// replaces moves to [fixOffset] and [fixLength].
+  AaIssue at(int offset, int length, {int? fixOffset, int? fixLength}) =>
+      AaIssue(kind, offset, length, message,
+          v21Message: v21Message,
+          replacement: replacement,
+          fixOffset: fixOffset ?? offset,
+          fixLength: fixLength ?? length);
 
   @override
   String toString() => 'AaIssue(${kind.ruleId} at $offset+$length: $message)';

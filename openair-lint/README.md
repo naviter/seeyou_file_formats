@@ -97,6 +97,8 @@ openair-lint --target 2.1 old_file.txt
 openair-lint --disable coordinate-decimal-seconds airspace/
 openair-lint --min-severity warning airspace/
 openair-lint --explain header-version-missing
+openair-lint --fix-dry-run airspace/
+openair-lint --fix airspace/
 ```
 
 Output:
@@ -117,6 +119,8 @@ Checked 1 file: 2 errors, 1 warning, 0 info.
 | `--disable <rule-id>` | Do not run this rule. You can use it more than once. |
 | `--min-severity info\|warning\|error` | Do not show problems with a lower severity. |
 | `--fail-on error\|warning` | Exit with code 1 if there is a problem with this severity or higher. The default is `error`. Problems that `--min-severity` hides are not counted. |
+| `--fix` | Fix the problems that have a safe automatic fix, and save the files. Then show the problems that are left. See [Automatic fixes](#automatic-fixes). |
+| `--fix-dry-run` | Show the changes that `--fix` would make, as a diff. The files do not change. |
 | `--list-rules` | Show all rules. With `--format json`, as JSON. |
 | `--explain <rule-id>` | Explain one rule, with examples. With `--format json`, as JSON. |
 | `--no-color` | Do not use colours. Colours are used only in a terminal. The environment variable `NO_COLOR` also turns them off. |
@@ -214,13 +218,110 @@ Put the comment on its own line. In version 2.1 files, the rules
 `an-contains-asterisk-v21` and `ag-contains-asterisk-v21` report the same
 problem as a warning, because the 2.1 text has the same comment syntax.
 
+### Automatic fixes
+
+`--fix` fixes some problems and saves the files. `--fix-dry-run` shows the
+same changes as a diff, and does not change the files. Use the dry run
+first, or use `--fix` on files in version control, so that you can check
+the changes.
+
+A rule fixes a problem only when there is exactly one correct result and
+the meaning of the file does not change. For example, `--fix` writes
+`AMSL` in place of `MSL`, but it does not add a missing unit, because the
+value can be in feet or in metres. `RULES.md` and `--explain <rule-id>` say
+what each rule fixes ("Automatic fix"). `--list-rules` shows `fix` for the
+rules that have a fix. Without `--fix`, the summary says how many problems
+have a fix.
+
+These problems are fixed:
+
+| Rule | What `--fix` does |
+| --- | --- |
+| `file-not-utf8` | Saves a file with a UTF-16 byte order mark as UTF-8. |
+| `file-bom` | Removes the UTF-8 byte order mark. |
+| `file-mixed-line-endings` | Uses the most frequent line ending for all lines. |
+| `header-field-format` | `*VERSION: 2.1` in place of `* version = 2.1`. |
+| `header-version-invalid` | `2.1` in place of `V2.1` or `2,1` (no other values). |
+| `header-version-unknown` | `3.0` in place of `3.0.0`. |
+| `header-field-duplicate` | Removes a second `*VERSION`/`*WRITTEN_BY` comment with the same value. |
+| `case-not-upper-case` | Upper case for the command and its value (not for the text after `AN` and `AG`, and not for comments). |
+| `ac-unknown-class` | `UNC` in place of `UNCLASSIFIED`, `UNCL`, `UNK`, `UKN` or `UNKNOWN`. |
+| `ay-unknown-type` | The type of the table in place of a word with the same meaning (`R` for `RESTRICTED`). Not for guesses. |
+| `af-invalid-format` | `123.300` in place of `123,300` or `123.300 MHz`. |
+| `af-not-three-decimals` | `126.100` in place of `126.1` or `126.1000`. |
+| `altitude-invalid` | A normal space in place of a special space, and `5000` in place of `5,000` or `5 000`. |
+| `altitude-legacy-keyword` | `GND` in place of `SFC`, `UNL` in place of `UNLIM` (and similar words). |
+| `altitude-unknown-unit` | `FT` in place of `FEET` or `F`, `M` in place of `METERS` (and similar words). |
+| `altitude-unknown-reference` | `AMSL` for `ASL`, `ALT` and `QNH`, `AGL` for `GND`, `SFC` and `ASFC` after a number, `STD` for `QNE`. |
+| `altitude-msl-alias` | `AMSL` in place of `MSL`. |
+| `altitude-flight-level-space` | `FL95` in place of `FL 95`. |
+| `altitude-flight-level-invalid` | `FL95` in place of `95 FL` or `FL95 FT`. |
+| `altitude-unit-no-space` | `1000 FT` in place of `1000FT`. |
+| `altitude-spacing` | One space between the parts of an altitude. |
+| `altitude-zero-agl`, `altitude-unit-missing` | `AL GND` in place of `AL 0 FT AGL` or `AL 0 AGL`. |
+| `aa-invalid-syntax` | `-` in place of other dashes, no spaces around `/`, and `07:00Z/15:00Z` in place of `07:00Z-15:00Z`. |
+| `aa-none-none` | `AA NONE` in place of `AA NONE/NONE`. |
+| `aa-value-form-not-allowed` (and `-v21`) | `2026-07-04T08:00Z` in place of `20260704T0800Z` (not for decimal fractions). |
+| `aa-interval-form-not-allowed` (and `-v21`) | `2026-07-04T08:00Z/2026-07-04T16:00Z` in place of `2026-07-04T08:00Z/PT8H`. |
+| `aa-weekday-list-has-spaces` | `MON,WED,FRI` in place of `MON, WED, FRI` (not `MON FRI`, which can mean `MON,FRI` or `MON-FRI`). |
+| `aa-weekday-every-day` | Removes `MON-SUN`. |
+| `aa-duplicate` | Removes a second `AA` command with the same meaning (only a line without a comment). |
+| `coordinate-space-between-parts` | One space between the latitude and the longitude, and before `N`, `S`, `E` or `W`. |
+| `coordinate-digit-count` | Adds leading zeros (`014:08:05E` in place of `14:8:5E`), and removes extra zeros at the start. |
+| `v-space-around-equals` | `V X=...` in place of `V X = ...`. |
+| `dp-duplicate-point` | Removes a second point with exactly the same position (only a line without a comment). |
+| `geometry-polygon-not-closed` | Adds the first point again as the last point (only when the gap is 0.1 NM or more). |
+| `geometry-polygon-counter-clockwise` | Writes the DP points in the opposite order (only a closed polygon of DP points, without comments, arcs or `V` commands). |
+
+Other problems need a decision from the person who maintains the data, so
+`--fix` does not change them. Examples: a missing unit or reference, a
+wrong class, a `*VERSION:` or `*WRITTEN_BY:` comment that is missing, a
+time without `Z`, a boundary with arcs in the wrong direction, and a value that
+openair-lint cannot read.
+
+`--fix` changes only the text that a fix changes. Everything else stays the
+same, byte by byte: the encoding, the byte order mark, the line endings,
+comments, and the end of the file. Some fixes make another fix possible,
+or two fixes change the same text. So `--fix` checks the file again after
+each round of fixes, and stops when nothing more can be fixed. It fixes
+only the rules that run: `--disable`, `--min-severity` and `--target` also
+apply to the fixes. Use `--disable <rule-id>` if you do not want the fix of
+a rule.
+
+A file with bytes that are not valid UTF-8 is not fixed, because
+openair-lint cannot write these bytes back unchanged. Save the file as
+UTF-8 first. `--fix` cannot change standard input; use `--fix-dry-run`
+with `-`.
+
+The exit code and the summary are for the problems that are left after the
+fixes.
+
+Example of `--fix-dry-run`:
+
+```
+example.openair: --fix would fix 3 problems. The file is not changed.
+--- example.openair
++++ example.openair (fixed)
+@@ -4,5 +4,5 @@
+ AC D
+ AN Example CTR
+-AH 4500ft msl
+-AL 0 FT AGL
++AH 4500 FT AMSL
++AL GND
+ DP 46:00:00N 014:00:00E
+ DP 46:00:00N 014:10:00E
+Checked 1 file: 0 errors, 0 warnings, 0 info.
+--fix would fix 3 problems in 1 file. No file was changed.
+```
+
 ### Exit codes
 
 | Code | Meaning |
 | --- | --- |
 | 0 | No errors. |
-| 1 | At least one error (or warning, with `--fail-on warning`). |
-| 2 | Wrong options, an unknown rule ID, a file that does not exist, a file that cannot be read, or the output cannot be written. |
+| 1 | At least one error (or warning, with `--fail-on warning`). With `--fix` and `--fix-dry-run`: after the fixes. |
+| 2 | Wrong options, an unknown rule ID, a file that does not exist, a file that cannot be read or saved, or the output cannot be written. |
 
 If the program that reads the output stops early (for example
 `openair-lint airspace/ | head`), openair-lint stops writing and prints no
@@ -260,12 +361,13 @@ visible form, such as `\x1B`. A file cannot change the terminal.
           "severity": "error",
           "rule": "ac-unknown-class",
           "message": "\"Q\" is an airspace type, not a class. ...",
-          "specUrl": "https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#ac-airspace-class"
+          "specUrl": "https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#ac-airspace-class",
+          "fixable": false
         }
       ]
     }
   ],
-  "summary": { "files": 1, "errors": 3, "warnings": 1, "info": 0 }
+  "summary": { "files": 1, "errors": 3, "warnings": 1, "info": 0, "fixable": 0, "fixed": 0 }
 }
 ```
 
@@ -273,6 +375,12 @@ visible form, such as `\x1B`. A file cannot change the terminal.
   `declaredVersion` is the value of the `*VERSION:` header, or `null`.
 - `endColumn` is the column after the last character of the problem.
   Columns count UTF-16 code units, like most editors.
+- `fixable` is `true` if `--fix` can fix the problem.
+- With `--fix` or `--fix-dry-run`, each file also has a `fix` object:
+  `dryRun`, `fixed` (the number of fixed problems), `fixedByRule`,
+  `changed`, `fileChanges` (for example "Removed the byte order mark
+  (BOM)."), `notFixedReason` (or `null`) and, for the dry run, `diff` (a
+  unified diff). The diagnostics are the problems after the fixes.
 
 **github**: [GitHub Actions workflow commands](https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/workflow-commands-for-github-actions).
 GitHub shows each problem as an annotation on the file. Info problems are
@@ -436,6 +544,11 @@ after the first release (see [Releasing](#releasing)).
 - The page shows each problem with the line, the column, the rule (with a
   link to the specification) and the source line. You can filter by
   severity and by rule, and download the list as text.
+- Problems with an automatic fix have a "Fix" button. "Fix N problems"
+  fixes all problems that match the filter. The page then checks the fixed
+  file again. "Undo the last fix" goes back one step, and "Download the
+  fixed file" saves the fixed file (with the same encoding and line endings).
+  Pasted text is fixed in the text box.
 
 The file stays on the computer. The page checks it in the browser and does
 not upload it. The page makes no network requests, has no analytics and
@@ -508,6 +621,7 @@ dart analyze --fatal-infos
 dart test
 dart run tool/generate_rules_doc.dart   # update RULES.md
 dart run tool/corpus_stats.dart <dir>   # rule counts for a folder of files
+dart run tool/fix_corpus_check.dart <dir>  # check that --fix keeps the meaning
 ```
 
 The tests include:

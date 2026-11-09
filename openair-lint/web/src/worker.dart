@@ -30,6 +30,7 @@ void runWorker() {
     WorkerResponse response;
     try {
       final String data;
+      JSUint8Array? fixed;
       switch (request.kind) {
         case RequestKind.lint:
           report = null;
@@ -38,9 +39,11 @@ void runWorker() {
             text: request.text,
             target: request.target ?? '',
             fileName: request.name,
+            fix: request.fix,
           );
           report = result;
           reportId = request.id;
+          fixed = result.fixedBytes?.toJS;
           data = jsonEncode(result.summary().toJson());
         case RequestKind.page:
           data = jsonEncode(reportFor(request)
@@ -53,7 +56,7 @@ void runWorker() {
         default:
           throw ArgumentError('Unknown request kind ${request.kind}');
       }
-      response = WorkerResponse(id: request.id, data: data);
+      response = WorkerResponse(id: request.id, data: data, bytes: fixed);
     } catch (e) {
       response = WorkerResponse(id: request.id, error: '$e');
     }

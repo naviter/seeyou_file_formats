@@ -14,8 +14,10 @@ library;
 import '../altitude/altitude.dart';
 import '../attributes/attribute_values.dart';
 import '../diagnostic.dart';
+import '../fix.dart';
 import '../lint_context.dart';
 import '../model/openair_file.dart';
+import '../parser/legacy_encoding.dart';
 import '../spec_version.dart';
 import 'rule.dart';
 

@@ -8,6 +8,7 @@
 /// This file uses no browser API, so it also runs on the Dart VM.
 library;
 
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:openair_lint/openair_lint.dart';
@@ -27,13 +28,26 @@ const int _maxSnippetLength = 2000;
 ///
 /// [target] is `3.0`, `2.1`, or an empty string for "use the header".
 /// [fileName] is the name of the file, or null for pasted text.
+///
+/// If [fix] is not null (see [FixRequest.encode]), the problems that it
+/// selects are fixed first. Then the report is for the fixed file, and
+/// [Report.fixedBytes] has the fixed file. Pasted text is fixed as UTF-8.
 Report runLint(
     {Uint8List? bytes,
     String? text,
     required String target,
-    String? fileName}) {
+    String? fileName,
+    String? fix}) {
   final options = LintOptions(target: SpecVersion.fromLabel(target));
   final linter = Linter(options);
+  if (fix != null) {
+    final request = FixRequest.decode(fix);
+    final result = fixBytes(linter, bytes ?? utf8.encode(text ?? ''),
+        fileName: fileName,
+        select: request.matches,
+        maxPasses: request.maxPasses);
+    return Report(result.result, fix: result);
+  }
   final result = bytes != null
       ? linter.lintBytes(bytes, fileName: fileName)
       : linter.lintString(text ?? '');
@@ -71,11 +85,65 @@ class ReportFilter {
       '|$rule';
 }
 
+/// Which problems the page asks to fix.
+class FixRequest {
+  /// All problems with a fix that match [filter].
+  FixRequest.all(ReportFilter this.filter)
+      : ruleId = null,
+        line = null,
+        column = null;
+
+  /// One problem: the problem of rule [ruleId] at [line] and [column].
+  FixRequest.one(String this.ruleId, int this.line, int this.column)
+      : filter = null;
+
+  /// Reads the text of [encode].
+  factory FixRequest.decode(String text) {
+    final bar = text.indexOf('|');
+    final kind = text.substring(0, bar);
+    final rest = text.substring(bar + 1);
+    if (kind == 'all') return FixRequest.all(ReportFilter.decode(rest));
+    final parts = rest.split('|');
+    return FixRequest.one(parts[0], int.parse(parts[1]), int.parse(parts[2]));
+  }
+
+  final ReportFilter? filter;
+  final String? ruleId;
+  final int? line;
+  final int? column;
+
+  /// True if the fix of [d] is selected.
+  bool matches(Diagnostic d) {
+    final f = filter;
+    if (f != null) return f.matches(d);
+    return d.ruleId == ruleId && d.line == line && d.column == column;
+  }
+
+  /// One problem is fixed in one pass. All problems are fixed in as many
+  /// passes as needed.
+  int get maxPasses => filter == null ? 1 : maxFixPasses;
+
+  /// The request as one text, for example `all|error,warning|` or
+  /// `one|altitude-msl-alias|12|14`.
+  String encode() =>
+      filter != null ? 'all|${filter!.encode()}' : 'one|$ruleId|$line|$column';
+}
+
 /// The full result of one lint run.
 class Report {
-  Report(this.result);
+  Report(this.result, {this.fix});
 
   final LintResult result;
+
+  /// The result of the fix, if the page asked for one.
+  final FixResult? fix;
+
+  /// The fixed file, or null if no fix was asked for or nothing changed.
+  Uint8List? get fixedBytes {
+    final f = fix;
+    if (f == null || !f.changed) return null;
+    return Uint8List.fromList(f.bytes);
+  }
 
   String? _filterKey;
   List<int> _matches = const [];
@@ -100,15 +168,18 @@ class Report {
     final file = result.file;
     final counts = List.filled(Severity.values.length, 0);
     final rules = <String, int>{};
+    final fixable = <String, int>{};
     for (final d in result.diagnostics) {
       counts[d.severity.index]++;
       rules[d.ruleId] = (rules[d.ruleId] ?? 0) + 1;
+      if (d.fixable) fixable[d.ruleId] = (fixable[d.ruleId] ?? 0) + 1;
     }
-    final ruleCounts = rules.entries.map((e) => (e.key, e.value)).toList()
-      ..sort((a, b) {
-        final c = b.$2.compareTo(a.$2);
-        return c != 0 ? c : a.$1.compareTo(b.$1);
-      });
+    final ruleCounts =
+        rules.entries.map((e) => (e.key, e.value, fixable[e.key] ?? 0)).toList()
+          ..sort((a, b) {
+            final c = b.$2.compareTo(a.$2);
+            return c != 0 ? c : a.$1.compareTo(b.$1);
+          });
     return ReportSummary(
       specVersion: result.specVersion.label,
       versionSource: result.versionSource.name,
@@ -119,6 +190,10 @@ class Report {
       hasBom: file.hasBom,
       counts: counts,
       rules: ruleCounts,
+      fixed: fix?.fixedCount,
+      fileChanges: fix?.fileChanges ?? const [],
+      notFixedReason: fix?.notFixedReason,
+      encodingGuess: guessLegacyEncoding(file)?.labels,
     );
   }
 
@@ -134,6 +209,7 @@ class Report {
       total: matches.length,
       offset: start,
       items: items,
+      fixable: [for (final d in items) d.fixable],
       snippets: _snippets(items),
     );
   }
@@ -182,6 +258,10 @@ class ReportSummary {
     required this.hasBom,
     required this.counts,
     required this.rules,
+    this.fixed,
+    this.fileChanges = const [],
+    this.notFixedReason,
+    this.encodingGuess,
   });
 
   factory ReportSummary.fromJson(Map<String, Object?> json) => ReportSummary(
@@ -196,8 +276,13 @@ class ReportSummary {
         rules: [
           for (final r
               in (json['rules']! as List<Object?>).cast<List<Object?>>())
-            (r[0]! as String, r[1]! as int)
+            (r[0]! as String, r[1]! as int, r[2]! as int)
         ],
+        fixed: json['fixed'] as int?,
+        fileChanges:
+            (json['fileChanges'] as List<Object?>? ?? const []).cast<String>(),
+        notFixedReason: json['notFixedReason'] as String?,
+        encodingGuess: json['encodingGuess'] as String?,
       );
 
   /// The spec version that was used, for example `3.0`.
@@ -219,9 +304,35 @@ class ReportSummary {
   /// The number of diagnostics for each severity, by [Severity.index].
   final List<int> counts;
 
-  /// The rule IDs with their number of diagnostics. The most frequent
-  /// rule is first.
-  final List<(String, int)> rules;
+  /// The rule IDs with their number of diagnostics and the number of
+  /// diagnostics with a fix. The most frequent rule is first.
+  final List<(String, int, int)> rules;
+
+  /// The number of fixed problems, or null if no fix was asked for.
+  final int? fixed;
+
+  /// Changes of the whole file by the fix (see [FixResult.fileChanges]).
+  final List<String> fileChanges;
+
+  /// Why the file could not be fixed, or null.
+  final String? notFixedReason;
+
+  /// The probable old 8-bit encoding of a file that is not valid UTF-8 (see
+  /// [EncodingGuess.labels]), or null.
+  final String? encodingGuess;
+
+  /// The number of diagnostics with a fix that match [filter].
+  int fixableCount(ReportFilter filter) {
+    var n = 0;
+    for (final (id, _, fixable) in rules) {
+      if (fixable == 0) continue;
+      if (filter.rule.isNotEmpty && filter.rule != id) continue;
+      final rule = findRule(id);
+      if (rule == null || !filter.severities.contains(rule.severity)) continue;
+      n += fixable;
+    }
+    return n;
+  }
 
   /// The number of diagnostics with this severity.
   int count(Severity severity) => counts[severity.index];
@@ -239,8 +350,12 @@ class ReportSummary {
         'hasBom': hasBom,
         'counts': counts,
         'rules': [
-          for (final r in rules) [r.$1, r.$2]
+          for (final r in rules) [r.$1, r.$2, r.$3]
         ],
+        'fixed': fixed,
+        'fileChanges': fileChanges,
+        'notFixedReason': notFixedReason,
+        'encodingGuess': encodingGuess,
       };
 }
 
@@ -250,6 +365,7 @@ class ReportPage {
     required this.total,
     required this.offset,
     required this.items,
+    required this.fixable,
     required this.snippets,
   });
 
@@ -259,6 +375,10 @@ class ReportPage {
         items: [
           for (final raw in json['items']! as List<Object?>)
             _diagnosticFromJson(raw! as List<Object?>)
+        ],
+        fixable: [
+          for (final raw in json['items']! as List<Object?>)
+            (raw! as List<Object?>)[7] == true
         ],
         snippets: [
           for (final raw in json['snippets']! as List<Object?>)
@@ -277,6 +397,9 @@ class ReportPage {
 
   final List<Diagnostic> items;
 
+  /// True for each item of [items] that has an automatic fix.
+  final List<bool> fixable;
+
   /// The source text around each of [items], at the same index. Null if
   /// the diagnostic has no source line.
   final List<Snippet?> snippets;
@@ -294,6 +417,7 @@ class ReportPage {
               d.ruleId,
               d.message,
               d.specUrl,
+              d.fixable,
             ]
         ],
         'snippets': [

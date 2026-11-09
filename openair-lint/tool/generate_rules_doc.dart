@@ -27,6 +27,13 @@ String generateRulesDoc() {
     ..writeln()
     ..writeln('Use `openair-lint --explain <rule-id>` to see a rule in the '
         'terminal, and `--disable <rule-id>` to turn a rule off.')
+    ..writeln()
+    ..writeln('${allRules.where((r) => r.fixable).length} rules have an '
+        'automatic fix (column "Fix"). `openair-lint --fix` applies these '
+        'fixes, and `--fix-dry-run` shows them without a change of the '
+        'files. A rule fixes a problem only when there is exactly one correct '
+        'result and the meaning of the file does not change. Each rule says '
+        'which of its problems it fixes.')
     ..writeln();
 
   for (final g in ruleGroups) {
@@ -37,11 +44,12 @@ String generateRulesDoc() {
       b.writeln();
       continue;
     }
-    b.writeln('| Rule | Severity | Versions | Description |');
-    b.writeln('| --- | --- | --- | --- |');
+    b.writeln('| Rule | Severity | Versions | Fix | Description |');
+    b.writeln('| --- | --- | --- | --- | --- |');
     for (final r in g.rules) {
       b.writeln('| [`${r.id}`](#${r.id}) | ${r.severity.label} | '
-          '${r.versionsLabel} | ${_cell(r.description)} |');
+          '${r.versionsLabel} | ${r.fixable ? 'yes' : ''} | '
+          '${_cell(r.description)} |');
     }
     b.writeln();
     for (final r in g.rules) {
@@ -51,6 +59,7 @@ String generateRulesDoc() {
         ..writeln('- Severity: **${r.severity.label}**')
         ..writeln('- Versions: ${r.versionsLabel}')
         ..writeln('- Specification: [${r.specAnchor}](${r.specUrl})')
+        ..writeln('- Automatic fix: ${r.fixDescription ?? 'no'}')
         ..writeln()
         ..writeln(r.description)
         ..writeln()

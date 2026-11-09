@@ -261,7 +261,8 @@ AaCommand parseAa(String argument) {
   var text = argument;
   for (final m in _otherDash.allMatches(argument)) {
     early.add(AaIssue(AaIssueKind.invalidSyntax, m.start, 1,
-        'Use "-" (hyphen), not "${m[0]}".'));
+        'Use "-" (hyphen), not "${m[0]}".',
+        replacement: '-'));
   }
   if (early.isNotEmpty) text = argument.replaceAll(_otherDash, '-');
 
@@ -328,7 +329,8 @@ class _SlashJoin {
         to++;
       }
       issues.add(AaIssue(AaIssueKind.invalidSyntax, start, end - start,
-          'Remove the spaces around "/". Write "${text.substring(from, to)}".'));
+          'Remove the spaces around "/". Write "${text.substring(from, to)}".',
+          replacement: '/'));
     }
     return _SlashJoin._(text, map, source.length, issues);
   }
@@ -351,7 +353,11 @@ class _SlashJoin {
     int end(int e) => e <= 0 ? 0 : (e > n ? _sourceLength : _map[e - 1] + 1);
     final s = start(issue.offset);
     final length = end(issue.offset + issue.length) - s;
-    return issue.at(s, length < 1 ? 1 : length);
+    final fs = start(issue.fixOffset);
+    final fixLength =
+        issue.fixLength == 0 ? 0 : end(issue.fixOffset + issue.fixLength) - fs;
+    return issue.at(s, length < 1 ? 1 : length,
+        fixOffset: fs, fixLength: fixLength < 0 ? 0 : fixLength);
   }
 }
 
@@ -388,12 +394,19 @@ class _AaParser {
   final List<AaIssue> issues = [];
 
   void _issue(AaIssueKind kind, int offset, int length, String message,
-          {String? v21Message}) =>
+          {String? v21Message,
+          String? replacement,
+          int? fixOffset,
+          int? fixLength}) =>
       issues.add(AaIssue(kind, offset, length < 1 ? 1 : length, message,
-          v21Message: v21Message));
+          v21Message: v21Message,
+          replacement: replacement,
+          fixOffset: fixOffset,
+          fixLength: fixLength));
 
-  void _syntax(int offset, int length, String message) =>
-      _issue(AaIssueKind.invalidSyntax, offset, length, message);
+  void _syntax(int offset, int length, String message, {String? replacement}) =>
+      _issue(AaIssueKind.invalidSyntax, offset, length, message,
+          replacement: replacement);
 
   /// Reports a value in an ISO 8601 form that the specification does not
   /// allow. [note] says which form (from [IsoParse.formNote]); nothing is
@@ -406,7 +419,10 @@ class _AaParser {
     final fix = 'Write it as $allowedForms: "$correctValue".';
     _issue(AaIssueKind.valueFormNotAllowed, part.offset, part.text.length,
         '$what This form is not allowed. $fix',
-        v21Message: '$what This form is not allowed in version 3.0. $fix');
+        v21Message: '$what This form is not allowed in version 3.0. $fix',
+        // The correct value has whole seconds. A value with a decimal
+        // fraction gets no automatic fix, because the fraction would be lost.
+        replacement: note.contains('fraction') ? null : correctValue);
   }
 
   /// Reports an interval in an ISO 8601 form other than
@@ -415,6 +431,7 @@ class _AaParser {
   /// in the allowed form.
   void _intervalFormNotAllowed(TextPart whole, String what, String form,
       {int? start, int? end}) {
+    final known = start != null && end != null && end > start;
     final fix = start != null && end != null && end > start
         ? 'Write the interval as StartDateTime/EndDateTime: '
             '"${formatInstant(start)}/${formatInstant(end)}".'
@@ -422,7 +439,12 @@ class _AaParser {
             '2026-07-04T08:00Z/2026-07-04T16:00Z.';
     _issue(AaIssueKind.intervalFormNotAllowed, whole.offset, whole.text.length,
         '$what $form is not allowed. $fix',
-        v21Message: '$what $form is not allowed in version 3.0. $fix');
+        v21Message: '$what $form is not allowed in version 3.0. $fix',
+        // formatInstant writes whole seconds. An interval with parts of a
+        // second gets no automatic fix.
+        replacement: known && start % 1000 == 0 && end % 1000 == 0
+            ? '${formatInstant(start)}/${formatInstant(end)}'
+            : null);
   }
 
   AaCommand parse() {
@@ -503,7 +525,8 @@ class _AaParser {
           first.offset,
           first.text.length,
           'AA NONE/NONE is not allowed. Write AA NONE for an airspace '
-          'without known activation times.');
+          'without known activation times.',
+          replacement: words.length == 1 ? 'NONE' : null);
       _extraWords(words, 1, 'An interval');
       return AaIntervalCommand(source, issues,
           startIsNone: true, endIsNone: true);
@@ -825,7 +848,8 @@ class _AaParser {
           slot.offset,
           slot.text.length,
           'Use "/" between the start time and the end time, not "-". Write '
-          '"${dashWindow[1]}/${dashWindow[2]}".');
+          '"${dashWindow[1]}/${dashWindow[2]}".',
+          replacement: '${dashWindow[1]}/${dashWindow[2]}');
     } else if (!slot.text.contains('/')) {
       _syntax(
           slot.offset,
@@ -865,7 +889,10 @@ class _AaParser {
           dayText.offset,
           words[dayWordCount - 1].end - dayText.offset,
           'The weekdays cover every day of the week. You can leave the '
-          'weekdays out.');
+          'weekdays out.',
+          replacement: '',
+          fixOffset: dayText.offset,
+          fixLength: words[dayWordCount].offset - dayText.offset);
     }
 
     return AaWeekdayCommand(source, issues,
@@ -887,6 +914,9 @@ class _AaParser {
     var exactOffsets = true;
     if (dayWords.length > 1) {
       exactOffsets = false;
+      // True if a "," was added between two words. Then the meaning is not
+      // clear: "MON FRI" can be MON,FRI or MON-FRI.
+      var added = false;
       final b = StringBuffer(firstWord.text);
       for (var i = 1; i < dayWords.length; i++) {
         final w = dayWords[i].text;
@@ -896,12 +926,14 @@ class _AaParser {
             w.startsWith(',') ||
             w.startsWith('-'))) {
           b.write(',');
+          added = true;
         }
         b.write(w);
       }
       list = b.toString();
       _issue(AaIssueKind.weekdayListHasSpaces, spanStart, spanEnd - spanStart,
-          'Do not put spaces in the list of weekdays. Write "$list".');
+          'Do not put spaces in the list of weekdays. Write "$list".',
+          replacement: added ? null : list);
     } else {
       list = firstWord.text;
     }

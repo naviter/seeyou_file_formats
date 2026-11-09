@@ -9,6 +9,7 @@ import 'dart:typed_data';
 import 'package:args/args.dart';
 
 import '../diagnostic.dart';
+import '../fixer.dart';
 import '../linter.dart';
 import '../rules/registry.dart';
 import '../spec_version.dart';
@@ -88,6 +89,14 @@ class CliRunner {
         defaultsTo: 'error',
         help: 'Exit with code 1 if there is a problem with this severity '
             'or higher.')
+    ..addFlag('fix',
+        negatable: false,
+        help: 'Fix the problems that have a safe automatic fix, and save '
+            'the files. Then show the problems that are left.')
+    ..addFlag('fix-dry-run',
+        negatable: false,
+        help: 'Show the changes that --fix would make, as a diff, but do '
+            'not change the files.')
     ..addFlag('list-rules', negatable: false, help: 'Show all rules and exit.')
     ..addOption('explain',
         valueHelp: 'rule-id', help: 'Explain one rule with examples and exit.')
@@ -106,6 +115,8 @@ Usage: openair-lint [options] <files or directories>
 
 Directories are searched for *.openair and *.txt files.
 Use "-" to read from standard input.
+Use --fix to fix the problems that have a safe automatic fix
+(--list-rules shows which rules have one).
 
 Options:
 ${parser.usage}
@@ -189,6 +200,17 @@ Specification: $specBaseUrl
         : SpecVersion.fromLabel(args['target'] as String);
     final minSeverity = Severity.fromLabel(args['min-severity'] as String)!;
     final failOn = Severity.fromLabel(args['fail-on'] as String)!;
+    final fix = args['fix'] as bool;
+    final dryRun = args['fix-dry-run'] as bool;
+    if (fix && dryRun) {
+      err.writeln('Error: Use --fix or --fix-dry-run, not both.');
+      return exitUsage;
+    }
+    if (fix && args.rest.contains('-')) {
+      err.writeln('Error: --fix cannot change standard input. Use '
+          '--fix-dry-run to see the changes.');
+      return exitUsage;
+    }
     final linter = Linter(LintOptions(
       target: target,
       disabledRules: disabled,
@@ -230,10 +252,29 @@ Specification: $specBaseUrl
         exitCode = exitUsage;
         continue;
       }
-      final result = linter.lintBytes(bytes, fileName: input.path);
+      FixResult? fixed;
+      LintResult result;
+      if (fix || dryRun) {
+        fixed = fixBytes(linter, bytes, fileName: input.path);
+        result = fixed.result;
+        if (fix && fixed.changed) {
+          try {
+            File(input.path!).writeAsBytesSync(fixed.bytes, flush: true);
+          } on Object catch (e) {
+            err.writeln(
+                'Error: Cannot save "${input.display}": ${_ioMessage(e)}');
+            exitCode = exitUsage;
+            fixed = null;
+            result = linter.lintBytes(bytes, fileName: input.path);
+          }
+        }
+      } else {
+        result = linter.lintBytes(bytes, fileName: input.path);
+      }
       final shown = result.diagnostics;
-      final report = FileReport(input.display, result, shown);
-      totals.add(shown);
+      final report =
+          FileReport(input.display, result, shown, fix: fixed, dryRun: dryRun);
+      totals.add(shown, fix: fixed);
       if (shown.any((d) => d.severity.isAtLeast(failOn)) &&
           exitCode == exitOk) {
         exitCode = exitLintFailed;
@@ -254,6 +295,8 @@ Specification: $specBaseUrl
       case OutputFormat.text:
       case OutputFormat.github:
         out.writeln(summaryLine(totals));
+        final fixLine = fixSummaryLine(totals, fix: fix, dryRun: dryRun);
+        if (fixLine != null) out.writeln(fixLine);
     }
     if (inputs.isEmpty && exitCode == exitOk) exitCode = exitUsage;
     return exitCode;

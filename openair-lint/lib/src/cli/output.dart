@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../diagnostic.dart';
+import '../fixer.dart';
 import '../linter.dart';
 import '../rules/rule.dart';
 import '../version.dart';
@@ -10,7 +11,8 @@ enum OutputFormat { text, json, github }
 
 /// The results of one file, for the output.
 class FileReport {
-  FileReport(this.path, this.result, this.diagnostics);
+  FileReport(this.path, this.result, this.diagnostics,
+      {this.fix, this.dryRun = false});
 
   /// The path as shown to the user (with `/` as separator).
   final String path;
@@ -20,6 +22,13 @@ class FileReport {
 
   /// The diagnostics that are shown (after the minimum severity filter).
   final List<Diagnostic> diagnostics;
+
+  /// The result of --fix or --fix-dry-run, or null without these options.
+  /// Then [result] and [diagnostics] are the problems after the fixes.
+  final FixResult? fix;
+
+  /// True for --fix-dry-run: the file was not changed.
+  final bool dryRun;
 }
 
 /// Counts of diagnostics by severity.
@@ -29,8 +38,26 @@ class Totals {
   int warnings = 0;
   int info = 0;
 
-  void add(List<Diagnostic> diagnostics) {
+  /// The number of shown problems that have an automatic fix.
+  int fixable = 0;
+
+  /// The number of fixed problems (--fix), or of problems that --fix would
+  /// fix (--fix-dry-run).
+  int fixed = 0;
+
+  /// The number of files with at least one fixed problem.
+  int fixedFiles = 0;
+
+  /// The number of files that could not be fixed at all.
+  int notFixedFiles = 0;
+
+  void add(List<Diagnostic> diagnostics, {FixResult? fix}) {
     files++;
+    if (fix != null) {
+      fixed += fix.fixedCount;
+      if (fix.fixedCount > 0) fixedFiles++;
+      if (fix.notFixedReason != null) notFixedFiles++;
+    }
     for (final d in diagnostics) {
       switch (d.severity) {
         case Severity.error:
@@ -40,6 +67,7 @@ class Totals {
         case Severity.info:
           info++;
       }
+      if (d.fixable) fixable++;
     }
   }
 
@@ -48,6 +76,8 @@ class Totals {
         'errors': errors,
         'warnings': warnings,
         'info': info,
+        'fixable': fixable,
+        'fixed': fixed,
       };
 }
 
@@ -64,6 +94,7 @@ class Ansi {
   String yellow(String t) => _wrap('33', t);
   String cyan(String t) => _wrap('36', t);
   String grey(String t) => _wrap('90', t);
+  String green(String t) => _wrap('32', t);
   String bold(String t) => _wrap('1', t);
 
   String severity(Severity s) => switch (s) {
@@ -83,6 +114,8 @@ String _plural(int n, String word) => '$n $word${n == 1 ? '' : 's'}';
 void writeTextFile(StringSink out, FileReport report, Ansi ansi) {
   final buffer = StringBuffer();
   final path = visibleText(report.path);
+  final fix = report.fix;
+  if (fix != null) _writeFixText(buffer, report, fix, path, ansi);
   for (final d in report.diagnostics) {
     buffer
       ..write(path)
@@ -98,6 +131,61 @@ void writeTextFile(StringSink out, FileReport report, Ansi ansi) {
       ..writeln(visibleText(d.message));
   }
   if (buffer.isNotEmpty) out.write(buffer);
+}
+
+/// Writes what --fix changed (or what --fix-dry-run would change).
+void _writeFixText(StringBuffer buffer, FileReport report, FixResult fix,
+    String path, Ansi ansi) {
+  final reason = fix.notFixedReason;
+  if (reason != null) {
+    buffer.writeln('$path: ${ansi.yellow('not fixed')}: $reason');
+    return;
+  }
+  if (fix.fixedCount == 0) return;
+  final what = _plural(fix.fixedCount, 'problem');
+  buffer.writeln(report.dryRun
+      ? '$path: --fix would fix $what. The file is not changed.'
+      : '$path: fixed $what.');
+  if (!report.dryRun) return;
+  for (final change in fix.fileChanges) {
+    buffer.writeln('  $change');
+  }
+  final diff = fix.unifiedDiff(report.path);
+  for (final line in diff.split('\n')) {
+    if (line.isEmpty) continue;
+    final shown = visibleText(line);
+    if (line.startsWith('---') || line.startsWith('+++')) {
+      buffer.writeln(ansi.bold(shown));
+    } else if (line.startsWith('@@')) {
+      buffer.writeln(ansi.cyan(shown));
+    } else if (line.startsWith('-')) {
+      buffer.writeln(ansi.red(shown));
+    } else if (line.startsWith('+')) {
+      buffer.writeln(ansi.green(shown));
+    } else {
+      buffer.writeln(shown);
+    }
+  }
+}
+
+/// The line after the summary about fixes, or null if there is nothing to
+/// say. [fix] and [dryRun] are the options --fix and --fix-dry-run.
+String? fixSummaryLine(Totals t, {required bool fix, required bool dryRun}) {
+  final notFixed = t.notFixedFiles == 0
+      ? ''
+      : ' ${_plural(t.notFixedFiles, 'file')} could not be fixed.';
+  if (fix) {
+    return 'Fixed ${_plural(t.fixed, 'problem')} in '
+        '${_plural(t.fixedFiles, 'file')}.$notFixed';
+  }
+  if (dryRun) {
+    return '--fix would fix ${_plural(t.fixed, 'problem')} in '
+        '${_plural(t.fixedFiles, 'file')}. No file was changed.$notFixed';
+  }
+  if (t.fixable == 0) return null;
+  return '${t.fixable == 1 ? '1 problem has' : '${t.fixable} problems have'} '
+      'an automatic fix. Use --fix to fix, or --fix-dry-run to see the '
+      'changes first.';
 }
 
 /// The summary line of the text and GitHub formats.
@@ -164,10 +252,25 @@ Map<String, Object?> jsonReport(List<FileReport> reports, Totals totals) => {
             'specVersion': r.result.specVersion.label,
             'declaredVersion': r.result.declaredVersion,
             'diagnostics': [for (final d in r.diagnostics) d.toJson()],
+            if (r.fix != null) 'fix': _fixJson(r),
           }
       ],
       'summary': totals.toJson(),
     };
+
+/// The "fix" object of one file in the JSON output.
+Map<String, Object?> _fixJson(FileReport r) {
+  final fix = r.fix!;
+  return {
+    'dryRun': r.dryRun,
+    'fixed': fix.fixedCount,
+    'fixedByRule': fix.fixedByRule,
+    'changed': fix.changed,
+    'fileChanges': fix.fileChanges,
+    'notFixedReason': fix.notFixedReason,
+    if (r.dryRun) 'diff': fix.unifiedDiff(r.path),
+  };
+}
 
 /// Formats JSON with two spaces of indentation.
 String prettyJson(Object? value) =>
@@ -184,7 +287,8 @@ String rulesTable(List<Rule> rules, Ansi ansi) {
     final sev = r.severity.label.padRight(8);
     b.writeln('${ansi.bold(r.id.padRight(idWidth))}  '
         '${ansi.enabled ? ansi.severity(r.severity) + ' ' * (8 - r.severity.label.length) : sev}'
-        '${r.versionsLabel.padRight(verWidth)}  ${r.description}');
+        '${r.versionsLabel.padRight(verWidth)}  '
+        '${r.fixable ? 'fix' : '   '}  ${r.description}');
   }
   return b.toString();
 }
@@ -198,6 +302,7 @@ String explainRule(Rule r, Ansi ansi) {
       'Severity: ${ansi.severity(r.severity)}\n'
       'Versions: ${r.versionsLabel}\n'
       'Specification: ${r.specUrl}\n'
+      'Automatic fix: ${r.fixDescription ?? 'no'}\n'
       '\n'
       '${r.description}\n'
       '\n'

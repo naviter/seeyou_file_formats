@@ -288,6 +288,21 @@ List<String> _separateNumbers(String value) => [
           ...token.split(',')
     ];
 
+/// The value of a wrong `AF` value in the plain form, when there is only
+/// one correct result, or null.
+///
+/// Only two cases have such a result: a decimal comma (`123,300` becomes
+/// `123.300`) and the unit MHz (`123.300 MHz` becomes `123.300`). A value
+/// in kHz, a list of frequencies or a value with other text returns null.
+String? frequencyFormatFix(String value) {
+  if (_numberWithComma.hasMatch(value)) return value.replaceFirst(',', '.');
+  final unit = _numberWithUnit.firstMatch(value);
+  if (unit != null && unit.group(2)!.toUpperCase() == 'MHZ') {
+    return unit.group(1)!.replaceFirst(',', '.');
+  }
+  return null;
+}
+
 /// The problem with the format of an `AF` value, or null if the value is a
 /// plain number with a dot as the decimal separator.
 String? frequencyFormatProblem(String value) {

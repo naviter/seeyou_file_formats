@@ -79,7 +79,16 @@ class _Page {
   final _list = _el<HTMLOListElement>('list');
   final _more = _el<HTMLButtonElement>('more');
   final _download = _el<HTMLButtonElement>('download');
+  final _fixBar = _el<HTMLElement>('fix-bar');
+  final _fixInfo = _el<HTMLElement>('fix-info');
+  final _fixAll = _el<HTMLButtonElement>('fix-all');
+  final _downloadFixed = _el<HTMLButtonElement>('download-fixed');
+  final _undoFix = _el<HTMLButtonElement>('undo-fix');
   final _version = _el<HTMLElement>('linter-version');
+
+  /// The inputs before each fix, for "Undo". Empty if the shown input was
+  /// not fixed on this page.
+  final List<_Input> _undo = [];
 
   final _checker = _Checker();
 
@@ -177,7 +186,17 @@ class _Page {
     _example.on('click', (_) {
       _pastePanel.open = true;
       _pasteText.value = exampleText;
+      _undo.clear();
       _check(_Input.text(exampleName, exampleText));
+    });
+    _fixAll.on('click', (_) => _fix(FixRequest.all(_filter)));
+    _downloadFixed.on('click', (_) => _downloadFixedFile());
+    _undoFix.on('click', (_) {
+      if (_undo.isEmpty) return;
+      final previous = _undo.removeLast();
+      final text = previous.text;
+      if (text != null) _pasteText.value = text;
+      _check(previous, note: 'The last fix was undone.');
     });
 
     for (final box in [_showError, _showWarning, _showInfo]) {
@@ -216,20 +235,31 @@ class _Page {
       return;
     }
     if (id != _checkId) return;
+    _undo.clear();
     await _check(_Input.bytes(file.name, bytes), note: note);
   }
 
   void _checkPasted() {
     _typingTimer?.cancel();
+    _undo.clear();
     _check(_Input.text('Pasted text', _pasteText.value));
+  }
+
+  /// Fixes the problems of [request] in the shown input, and checks the
+  /// fixed input.
+  void _fix(FixRequest request) {
+    final input = _input;
+    if (input == null) return;
+    _check(input, fix: request);
   }
 
   // ---------------------------------------------------------------------
   // Checking
 
-  Future<void> _check(_Input input, {String? note}) async {
+  Future<void> _check(_Input input, {String? note, FixRequest? fix}) async {
     final id = ++_checkId;
-    _setBusy('Checking ${input.name}...');
+    _setBusy(
+        fix == null ? 'Checking ${input.name}...' : 'Fixing ${input.name}...');
     // The old list stays visible, but it cannot load more pages: the
     // worker keeps only the newest report.
     _report = null;
@@ -238,7 +268,7 @@ class _Page {
     final watch = Stopwatch()..start();
     final _ReportHandle report;
     try {
-      report = await _checker.lint(input, target);
+      report = await _checker.lint(input, target, fix?.encode());
     } on _Cancelled {
       return;
     } catch (e) {
@@ -247,9 +277,34 @@ class _Page {
     }
     if (id != _checkId) return;
     watch.stop();
-    _input = input;
+    var shown = input;
+    if (fix != null) {
+      final summary = report.summary;
+      final fixedBytes = report.fixedBytes;
+      final reason = summary.notFixedReason;
+      if (reason != null) {
+        note = 'Not fixed: $reason';
+      } else if (fixedBytes == null) {
+        note = 'Nothing was fixed.';
+      } else {
+        _undo.add(input);
+        if (input.text != null) {
+          final text = utf8.decode(fixedBytes, allowMalformed: true);
+          _pasteText.value = text;
+          shown = _Input.text(input.name, text);
+        } else {
+          shown = _Input.bytes(input.name, fixedBytes);
+        }
+        note = [
+          'Fixed ${_plural(summary.fixed ?? 0, 'problem')}.',
+          ...summary.fileChanges,
+          if (input.text == null) 'Download the fixed file to keep it.',
+        ].join(' ');
+      }
+    }
+    _input = shown;
     _report = report;
-    _show(input, report.summary, watch.elapsedMilliseconds, note);
+    _show(shown, report.summary, watch.elapsedMilliseconds, note);
   }
 
   void _showFailure(Object e) {
@@ -274,11 +329,15 @@ class _Page {
     _setStatus('Checked ${input.name} in $time. $result'
         '${note == null ? '' : ' $note'}');
 
+    final guess = summary.encodingGuess;
     _fileInfo.textContent = [
       '${_plural(summary.lineCount, 'line')}, '
           '${_plural(summary.airspaceCount, 'airspace')}, '
-          '${summary.encoding}'
+          '${guess == null ? summary.encoding : 'not valid UTF-8'}'
           '${summary.hasBom ? ' with a byte order mark' : ''}.',
+      if (guess != null)
+        'The file is probably saved as $guess. The problems of the rule '
+            'file-invalid-utf8 show the lines in this encoding.',
       _versionText(summary),
     ].join(' ');
 
@@ -337,7 +396,7 @@ class _Page {
     _ruleFilter.textContent = '';
     _ruleFilter.appendChild(_option('', 'All rules'));
     var found = false;
-    for (final (id, count) in summary.rules) {
+    for (final (id, count, _) in summary.rules) {
       _ruleFilter.appendChild(_option(id, '$id (${_n(count)})'));
       if (id == old) found = true;
     }
@@ -360,7 +419,33 @@ class _Page {
     _list.textContent = '';
     _rendered = 0;
     _matching = 0;
+    _updateFixBar();
     _loadMore();
+  }
+
+  /// Shows the "Fix" button for the problems that match the filter, and
+  /// "Download" and "Undo" after a fix.
+  void _updateFixBar() {
+    final fixable = _summary.fixableCount(_filter);
+    final fixed = _undo.isNotEmpty;
+    final all = _filter.severities.length == Severity.values.length &&
+        _filter.rule.isEmpty;
+    _fixAll.hidden = (fixable == 0).toJS;
+    _fixAll.textContent =
+        fixable == 1 ? 'Fix 1 problem' : 'Fix ${_plural(fixable, 'problem')}';
+    _fixInfo.textContent = fixable == 0
+        ? (_input?.bytes == null
+            ? 'The text was fixed. The text box has the fixed text.'
+            : 'The file was fixed on this page. Download it to keep the '
+                'changes.')
+        : '${fixable == 1 ? '1 problem has' : '${_n(fixable)} problems have'} '
+            'an automatic fix${all ? '' : ' (only the problems that match '
+                'the filter)'}. A fix changes only text that has exactly '
+            'one correct form, and the meaning of the file does not change. '
+            'You can undo it.';
+    _downloadFixed.hidden = (!fixed || _input?.bytes == null).toJS;
+    _undoFix.hidden = (!fixed).toJS;
+    _fixBar.hidden = (fixable == 0 && !fixed).toJS;
   }
 
   /// Adds the next page of diagnostics to the list.
@@ -384,7 +469,8 @@ class _Page {
 
     final fragment = document.createDocumentFragment();
     for (var i = 0; i < page.items.length; i++) {
-      fragment.appendChild(_renderItem(page.items[i], page.snippets[i]));
+      fragment.appendChild(
+          _renderItem(page.items[i], page.snippets[i], page.fixable[i]));
     }
     _list.appendChild(fragment);
     _rendered += page.items.length;
@@ -420,7 +506,7 @@ class _Page {
 
   ReportSummary get _summary => _report!.summary;
 
-  HTMLLIElement _renderItem(Diagnostic d, Snippet? snippet) {
+  HTMLLIElement _renderItem(Diagnostic d, Snippet? snippet, bool fixable) {
     final item = HTMLLIElement()..className = 'diag sev-${d.severity.label}';
 
     final head = HTMLDivElement()..className = 'diag-head';
@@ -438,6 +524,19 @@ class _Page {
       ..title = 'Open the section of the specification for this rule '
           '(opens in a new tab)'
       ..textContent = d.ruleId);
+    if (fixable) {
+      final button = HTMLButtonElement()
+        ..type = 'button'
+        ..className = 'button fix-one'
+        ..textContent = 'Fix'
+        ..title = findRule(d.ruleId)?.fixDescription ?? 'Fix this problem';
+      button.setAttribute('aria-label', 'Fix the problem on line ${d.line}');
+      button.on('click', (_) {
+        button.disabled = true;
+        _fix(FixRequest.one(d.ruleId, d.line, d.column));
+      });
+      head.appendChild(button);
+    }
     item.appendChild(head);
 
     item.appendChild(HTMLParagraphElement()
@@ -507,6 +606,9 @@ class _Page {
         ..className = 'rule-meta'
         ..textContent = 'Severity: ${rule.severity.label}. '
             'Versions: ${rule.versionsLabel}.');
+      body.appendChild(HTMLParagraphElement()
+        ..className = 'rule-meta'
+        ..textContent = 'Automatic fix: ${rule.fixDescription ?? 'no'}');
       for (final paragraph in rule.explanation.split('\n\n')) {
         if (paragraph.trim().isEmpty) continue;
         body.appendChild(HTMLParagraphElement()..textContent = paragraph);
@@ -546,14 +648,28 @@ class _Page {
     } finally {
       _download.disabled = false;
     }
-    final blob = Blob(
-      [text.toJS].toJS,
-      BlobPropertyBag(type: 'text/plain;charset=utf-8'),
-    );
+    _save(
+        Blob([text.toJS].toJS,
+            BlobPropertyBag(type: 'text/plain;charset=utf-8')),
+        '${input.name}.lint.txt');
+  }
+
+  /// Saves the fixed file with its original name. The bytes are the bytes
+  /// of the fixed file, so the encoding and the line endings are kept.
+  void _downloadFixedFile() {
+    final bytes = _input?.bytes;
+    if (bytes == null) return;
+    _save(
+        Blob([bytes.toJS].toJS,
+            BlobPropertyBag(type: 'application/octet-stream')),
+        _input!.name);
+  }
+
+  void _save(Blob blob, String fileName) {
     final url = URL.createObjectURL(blob);
     final link = HTMLAnchorElement()
       ..href = url
-      ..download = '${input.name}.lint.txt';
+      ..download = fileName;
     document.body!.appendChild(link);
     link.click();
     link.remove();
@@ -564,6 +680,9 @@ class _Page {
 /// A report that the page can show. It is in the worker, or on the page.
 abstract class _ReportHandle {
   ReportSummary get summary;
+
+  /// The fixed file, or null if no fix was asked for or nothing changed.
+  Uint8List? get fixedBytes;
 
   Future<ReportPage> page(ReportFilter filter, int offset, int count);
 
@@ -580,6 +699,9 @@ class _LocalReport implements _ReportHandle {
   final ReportSummary summary;
 
   @override
+  Uint8List? get fixedBytes => report.fixedBytes;
+
+  @override
   Future<ReportPage> page(ReportFilter filter, int offset, int count) async =>
       report.page(filter, offset, count);
 
@@ -590,7 +712,7 @@ class _LocalReport implements _ReportHandle {
 
 /// A report that is kept in the web worker.
 class _WorkerReport implements _ReportHandle {
-  _WorkerReport(this.checker, this.id, this.summary);
+  _WorkerReport(this.checker, this.id, this.summary, this.fixedBytes);
 
   final _Checker checker;
 
@@ -599,6 +721,9 @@ class _WorkerReport implements _ReportHandle {
 
   @override
   final ReportSummary summary;
+
+  @override
+  final Uint8List? fixedBytes;
 
   @override
   Future<ReportPage> page(ReportFilter filter, int offset, int count) async {
@@ -629,25 +754,31 @@ class _Checker {
   /// The requests that wait for an answer of the worker.
   final Map<int, Completer<String>> _pending = {};
 
+  /// The fixed files of the answers, by request ID.
+  final Map<int, Uint8List> _fixedBytes = {};
+
   /// The lint request that waits for an answer, with its input. If the
   /// worker fails, the page lints the input itself.
   int? _lintId;
   _Input? _lintInput;
   String _lintTarget = '';
+  String? _lintFix;
   Completer<_ReportHandle>? _lintCompleter;
 
-  Future<_ReportHandle> lint(_Input input, String target) async {
+  /// Lints [input]. [fix] is a [FixRequest] as text, or null.
+  Future<_ReportHandle> lint(_Input input, String target, String? fix) async {
     // A running lint is not needed any more. Stop the worker; a new worker
     // starts below.
     if (_lintCompleter != null) _stopWorker();
     final worker = _workerFailed ? null : _startWorker();
-    if (worker == null) return _lintHere(input, target);
+    if (worker == null) return _lintHere(input, target, fix);
 
     final id = ++_nextId;
     final completer = Completer<_ReportHandle>();
     _lintId = id;
     _lintInput = input;
     _lintTarget = target;
+    _lintFix = fix;
     _lintCompleter = completer;
     final answer = Completer<String>();
     _pending[id] = answer;
@@ -659,14 +790,16 @@ class _Checker {
       bytes: input.bytes?.toJS,
       text: input.text,
       name: input.bytes == null ? null : input.name,
+      fix: fix,
     ));
     unawaited(answer.future.then((data) {
       if (_lintId == id) _clearLint();
+      final fixedBytes = _fixedBytes.remove(id);
       if (completer.isCompleted) return;
       try {
         final summary =
             ReportSummary.fromJson(jsonDecode(data) as Map<String, Object?>);
-        completer.complete(_WorkerReport(this, id, summary));
+        completer.complete(_WorkerReport(this, id, summary, fixedBytes));
       } catch (e) {
         completer.completeError(e);
       }
@@ -693,6 +826,7 @@ class _Checker {
   void _clearLint() {
     _lintId = null;
     _lintInput = null;
+    _lintFix = null;
     _lintCompleter = null;
   }
 
@@ -740,6 +874,8 @@ class _Checker {
   void _onMessage(WorkerResponse response) {
     final answer = _pending.remove(response.id);
     if (answer == null) return;
+    final bytes = response.bytes;
+    if (bytes != null) _fixedBytes[response.id] = bytes.toDart;
     final error = response.error;
     if (error != null) {
       answer.completeError(error);
@@ -754,15 +890,17 @@ class _Checker {
     final lint = _lintCompleter;
     final input = _lintInput;
     final target = _lintTarget;
+    final fix = _lintFix;
     // Do not cancel the open lint request: it is done on the page.
     _pending.remove(_lintId);
     _clearLint();
     _stopWorker();
     if (lint == null || input == null || lint.isCompleted) return;
-    lint.complete(_lintHere(input, target));
+    lint.complete(_lintHere(input, target, fix));
   }
 
-  Future<_ReportHandle> _lintHere(_Input input, String target) async {
+  Future<_ReportHandle> _lintHere(
+      _Input input, String target, String? fix) async {
     // Wait a moment, so that the browser can show "Checking..." before
     // the page is busy.
     await Future<void>.delayed(const Duration(milliseconds: 30));
@@ -770,7 +908,8 @@ class _Checker {
         bytes: input.bytes,
         text: input.text,
         target: target,
-        fileName: input.bytes == null ? null : input.name));
+        fileName: input.bytes == null ? null : input.name,
+        fix: fix));
   }
 }
 

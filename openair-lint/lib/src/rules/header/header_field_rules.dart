@@ -187,11 +187,29 @@ String? _probableVersion(String value) {
   return null;
 }
 
+/// A known version with a "V" before it or a comma: "V2.1", "v 3.0", "2,1".
+final RegExp _obviousVersionPattern =
+    RegExp(r'^[vV]?\s*([23])\s*[.,]\s*([01])$');
+
+/// The known version that [value] clearly means, for the automatic fix, or
+/// null. Only "2.1" and "3.0" are returned. A value with other text, for
+/// example "2.1 (generated 2026-01-01)", returns null, because a fix would
+/// remove the other text.
+String? _obviousVersion(String value) {
+  final m = _obviousVersionPattern.firstMatch(value);
+  if (m == null) return null;
+  final version = '${m.group(1)}.${m.group(2)}';
+  return version == '2.1' || version == '3.0' ? version : null;
+}
+
 final Rule _versionInvalid = Rule(
   id: 'header-version-invalid',
   severity: Severity.error,
   versions: SpecVersion.all,
   specAnchor: 'header',
+  fixDescription: '--fix removes a "V" before the number and writes a dot '
+      'in place of a comma, for example "2.1" in place of "V2.1" or "2,1". '
+      'It does not change other values.',
   description: 'The value of "*VERSION:" must be a version number, for '
       'example 2.1.',
   explanation: 'The "*VERSION:" comment must contain only the version '
@@ -229,7 +247,11 @@ final Rule _versionInvalid = Rule(
         column: field.value.isEmpty ? field.keyColumn : field.valueColumn,
         endColumn: field.value.isEmpty
             ? field.keyColumn + field.key.length
-            : field.valueEndColumn);
+            : field.valueEndColumn,
+        fix: _obviousVersion(value) == null
+            ? null
+            : Fix.replace(field.line, field.valueColumn, field.valueEndColumn,
+                _obviousVersion(value)!));
   },
 );
 
@@ -319,6 +341,8 @@ final Rule _versionUnknown = Rule(
   severity: Severity.warning,
   versions: SpecVersion.all,
   specAnchor: 'header',
+  fixDescription: '--fix removes the extra numbers of a known version, '
+      'for example "3.0" in place of "3.0.0".',
   description: 'The version should be one that the specification defines: '
       '2.1 or 3.0.',
   explanation: 'The value of "*VERSION:" is a number, but it is not a '
@@ -354,7 +378,11 @@ final Rule _versionUnknown = Rule(
     ctx.report('$message${_checkedAs(ctx)}',
         line: field.line,
         column: field.valueColumn,
-        endColumn: field.valueEndColumn);
+        endColumn: field.valueEndColumn,
+        fix: known == null
+            ? null
+            : Fix.replace(field.line, field.valueColumn, field.valueEndColumn,
+                known.label));
   },
 );
 
@@ -443,6 +471,8 @@ final Rule _headerFieldFormat = Rule(
   severity: Severity.warning,
   versions: SpecVersion.all,
   specAnchor: 'header',
+  fixDescription: '--fix writes the line in the exact form, for example '
+      '"*VERSION: 2.1" in place of "* version = 2.1".',
   description: 'Write header comments exactly as "*VERSION: 2.1" and '
       '"*WRITTEN_BY: Name".',
   explanation: 'The specification shows the header comments in one form: '
@@ -470,7 +500,8 @@ final Rule _headerFieldFormat = Rule(
       if (problems.isEmpty) continue;
       final canonical = '*${field.upperKey}: ${field.value}';
       ctx.reportLine(field.line,
-          'Write this line as "${_short(canonical, 60)}". ${problems.join(' ')}');
+          'Write this line as "${_short(canonical, 60)}". ${problems.join(' ')}',
+          fix: Fix.replace(field.line, 1, field.text.length + 1, canonical));
     }
   },
 );
@@ -505,6 +536,8 @@ final Rule _headerFieldDuplicate = Rule(
   severity: Severity.warning,
   versions: SpecVersion.all,
   specAnchor: 'header',
+  fixDescription: '--fix removes a second comment that has the same value '
+      'as the first one. It does not remove a comment with another value.',
   description: 'The header should have only one "*VERSION:" and one '
       '"*WRITTEN_BY:" comment.',
   explanation: 'The header has the same key more than once. Readers use '
@@ -534,7 +567,8 @@ final Rule _headerFieldDuplicate = Rule(
             'The header has a second "*$key:" comment. The first one is on '
             'line ${first.line}${same ? '' : ' and has another value '
                 '("${_short(first.value)}")'}. Readers use only one of them. '
-            'Remove this line.');
+            'Remove this line.',
+            fix: same ? Fix.deleteLine(f.line) : null);
       }
     }
   },

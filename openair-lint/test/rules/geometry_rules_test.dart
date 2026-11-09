@@ -177,15 +177,17 @@ void main() {
           ]),
           [7, 8, 9, 10]);
     });
-    test('seconds of 60 get a fix', () {
-      expect(messages(id, ['DP 41:08:60 N 019:06:00 E']).single,
-          contains('Write "41:09:00" in place of "41:08:60".'));
-      expect(messages(id, ['DP 41:59:60N 019:06:00E']).single,
-          contains('Write "42:00:00" in place of "41:59:60".'));
-      expect(messages(id, ['DP 41:00:00N 019:06:60.0000E']).single,
-          contains('Write "019:07:00" in place of "019:06:60.0000".'));
-      expect(messages(id, ['DP 45:60.000N 014:00.000E']).single,
-          contains('Write "46:00.000" in place of "45:60.000".'));
+    test('a value of 60 is a typing error, with no suggested value', () {
+      for (final line in [
+        'DP 41:08:60 N 019:06:00 E',
+        'DP 41:00:00N 019:06:60.0000E',
+        'DP 45:60.000N 014:00.000E',
+      ]) {
+        final message = messages(id, [line]).single;
+        expect(message, contains('This is probably a typing error.'));
+        expect(message, contains('source data'));
+        expect(message, isNot(contains('in place of')), reason: line);
+      }
     });
     test('the shape rules still check a polygon with a 60', () {
       // An open bow tie. The last point is 014:10:00E, written with 60.

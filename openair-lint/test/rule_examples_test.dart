@@ -41,6 +41,19 @@ const Set<String> _byteRules = {
   'file-extension-not-openair',
 };
 
+/// Rules with a fix whose incorrect example shows a problem without a safe
+/// fix, for example "AC R" (the class is not known) or "AH NOTAM". --fix
+/// must not change these examples.
+const Set<String> _exampleWithoutFix = {
+  'header-version-invalid',
+  'header-field-duplicate',
+  'ac-unknown-class',
+  'altitude-invalid',
+  'altitude-unit-missing',
+  'altitude-flight-level-invalid',
+  'aa-invalid-syntax',
+};
+
 /// True if [line] is a header comment (`*VERSION` or `*WRITTEN_BY`, in any
 /// form).
 bool _isHeaderLine(String line) =>
@@ -108,6 +121,27 @@ void main() {
         final found = lintRule(rule.id, text, target: version);
         expect(found, isNotEmpty, reason: text);
       });
+
+      if (rule.fixable && !_byteRules.contains(rule.id)) {
+        final noFix = _exampleWithoutFix.contains(rule.id);
+        test(
+            '${rule.id}: --fix ${noFix ? 'does not change' : 'fixes'} '
+            'the incorrect example', () {
+          final text = _exampleFile(rule.incorrectExample, version.label);
+          final linter = Linter(LintOptions(rules: [rule], target: version));
+          final before = linter.lintString(text).diagnostics;
+          final (fixed, result) = fixString(linter, text);
+          if (noFix) {
+            expect(fixed, text);
+            return;
+          }
+          expect(result.fixedCount, greaterThan(0), reason: text);
+          expect(result.result.diagnostics.length, lessThan(before.length),
+              reason: fixed);
+          // A second run changes nothing.
+          expect(fixString(linter, fixed).$1, fixed);
+        });
+      }
     }
   });
 }

@@ -1,4 +1,5 @@
 import '../diagnostic.dart';
+import '../fix.dart';
 import '../lint_context.dart';
 import '../model/openair_file.dart';
 import '../spec_version.dart';
@@ -60,6 +61,7 @@ class Rule {
     required this.incorrectExample,
     this.anchorInVersion21Text = false,
     this.messageNote,
+    this.fixDescription,
     this.keywords,
     this.checkFile,
     this.checkAirspace,
@@ -111,6 +113,16 @@ class Rule {
   /// of this rule, or null. [version21Warning] uses it.
   final String? messageNote;
 
+  /// What `--fix` changes, in one or two sentences, or null if the rule has
+  /// no automatic fix. For example: "--fix writes AMSL in place of MSL."
+  ///
+  /// A rule with a fix gives a [Fix] only for the problems that have
+  /// exactly one correct result. A rule without a fix never gives one.
+  final String? fixDescription;
+
+  /// True if the rule gives an automatic fix for some of its problems.
+  bool get fixable => fixDescription != null;
+
   /// Upper case keywords for [checkCommand], for example `{'AA'}`.
   /// Null means: every command.
   final Set<String>? keywords;
@@ -149,6 +161,8 @@ class Rule {
         'correctExample': correctExample,
         'incorrectExample': incorrectExample,
         'specUrl': specUrl,
+        'fixable': fixable,
+        if (fixDescription != null) 'fixDescription': fixDescription,
       };
 
   @override
@@ -187,6 +201,7 @@ Rule version21Warning(Rule base,
     correctExample: base.correctExample,
     incorrectExample: base.incorrectExample,
     messageNote: 'In version 3.0 this is an error.',
+    fixDescription: base.fixDescription,
     keywords: base.keywords,
     checkFile: base.checkFile,
     checkAirspace: base.checkAirspace,
