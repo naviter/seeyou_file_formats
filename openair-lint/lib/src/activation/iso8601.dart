@@ -227,8 +227,10 @@ IsoParse<int> parseIsoTime(
   String? nextDayHint,
 }) {
   final length = text.isEmpty ? 1 : text.length;
-  void error(AaIssueKind kind, String message, {int at = 0, int? len}) =>
-      issues.add(AaIssue(kind, base + at, len ?? (length - at), message));
+  void error(AaIssueKind kind, String message,
+          {int at = 0, int? len, String? replacement}) =>
+      issues.add(AaIssue(kind, base + at, len ?? (length - at), message,
+          replacement: replacement));
   void invalid(String message) => error(AaIssueKind.invalidTime, message);
 
   if (text.isEmpty) {
@@ -325,13 +327,17 @@ IsoParse<int> parseIsoTime(
     if (offsetMinutes == 0) {
       error(AaIssueKind.timeZoneNotZ,
           'Write Z in place of "$zone". The time is already UTC.',
-          at: zoneAt);
+          at: zoneAt,
+          // An offset of 0 is UTC, so only the zone text changes.
+          replacement: 'Z');
     }
   } else if (_zoneName.hasMatch(zone)) {
     if (_utcNames.contains(upperZone)) {
       error(AaIssueKind.timeZoneNotZ,
           'Write Z in place of "$zone", for example ${_suggestZ(text)}.',
-          at: zoneAt);
+          at: zoneAt,
+          // UTC, UT, ZULU and GMT are the same as Z.
+          replacement: 'Z');
     } else if (upperZone == 'LT' || upperZone == 'L') {
       error(
           AaIssueKind.timeZoneNotZ,

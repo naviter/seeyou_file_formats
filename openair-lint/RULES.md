@@ -10,7 +10,7 @@ openair-lint 3.0.0-dev.1 has 154 rules. Each rule has an ID, a severity and the 
 
 Use `openair-lint --explain <rule-id>` to see a rule in the terminal, and `--disable <rule-id>` to turn a rule off.
 
-38 rules have an automatic fix (column "Fix"). `openair-lint --fix` applies these fixes, and `--fix-dry-run` shows them without a change of the files. A rule fixes a problem only when there is exactly one correct result and the meaning of the file does not change. Each rule says which of its problems it fixes.
+39 rules have an automatic fix (column "Fix"). `openair-lint --fix` applies these fixes, and `--fix-dry-run` shows them without a change of the files. A rule fixes a problem only when there is exactly one correct result and the meaning of the file does not change. Each rule says which of its problems it fixes.
 
 ## Header and file
 
@@ -2253,7 +2253,7 @@ AH 1500 M AMSL
 | [`aa-invalid-time`](#aa-invalid-time) | error | 2.1, 3.0 |  | A time in an AA command must be a valid ISO 8601 time. |
 | [`aa-invalid-duration`](#aa-invalid-duration) | error | 2.1 |  | In version 2.1, a duration in an interval must be a valid ISO 8601 duration. |
 | [`aa-time-missing-z`](#aa-time-missing-z) | error | 2.1, 3.0 |  | Every time of day must end with Z (UTC). |
-| [`aa-time-zone-not-z`](#aa-time-zone-not-z) | error | 2.1, 3.0 |  | Times must use Z, not a time zone offset or a zone name. |
+| [`aa-time-zone-not-z`](#aa-time-zone-not-z) | error | 2.1, 3.0 | yes | Times must use Z, not a time zone offset or a zone name. |
 | [`aa-time-24-as-start`](#aa-time-24-as-start) | error | 2.1, 3.0 |  | 24:00Z is allowed only as an end time. |
 | [`aa-value-form-not-allowed`](#aa-value-form-not-allowed) | error | 3.0 | yes | Dates and times must use one of the allowed forms. |
 | [`aa-value-form-not-allowed-v21`](#aa-value-form-not-allowed-v21) | warning | 2.1 | yes | In version 2.1, dates and times should use a form that version 3.0 allows. |
@@ -2449,7 +2449,7 @@ AA 2026-07-04T08:00/2026-07-04T16:00
 - Severity: **error**
 - Versions: 2.1, 3.0
 - Specification: [time](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#time)
-- Automatic fix: no
+- Automatic fix: --fix writes Z in place of UTC, UT, ZULU and GMT, and in place of an offset of 0 (for example +00:00). It does not change another offset (for example +01:00) or a local time (LT or a zone name such as CET), because then the time itself must change.
 
 Times must use Z, not a time zone offset or a zone name.
 

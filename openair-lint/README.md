@@ -261,6 +261,7 @@ These problems are fixed:
 | `altitude-zero-agl`, `altitude-unit-missing` | `AL GND` in place of `AL 0 FT AGL` or `AL 0 AGL`. |
 | `aa-invalid-syntax` | `-` in place of other dashes, no spaces around `/`, and `07:00Z/15:00Z` in place of `07:00Z-15:00Z`. |
 | `aa-none-none` | `AA NONE` in place of `AA NONE/NONE`. |
+| `aa-time-zone-not-z` | `Z` in place of `UTC`, `UT`, `ZULU`, `GMT` or an offset of 0 such as `+00:00`. Not for other offsets or local time. |
 | `aa-value-form-not-allowed` (and `-v21`) | `2026-07-04T08:00Z` in place of `20260704T0800Z` (not for decimal fractions). |
 | `aa-interval-form-not-allowed` (and `-v21`) | `2026-07-04T08:00Z/2026-07-04T16:00Z` in place of `2026-07-04T08:00Z/PT8H`. |
 | `aa-weekday-list-has-spaces` | `MON,WED,FRI` in place of `MON, WED, FRI` (not `MON FRI`, which can mean `MON,FRI` or `MON-FRI`). |

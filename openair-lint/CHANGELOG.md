@@ -9,7 +9,7 @@ Automatic fixes:
 
 - New option `--fix`: fixes the problems that have a safe automatic fix
   and saves the files. New option `--fix-dry-run`: shows the same changes
-  as a diff and does not change the files. 38 rules have a fix. A rule
+  as a diff and does not change the files. 39 rules have a fix. A rule
   fixes a problem only when there is exactly one correct result and the
   meaning of the file does not change. See "Automatic fixes" in the README.
 - Without `--fix`, the summary says how many problems have a fix.

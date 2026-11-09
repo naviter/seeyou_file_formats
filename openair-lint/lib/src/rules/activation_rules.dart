@@ -379,6 +379,10 @@ final Rule _timeZoneNotZ = _issueRule(
   AaIssueKind.timeZoneNotZ,
   severity: Severity.error,
   specAnchor: 'time',
+  fixDescription: '--fix writes Z in place of UTC, UT, ZULU and GMT, and in '
+      'place of an offset of 0 (for example +00:00). It does not change '
+      'another offset (for example +01:00) or a local time (LT or a zone '
+      'name such as CET), because then the time itself must change.',
   description: 'Times must use Z, not a time zone offset or a zone name.',
   explanation: 'OpenAir supports only UTC, written as Z. Time zone offsets '
       'such as +01:00 and names such as UTC, GMT, LT or CET are not '

@@ -334,6 +334,18 @@ void main() {
         SpecVersion.v3_0
       ),
       (
+        'aa-time-zone-not-z',
+        'AA 2026-09-14T06:00UTC/2026-09-18T14:00Z',
+        'AA 2026-09-14T06:00Z/2026-09-18T14:00Z',
+        SpecVersion.v3_0
+      ),
+      (
+        'aa-time-zone-not-z',
+        'AA MON 07:00GMT/15:00+00:00',
+        'AA MON 07:00Z/15:00Z',
+        SpecVersion.v3_0
+      ),
+      (
         'v-space-around-equals',
         'V X = 46:00:00N 014:05:00E',
         'V X=46:00:00N 014:05:00E',
@@ -420,6 +432,9 @@ void main() {
         SpecVersion.v3_0
       ),
       ('aa-time-missing-z', 'AA MON 07:00/15:00', SpecVersion.v3_0),
+      ('aa-time-zone-not-z', 'AA MON 08:00+01:00/15:00Z', SpecVersion.v3_0),
+      ('aa-time-zone-not-z', 'AA MON 08:00LT/15:00Z', SpecVersion.v3_0),
+      ('aa-time-zone-not-z', 'AA MON 08:00CET/15:00Z', SpecVersion.v3_0),
       ('coordinate-digit-count', 'DP 46:0:00N 014:00:00', SpecVersion.v2_1),
       ('coordinate-out-of-range', 'DP 46:00:61N 014:00:00E', SpecVersion.v2_1),
       ('coordinate-out-of-range', 'DP 91:00:00N 014:00:00E', SpecVersion.v2_1),

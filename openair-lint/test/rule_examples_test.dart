@@ -52,6 +52,7 @@ const Set<String> _exampleWithoutFix = {
   'altitude-unit-missing',
   'altitude-flight-level-invalid',
   'aa-invalid-syntax',
+  'aa-time-zone-not-z', // the example uses +02:00, not UTC
 };
 
 /// True if [line] is a header comment (`*VERSION` or `*WRITTEN_BY`, in any
