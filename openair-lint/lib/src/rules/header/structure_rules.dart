@@ -673,28 +673,55 @@ String? _nextAirspaceHint(LintContext ctx, Airspace a, Command c) {
 }
 
 // ---------------------------------------------------------------------------
-// airspace-an-missing
+// airspace-an-missing, airspace-an-missing-v21
 // ---------------------------------------------------------------------------
+
+/// Reports [a] if it has no `AN` command.
+void _checkAnMissing(LintContext ctx, Airspace a) {
+  if (_inStrepla(ctx, a.startLine)) return;
+  if (a.firstWith('AN') != null) return;
+  ctx.reportAirspace(a, 'This airspace has no name. Add an "AN" command.');
+}
 
 final Rule _airspaceAnMissing = Rule(
   id: 'airspace-an-missing',
-  severity: Severity.info,
-  versions: SpecVersion.all,
+  severity: Severity.error,
+  versions: SpecVersion.only3,
   specAnchor: 'an-airspace-name',
-  description: 'An airspace usually has a name (AN).',
-  explanation: 'The "AN" command is optional, but pilots need the name to '
-      'know which airspace a reader shows or warns about. Add an "AN" '
-      'command with the name of the airspace.',
+  description: 'Every airspace must have an "AN" command (the name).',
+  explanation: 'Each airspace definition needs exactly one name ("AN"). '
+      'Pilots need the name to know which airspace a reader shows or warns '
+      'about.\n'
+      '\n'
+      'Add an "AN" command with the name of the airspace after the "AC" '
+      'command.',
   correctExample: 'AC D\n'
       'AN Example CTR\n'
       'AH 4500 FT AMSL',
   incorrectExample: 'AC D\n'
       'AH 4500 FT AMSL',
-  checkAirspace: (ctx, a) {
-    if (_inStrepla(ctx, a.startLine)) return;
-    if (a.firstWith('AN') != null) return;
-    ctx.reportAirspace(a, 'This airspace has no name. Add an "AN" command.');
-  },
+  checkAirspace: _checkAnMissing,
+);
+
+final Rule _airspaceAnMissingV21 = Rule(
+  id: 'airspace-an-missing-v21',
+  severity: Severity.info,
+  versions: SpecVersion.only21,
+  specAnchor: 'an-airspace-name',
+  anchorInVersion21Text: true,
+  description: 'An airspace usually has a name (AN) (version 2.1).',
+  explanation: 'In version 2.1 the "AN" command is optional, but pilots '
+      'need the name to know which airspace a reader shows or warns about. '
+      'Add an "AN" command with the name of the airspace.\n'
+      '\n'
+      'In version 3.0 "AN" is required, and an airspace without it is an '
+      'error (airspace-an-missing).',
+  correctExample: 'AC D\n'
+      'AN Example CTR\n'
+      'AH 4500 FT AMSL',
+  incorrectExample: 'AC D\n'
+      'AH 4500 FT AMSL',
+  checkAirspace: _checkAnMissing,
 );
 
 // ---------------------------------------------------------------------------

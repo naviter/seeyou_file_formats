@@ -72,7 +72,7 @@ if [ $code -ne 0 ]; then
   echo "$out"
   fail "The valid conformance files gave exit code $code. Expected 0."
 else
-  pass "Valid conformance files: $(echo "$out" | tail -n 1)"
+  pass "Valid conformance files: $(echo "$out" | grep "^Checked " | tail -n 1)"
 fi
 
 # 4. Invalid conformance files: exit code 1.
@@ -82,7 +82,7 @@ if [ $code -ne 1 ]; then
   echo "$out"
   fail "The invalid conformance files gave exit code $code. Expected 1."
 else
-  pass "Invalid conformance files: $(echo "$out" | tail -n 1)"
+  pass "Invalid conformance files: $(echo "$out" | grep "^Checked " | tail -n 1)"
 fi
 
 # 5. JSON format.

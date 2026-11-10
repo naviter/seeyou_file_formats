@@ -1136,16 +1136,46 @@ void main() {
   group('airspace-an-missing', () {
     const id = 'airspace-an-missing';
 
-    test('reports an airspace without a name as info', () {
+    test('reports an airspace without a name as an error', () {
       final d = lintRule(
           id, withHeader(validAirspace.replaceFirst('AN Test CTR\n', '')));
+      expect(d, hasLength(1));
+      expect(d.single.line, 3);
+      expect(d.single.severity, Severity.error);
+    });
+
+    test('no diagnostic with a name', () {
+      expect(lintRule(id, withHeader(validAirspace)), isEmpty);
+    });
+
+    test('does not check version 2.1 files', () {
+      expect(
+          lintRule(
+              id,
+              withHeader(validAirspace.replaceFirst('AN Test CTR\n', ''),
+                  version: '2.1')),
+          isEmpty);
+    });
+  });
+
+  group('airspace-an-missing-v21', () {
+    const id = 'airspace-an-missing-v21';
+
+    test('reports an airspace without a name as info in version 2.1', () {
+      final d = lintRule(
+          id,
+          withHeader(validAirspace.replaceFirst('AN Test CTR\n', ''),
+              version: '2.1'));
       expect(d, hasLength(1));
       expect(d.single.line, 3);
       expect(d.single.severity, Severity.info);
     });
 
-    test('no diagnostic with a name', () {
-      expect(lintRule(id, withHeader(validAirspace)), isEmpty);
+    test('does not check version 3.0 files', () {
+      expect(
+          lintRule(
+              id, withHeader(validAirspace.replaceFirst('AN Test CTR\n', ''))),
+          isEmpty);
     });
   });
 

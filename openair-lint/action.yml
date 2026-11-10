@@ -272,14 +272,20 @@ runs:
         "$OPENAIR_LINT" "${args[@]}" -- "${paths[@]}" | tee "$output"
         code=${PIPESTATUS[0]}
 
-        # The last line is the summary, for example
+        # The summary starts with a line like
         # "Checked 3 files: 2 errors, 0 warnings, 0 info."
-        summary="$(tail -n 1 "$output")"
-        if [[ "$summary" == Checked* ]]; then
+        # A line about automatic fixes can follow it, so the summary is not
+        # always the last line. Take the last "Checked" line and all lines
+        # after it.
+        summary="$(awk '/^Checked / { s = $0; next } s != "" { s = s "\n" $0 } END { if (s != "") print s }' "$output")"
+        if [ -n "$summary" ]; then
           {
             echo "### openair-lint"
             echo
-            echo "$summary"
+            printf '%s\n' "$summary" | while IFS= read -r line; do
+              echo "$line"
+              echo
+            done
           } >> "$GITHUB_STEP_SUMMARY"
         fi
         rm -f "$output"

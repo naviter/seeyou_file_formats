@@ -46,7 +46,7 @@ For this reason:
 | `*VERSION` | `*VERSION: 3.0` | OpenAir version number | Yes | [Header](#header) |
 | `*WRITTEN_BY` | `*WRITTEN_BY: Name` | Author/application name | Yes | [Header](#header) |
 | `AC` | `AC Class` | Airspace class (A-G, UNC) | Yes | [AC](#ac-airspace-class) |
-| `AN` | `AN Name` | Airspace name | No | [AN](#an-airspace-name) |
+| `AN` | `AN Name` | Airspace name | Yes | [AN](#an-airspace-name) |
 | `AY` | `AY Type` | Airspace type (CTR, TMA, RMZ, etc.) | No | [AY](#ay-airspace-type) |
 | `AF` | `AF Frequency` | Communication frequency. Can be used more than once. | No | [AF](#af-airspace-frequency) |
 | `AG` | `AG Station Name` | Controlling station name | No | [AG](#ag-station-name) |
@@ -63,7 +63,7 @@ For this reason:
 
 \* Each airspace must have at least one geometry command: `DP`, `DA`, `DB`, `DC` or `DY`. `V` alone is not a geometry.
 
-Each airspace must not have more than one `AC`, `AN`, `AY`, `AG`, `AX`, `AH` or `AL` command. `AF` and the `AA`, `D` and `V` commands can be used more than once.
+Each airspace must have exactly one `AC`, one `AN`, one `AH` and one `AL` command. Each airspace must not have more than one `AY`, `AG` or `AX` command. `AF` and the `AA`, `D` and `V` commands can be used more than once.
 
 ## Units
 
@@ -178,7 +178,9 @@ Commands beginning with `A` and define general attributes of an airspace.
 
 #### AC: Airspace Class
 
-Specifies airspace class exclusively. The use is refined from the original format, where it was used more broadly.
+*Required.* Specifies airspace class exclusively. The use is refined from the original format, where it was used more broadly.
+
+Each airspace must have exactly one `AC` command. It must be the first command of the airspace. The next `AC` command starts a new airspace.
 
 Format:
 ```
@@ -207,7 +209,7 @@ AC D
 
 #### AN: Airspace Name
 
-Defines the airspace's name.
+*Required.* Defines the airspace's name. Each airspace must have exactly one `AN` command.
 
 Format:
 ```
@@ -216,7 +218,7 @@ AN Name
 
 Here `Name` is the designated name for the airspace. For example `CTR Muenchen`. Any UTF-8 character except `*` is allowed.
 
-The name cannot contain `*`, because `*` starts a comment. Do not write a comment on the same line as `AN`. An airspace must not have more than one `AN` command.
+The name cannot contain `*`, because `*` starts a comment. Do not write a comment on the same line as `AN`.
 
 Example:
 ```
@@ -225,7 +227,7 @@ AN ED-R6 Brokdorf H24
 
 #### AY: Airspace Type
 
-Identifies the type of airspace or a special-use airspace. Typically used immediately after the `AC` command. An airspace must not have more than one `AY` command. Only the types in the table below are allowed.
+*Optional.* Identifies the type of airspace or a special-use airspace. Typically used immediately after the `AC` command. An airspace must not have more than one `AY` command. Only the types in the table below are allowed.
 
 Format:
 ```
@@ -490,7 +492,7 @@ In this case the reader must ignore **all** `AA` commands of that airspace and t
 
 #### AX: Transponder Code
 
-*Optional* Transponder code to be used with the airspace. Must be a code with exactly 4 digits. Transponder codes are octal, so each digit must be from `0` to `7`. The digits `8` and `9` are not allowed. Write the leading zeros, for example `0424`. An airspace must not have more than one `AX` command.
+*Optional.* Transponder code to be used with the airspace. Must be a code with exactly 4 digits. Transponder codes are octal, so each digit must be from `0` to `7`. The digits `8` and `9` are not allowed. Write the leading zeros, for example `0424`. An airspace must not have more than one `AX` command.
 
 ```
 AX 7000
@@ -501,7 +503,7 @@ AX 7000
 
 #### AH: Upper Altitude Limit
 
-Defines the highest boundary (the ceiling) of the airspace, including the altitude's reference point.
+*Required.* Defines the highest boundary (the ceiling) of the airspace, including the altitude's reference point. Each airspace must have exactly one `AH` command.
 
 Format:
 ```
@@ -519,11 +521,13 @@ AL 1000 FT AMSL
 ```
 
 > [!IMPORTANT]
-> Each airspace definition must include only one upper altitude limit. Including multiple altitude references creates ambiguity and is considered invalid (e.g., ~~`100 M AGL/423 M AMSL`~~ is not permitted).
+> An airspace with no `AH` command or with more than one `AH` command is not valid.
+>
+> One `AH` command contains exactly one altitude. Two altitudes in one command make the upper limit ambiguous, also when they use different references. For example, ~~`AH 100 M AGL/423 M AMSL`~~ is not valid.
 
 #### AL: Lower Altitude Limit
 
-Defines the lowest boundary (the floor) of the airspace, including the altitude's reference point.
+*Required.* Defines the lowest boundary (the floor) of the airspace, including the altitude's reference point. Each airspace must have exactly one `AL` command.
 
 Format:
 ```
@@ -543,7 +547,9 @@ AL 1000 FT AGL
 ```
 
 > [!IMPORTANT]
-> Each airspace definition must include only one lower altitude limit. Including multiple altitude references creates ambiguity and is considered invalid (e.g., ~~`100 M AGL/423 M AMSL`~~ is not permitted).
+> An airspace with no `AL` command or with more than one `AL` command is not valid.
+>
+> One `AL` command contains exactly one altitude. Two altitudes in one command make the lower limit ambiguous, also when they use different references. For example, ~~`AL 100 M AGL/423 M AMSL`~~ is not valid.
 
 #### Supported Altitude References
 

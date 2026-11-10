@@ -3,7 +3,7 @@
 ## Unreleased
 
 The linter follows the revised specification of 2026-11-08. The linter now
-has 154 rules.
+has 155 rules.
 
 Automatic fixes:
 
@@ -73,8 +73,14 @@ New rules:
   `af-outside-air-band-v21`, `af-invalid-channel-v21` and
   `dc-mixed-with-other-geometry-v21` (warning, 2.1): the 2.1 part of the
   rules without `-v21`. See "Spec version" in the README.
+- `airspace-an-missing-v21` (info, 2.1): an airspace without `AN` in a
+  version 2.1 file. In version 2.1 `AN` is optional.
 
 Changed severities:
+
+- `airspace-an-missing`: info to error. The specification now requires
+  exactly one `AN` in each airspace. The rule checks only version 3.0 files
+  now. Version 2.1 files get the info `airspace-an-missing-v21`.
 
 - Warning to error: `airspace-attribute-duplicate`, `ax-not-octal`,
   `af-outside-air-band`, `af-invalid-channel` and

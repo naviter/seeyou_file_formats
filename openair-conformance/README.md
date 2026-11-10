@@ -74,9 +74,10 @@ Covered:
   line endings, upper case, unknown commands, and comments. `*` always starts
   a comment, so `AN` and `AG` cannot contain `*`, and a comment is not
   allowed on the same line as `AN` or `AG`.
-- **Airspace structure:** every airspace starts with `AC`, has `AH`, `AL` and
-  a geometry (`V` alone is not a geometry). An airspace has at most one `AC`,
-  `AN`, `AY`, `AG`, `AX`, `AH` and `AL`. `AF` can be used more than once.
+- **Airspace structure:** every airspace starts with `AC`, has `AN`, `AH`,
+  `AL` and a geometry (`V` alone is not a geometry). An airspace has at most
+  one `AC`, `AN`, `AY`, `AG`, `AX`, `AH` and `AL`. `AF` can be used more than
+  once. In version 2.1 `AN` is optional.
 - **Attributes:** the classes of `AC`, the types of `AY`, and `AX` with
   exactly 4 octal digits. `AF` with exactly three decimals and no unit, in
   the VHF air band (118.000 to 136.990), as a 25 kHz or 8.33 kHz channel

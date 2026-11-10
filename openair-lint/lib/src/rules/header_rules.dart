@@ -68,5 +68,6 @@ final List<Rule> headerRules = [
   _airspaceAttributeDuplicateV21,
   _airspaceCommandOrder,
   _airspaceAnMissing,
+  _airspaceAnMissingV21,
   _airspaceDuplicate,
 ];

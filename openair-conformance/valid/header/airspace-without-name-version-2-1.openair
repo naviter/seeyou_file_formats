@@ -1,6 +1,6 @@
-*VERSION: 3.0
+*VERSION: 2.1
 *WRITTEN_BY: openair-conformance
-* Tests: AN is optional. An airspace without a name gives only an info diagnostic.
+* Tests: in version 2.1 AN is optional. An airspace without a name gives only an info diagnostic.
 
 AC D
 AY CTR
