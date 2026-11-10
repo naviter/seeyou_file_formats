@@ -3725,7 +3725,7 @@ DP 46:00:00N 014:00:00E
 - Severity: **warning**
 - Versions: 2.1, 3.0
 - Specification: [dp-polygon-point](https://github.com/naviter/seeyou_file_formats/blob/main/OpenAir_File_Format_Support.md#dp-polygon-point)
-- Automatic fix: --fix adds the first point again as the last point ("DP" and the same coordinates). It does this only when the polygon starts with a DP point that is written correctly, and when the gap is 0.1 NM or more. A smaller gap is probably a typing error in a coordinate, which the user must check.
+- Automatic fix: --fix adds the first point again as the last point ("DP" and the same coordinates), at any distance. It does this only when the polygon starts with a DP point that has a valid position. It does not add a point when the last point differs from the first point in exactly one digit (for example 015:30:54E and 015:30:55E). This is probably a typing error, which the user must check.
 
 The last point of a polygon should be the same as the first point.
 

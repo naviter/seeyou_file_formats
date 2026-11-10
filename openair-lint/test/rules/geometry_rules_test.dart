@@ -487,10 +487,16 @@ void main() {
       expect(messages(id, square.sublist(0, 4)).single,
           contains('Add "DP 46:00:00N 014:00:00E" as the last point.'));
     });
-    test('almost closed', () {
+    test('one digit differs: probably a typing error', () {
       final m =
           messages(id, [...square.sublist(0, 4), 'DP 46:00:01N 014:00:00E']);
-      expect(m.single, contains('probably meant to be the same point'));
+      expect(m.single, contains('differs from the first point in one digit'));
+      expect(m.single, contains('probably a typing error'));
+    });
+    test('a close point with more than one different digit', () {
+      final m =
+          messages(id, [...square.sublist(0, 4), 'DP 46:00:05N 014:00:03E']);
+      expect(m.single, contains('Add "DP 46:00:00N 014:00:00E"'));
     });
     test('closed by a DB arc', () {
       expect(

@@ -694,10 +694,11 @@ final Rule _polygonNotClosed = Rule(
   versions: SpecVersion.all,
   specAnchor: 'dp-polygon-point',
   fixDescription: '--fix adds the first point again as the last point '
-      '("DP" and the same coordinates). It does this only when the polygon '
-      'starts with a DP point that is written correctly, and when the gap is '
-      '0.1 NM or more. A smaller gap is probably a typing error in a '
-      'coordinate, which the user must check.',
+      '("DP" and the same coordinates), at any distance. It does this only '
+      'when the polygon starts with a DP point that has a valid position. It '
+      'does not add a point when the last point differs from the first point '
+      'in exactly one digit (for example 015:30:54E and 015:30:55E). This is '
+      'probably a typing error, which the user must check.',
   description: 'The last point of a polygon should be the same as the first '
       'point.',
   explanation: 'The specification says that polygons are expected to be '
@@ -739,25 +740,55 @@ final Rule _polygonNotClosed = Rule(
     if (first.closeTo(last, toleranceDeg: samePointToleranceDeg)) return;
     final gap = distanceNm(first, last);
     final cc = coordinatesOf(ctx, firstCmd, a).first;
-    final String fix;
-    if (gap < 0.1) {
-      fix = 'It is probably meant to be the same point. Write the same '
-          'coordinates as on line ${firstCmd.line}.';
-    } else if (cc.result.isClean) {
-      fix = 'Add "DP ${cc.text}" as the last point.';
+    final lastText = coordinatesOf(ctx, lastCmd, a).last.text;
+    final typo = _differInOneDigit(cc.text, lastText);
+    // The first point as written, without text after the coordinate (which
+    // coordinate-trailing-text reports). The same text gives exactly the
+    // same position, also in a form with a warning, for example decimal
+    // seconds.
+    final firstText = cc.text.substring(0, cc.result.end).trim();
+    final String advice;
+    if (typo) {
+      advice = 'The last point differs from the first point in one digit. '
+          'This is probably a typing error. Check the coordinates on line '
+          '${lastCmd.line} and line ${firstCmd.line}.';
+    } else if (cc.result.isValid) {
+      advice = 'Add "DP $firstText" as the last point.';
     } else {
-      fix = 'Add the first point again as the last point.';
+      advice = 'Add the first point again as the last point.';
     }
     ctx.reportCommand(
         lastCmd,
         'The polygon is not closed. The last point is '
         '${formatNmAndMetres(gap)} from the first point (line '
-        '${firstCmd.line}). $fix',
-        fix: gap >= 0.1 && firstCmd.upperKeyword == 'DP' && cc.result.isClean
-            ? Fix([InsertLine(lastCmd.line, '${firstCmd.keyword} ${cc.text}')])
+        '${firstCmd.line}). $advice',
+        fix: !typo && firstCmd.upperKeyword == 'DP' && cc.result.isValid
+            ? Fix([InsertLine(lastCmd.line, '${firstCmd.keyword} $firstText')])
             : null);
   },
 );
+
+/// True if the coordinates [a] and [b] are the same text except for exactly
+/// one digit, for example `46:00:00N 015:30:54E` and `46:00:00N
+/// 015:30:55E`. Blanks are not compared.
+///
+/// Then the last point of a polygon is probably the first point with a
+/// typing error, and geometry-polygon-not-closed does not add a closing
+/// point.
+bool _differInOneDigit(String a, String b) {
+  final x = a.replaceAll(RegExp(r'\s'), '').toUpperCase();
+  final y = b.replaceAll(RegExp(r'\s'), '').toUpperCase();
+  if (x.length != y.length) return false;
+  var differences = 0;
+  for (var i = 0; i < x.length; i++) {
+    if (x[i] == y[i]) continue;
+    if (!_isDigit(x[i]) || !_isDigit(y[i])) return false;
+    differences++;
+  }
+  return differences == 1;
+}
+
+bool _isDigit(String c) => c.codeUnitAt(0) >= 0x30 && c.codeUnitAt(0) <= 0x39;
 
 final Rule _dpDuplicatePoint = Rule(
   id: 'dp-duplicate-point',

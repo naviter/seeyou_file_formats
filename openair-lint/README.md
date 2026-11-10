@@ -271,7 +271,7 @@ These problems are fixed:
 | `coordinate-digit-count` | Adds leading zeros (`014:08:05E` in place of `14:8:5E`), and removes extra zeros at the start. |
 | `v-space-around-equals` | `V X=...` in place of `V X = ...`. |
 | `dp-duplicate-point` | Removes a second point with exactly the same position (only a line without a comment). |
-| `geometry-polygon-not-closed` | Adds the first point again as the last point (only when the gap is 0.1 NM or more). |
+| `geometry-polygon-not-closed` | Adds the first point again as the last point, at any distance. Not when the last point differs from the first point in exactly one digit (probably a typing error). |
 | `geometry-polygon-counter-clockwise` | Writes the DP points in the opposite order (only a closed polygon of DP points, without comments, arcs or `V` commands). |
 
 Other problems need a decision from the person who maintains the data, so

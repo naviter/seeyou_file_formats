@@ -506,10 +506,50 @@ void main() {
       final open = _body.substring(0, _body.length - 24);
       expect(fix('$_header$open', rules: ['geometry-polygon-not-closed']),
           '$_header$_body');
-      // A gap below 0.1 NM is probably a typing error: no fix.
-      final near = '${open}DP 46:00:01N 014:00:00E\n';
-      expect(fix('$_header$near', rules: ['geometry-polygon-not-closed']),
-          '$_header$near');
+      // One digit differs: probably a typing error, no fix.
+      for (final typo in [
+        'DP 46:00:01N 014:00:00E',
+        'DP 46:00:00 N 014:00:09 E', // blanks are not compared
+      ]) {
+        final near = '$open$typo\n';
+        expect(fix('$_header$near', rules: ['geometry-polygon-not-closed']),
+            '$_header$near');
+      }
+      // A close point with more than one different digit (a polygon with
+      // short edges, for example a circle drawn with DP points): the first
+      // point is added, also when the gap is small.
+      for (final close in [
+        'DP 46:00:05N 014:00:03E', // latitude and longitude differ
+        'DP 46:00:00N 013:59:52E', // more than one digit differs
+      ]) {
+        final near = '$open$close\n';
+        expect(fix('$_header$near', rules: ['geometry-polygon-not-closed']),
+            '$_header${near}DP 46:00:00N 014:00:00E\n');
+      }
+    });
+
+    test('geometry-polygon-not-closed copies a first point with a warning', () {
+      const rest = 'DP 46:00:00N 014:10:00E\n'
+          'DP 45:55:00N 014:10:00E\n'
+          'DP 45:55:00N 014:00:00E\n';
+      const head = '*VERSION: 2.1\n*WRITTEN_BY: test\n'
+          'AC D\nAN Test CTR\nAH 4500 FT AMSL\nAL GND\n';
+      for (final (first, added) in [
+        // Decimal seconds and decimal degrees: the same text, so exactly
+        // the same position.
+        ('DP 46:00:00.4N 014:00:00E', 'DP 46:00:00.4N 014:00:00E'),
+        ('DP 46.0N 014.0E', 'DP 46.0N 014.0E'),
+        // Text after the coordinate is not copied.
+        ('DP 46:00:00N 014:00:00E X', 'DP 46:00:00N 014:00:00E'),
+      ]) {
+        final file = '$head$first\n$rest';
+        expect(
+            fix(file, rules: ['geometry-polygon-not-closed']), '$file$added\n',
+            reason: first);
+      }
+      // A first point with an error (a 60) has no valid position: no fix.
+      const sixty = '${head}DP 45:59:60N 014:00:00E\n$rest';
+      expect(fix(sixty, rules: ['geometry-polygon-not-closed']), sixty);
     });
 
     group('geometry-polygon-counter-clockwise', () {
@@ -545,10 +585,29 @@ void main() {
       });
 
       test('an open polygon is closed first, then reversed', () {
-        final open = ccw.substring(0, ccw.length - 24);
+        // The last point differs from the first point in more than one
+        // digit, so the closing point is added.
+        const open = 'DP 46:00:00N 014:00:00E\n'
+            'DP 45:55:00N 014:00:00E\n'
+            'DP 45:55:00N 014:10:00E\n'
+            'DP 46:02:00N 014:10:00E\n';
         final fixed =
             fix('$head$open', rules: [id, 'geometry-polygon-not-closed']);
-        expect(fixed, '$head$cw');
+        expect(
+            fixed,
+            '${head}DP 46:00:00N 014:00:00E\n'
+            'DP 46:02:00N 014:10:00E\n'
+            'DP 45:55:00N 014:10:00E\n'
+            'DP 45:55:00N 014:00:00E\n'
+            'DP 46:00:00N 014:00:00E\n');
+      });
+
+      test('a one-digit difference is not closed, even when it is far', () {
+        // 014:10:00E and 014:00:00E differ in one digit (about 7 NM). The
+        // rule treats this as a typing error, so nothing changes.
+        final open = ccw.substring(0, ccw.length - 24);
+        expect(fix('$head$open', rules: [id, 'geometry-polygon-not-closed']),
+            '$head$open');
       });
 
       test('no fix with a comment, a comment line or other commands', () {
