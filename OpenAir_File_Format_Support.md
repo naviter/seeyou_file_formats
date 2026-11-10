@@ -512,7 +512,7 @@ AH FLnnn
 AH UNL
 ```
 
-The unit (`FT` or `M`) and the reference (`AMSL`, `AGL` or `STD`) are required, see [Altitude](#altitude). For a flight level, write `FL` and a whole number, without a unit and without a reference. For an undefined upper limit, use `UNL` without an altitude.
+In the form `Altitude Unit AltRef`, the unit (`FT` or `M`) and the reference (`AMSL`, `AGL` or `STD`) are required, see [Altitude](#altitude). The other two forms have no unit and no reference. For a flight level, write `FL` and a whole number. For an undefined upper limit, write `UNL`.
 
 Example:
 ```
@@ -536,7 +536,7 @@ AL FLnnn
 AL GND
 ```
 
-The unit (`FT` or `M`) and the reference (`AMSL`, `AGL` or `STD`) are required, see [Altitude](#altitude). For a flight level, write `FL` and a whole number, without a unit and without a reference. For areas extending to the ground, use `GND` without an altitude.
+In the form `Altitude Unit AltRef`, the unit (`FT` or `M`) and the reference (`AMSL`, `AGL` or `STD`) are required, see [Altitude](#altitude). The other two forms have no unit and no reference. For a flight level, write `FL` and a whole number. For an area that starts at the ground, write `GND`.
 
 The lower limit must be below the upper limit. A lower limit equal to the upper limit is not valid. A client can only compare the two limits when they use the same kind of reference. For example, it cannot compare an `AGL` limit with an `AMSL` limit.
 
@@ -553,18 +553,27 @@ AL 1000 FT AGL
 
 #### Supported Altitude References
 
+These are the only valid values of `AltRef` in the form `Altitude Unit AltRef`:
+
 | AltRef | Description                                          | Example |
 | ------ | ---------------------------------------------------- | ------- |
 | AMSL   | Above Mean Sea Level                                 | `1500 FT AMSL` |
 | AGL    | Above Ground Level                                   | `300 M AGL` |
 | STD    | Above the standard pressure level (1013.25 hPa). This is a pressure altitude, the same as a flight level. | `9500 FT STD` |
-| FL     | Flight Level. Written as a prefix: `FL` and a whole number, without unit and reference. | `FL95` |
-| GND    | Ground, no altitude. **AL only, no numeric value**   | `GND` |
-| UNL    | Unlimited, no altitude **AH only, no numeric value** | `UNL` |
-
-`9500 FT STD` and `FL95` have the same meaning: 9500 ft above the standard pressure level.
 
 `MSL` is an alias of `AMSL`. A reader must read `MSL` as `AMSL`. Writers should write `AMSL`.
+
+The following values are not references. Each one is a complete altitude. It replaces the number, the unit and the reference, so it has no unit and no reference:
+
+| Value   | Description                                                  | Allowed in | Example |
+| ------- | ------------------------------------------------------------ | ---------- | ------- |
+| `FLnnn` | Flight Level: `FL` and a whole number.                       | `AH`, `AL` | `FL95` |
+| `GND`   | Ground. The airspace starts at the ground.                   | `AL` only  | `GND` |
+| `UNL`   | Unlimited. The airspace has no defined upper limit.          | `AH` only  | `UNL` |
+
+`GND` is not a reference. `1000 FT GND` is not valid. For a height above the ground, write `1000 FT AGL`.
+
+`9500 FT STD` and `FL95` have the same meaning: 9500 ft above the standard pressure level.
 
 `FL 95` (with a space) has the same meaning as `FL95`. A reader must accept it. Writers should write `FL95`, without a space.
 
