@@ -31,6 +31,7 @@ final List<Rule> activationRules = [
   _valueFormNotAllowedV21,
   _noneNotAllowed,
   _noneNone,
+  _noneRemoved,
   // Intervals.
   _intervalEndBeforeStart,
   _intervalFormNotAllowed,
@@ -87,9 +88,10 @@ List<(Command, AaCommand)> _aaOf(LintContext ctx, Airspace a) =>
 
 /// A rule that reports the parser issues of one kind.
 ///
-/// [id] is the rule ID, by default [AaIssueKind.ruleId]. A rule for
-/// version 2.1 only ([SpecVersion.only21]) uses [AaIssue.v21Message] when
-/// the issue has one.
+/// [id] is the rule ID, by default [AaIssueKind.ruleId]. In a file of
+/// version 2.1, the rule uses [AaIssue.v21Message] when the issue has one.
+/// If [fixInVersion3] is false, the rule gives the fix of the issue only in
+/// a file of version 2.1.
 Rule _issueRule(
   AaIssueKind kind, {
   String? id,
@@ -102,6 +104,7 @@ Rule _issueRule(
   required String correctExample,
   required String incorrectExample,
   String? fixDescription,
+  bool fixInVersion3 = true,
 }) =>
     Rule(
       id: id ?? kind.ruleId,
@@ -116,12 +119,12 @@ Rule _issueRule(
       incorrectExample: incorrectExample,
       keywords: const {'AA'},
       checkCommand: (ctx, c, a) {
-        final v21 = versions.length == 1 && versions.contains(SpecVersion.v2_1);
+        final v21 = ctx.specVersion == SpecVersion.v2_1;
         for (final issue in _aa(ctx, c).issues) {
           if (issue.kind != kind) continue;
           final message =
               v21 ? (issue.v21Message ?? issue.message) : issue.message;
-          final text = issue.replacement;
+          final text = v21 || fixInVersion3 ? issue.replacement : null;
           ctx.reportArgument(c, message,
               offset: issue.offset,
               length: issue.length,
@@ -271,8 +274,8 @@ final Rule _missingValue = _issueRule(
   specAnchor: 'aa-airspace-activation-times',
   description: 'An AA command must have a value.',
   explanation: 'An AA command without a value has no meaning. Write an '
-      'interval, a weekday command, an exception or NONE. Remove the AA '
-      'command if the airspace is always active.',
+      'interval, a weekday command or an exception. Remove the AA command '
+      'if the airspace is always active.',
   correctExample: 'AA MON-FRI 07:00Z/15:00Z',
   incorrectExample: 'AA',
 );
@@ -287,13 +290,15 @@ final Rule _invalidSyntax = _issueRule(
       '"07:00Z-15:00Z"). It does not change other problems.',
   description: 'The AA command must have one of the forms of the '
       'specification.',
-  explanation: 'There are four forms of AA command:\n'
+  explanation: 'There are three forms of AA command:\n'
       '\n'
       'AA StartDateTime/EndDateTime (an interval)\n'
       'AA [Weekdays] StartTime/EndTime [StartDate/EndDate] (a weekday '
       'command)\n'
       'AA EXCEPT Date or AA EXCEPT StartDate/EndDate (an exception)\n'
-      'AA NONE\n'
+      '\n'
+      'Version 2.1 also allows AA NONE. Version 3.0 does not allow it (rule '
+      'aa-none-removed).\n'
       '\n'
       'This rule reports a command that matches none of these forms, for '
       'example a command with extra text, a missing "/" or an ICAO code such '
@@ -468,10 +473,13 @@ final Rule _noneNotAllowed = _issueRule(
   severity: Severity.error,
   specAnchor: 'aa-airspace-activation-times',
   description: 'NONE is allowed only where the specification allows it.',
-  explanation: 'NONE is allowed in AA NONE, on one side of an interval '
+  explanation: 'NONE is allowed on one side of an interval '
       '(AA NONE/EndDateTime, AA StartDateTime/NONE) and on one side of the '
       'date range of a weekday command. It is not allowed in the time window '
-      'of a weekday command and not in AA EXCEPT.',
+      'of a weekday command and not in AA EXCEPT.\n'
+      '\n'
+      'Version 2.1 also allows AA NONE. Version 3.0 does not allow it. The '
+      'rule aa-none-removed reports it.',
   correctExample: 'AA MON-FRI 07:00Z/15:00Z 2026-04-01/NONE',
   incorrectExample: 'AA MON-FRI 07:00Z/NONE',
 );
@@ -480,13 +488,22 @@ final Rule _noneNone = _issueRule(
   AaIssueKind.noneNone,
   severity: Severity.error,
   specAnchor: 'interval-activation',
-  fixDescription: '--fix writes "AA NONE".',
-  description: 'AA NONE/NONE is not allowed. Write AA NONE.',
+  fixDescription: '--fix writes "AA NONE" in a file of version 2.1. It does '
+      'not change a file of version 3.0, because version 3.0 does not allow '
+      'AA NONE.',
+  fixInVersion3: false,
+  description: 'AA NONE/NONE is not allowed.',
   explanation: 'An older draft of the specification used AA NONE/NONE for '
-      'an airspace without known activation times. The specification '
-      'replaced it with AA NONE. Readers can understand NONE/NONE in '
-      'different ways: as "never active until known" or as "always active".',
-  correctExample: 'AA NONE',
+      'an airspace without known activation times. Readers can understand '
+      'NONE/NONE in different ways: as "never active until known" or as '
+      '"always active".\n'
+      '\n'
+      'In version 3.0: if the airspace is always active, remove the AA '
+      'command. If the activation times are not known, remove the airspace '
+      'from the file.\n'
+      '\n'
+      'In version 2.1: write AA NONE.',
+  correctExample: 'AA 2026-07-04T08:00Z/NONE',
   incorrectExample: 'AA NONE/NONE',
 );
 
@@ -1614,17 +1631,62 @@ final Rule _sunEventNoPosition = Rule(
 // Combining AA commands
 // ---------------------------------------------------------------------------
 
+final Rule _noneRemoved = Rule(
+  id: 'aa-none-removed',
+  severity: Severity.error,
+  versions: SpecVersion.only3,
+  specAnchor: 'aa-none',
+  description: 'AA NONE is not allowed in version 3.0.',
+  explanation: 'Version 2.1 used AA NONE for an airspace without known '
+      'activation times. A client did not show such an airspace until the '
+      'times were known, for example from a NOTAM. Version 3.0 removed AA '
+      'NONE. An OpenAir file is not a storage for airspaces that are not '
+      'used. If an airspace is in the file, it is there for a reason.\n'
+      '\n'
+      'A reader of version 3.0 cannot parse AA NONE. It ignores all AA '
+      'commands of the airspace and shows the airspace as always active.\n'
+      '\n'
+      'If the activation times are known, write them as AA commands. If the '
+      'airspace is always active, write no AA command. If the activation '
+      'times are not known, remove the airspace from the file. To show that '
+      'a NOTAM activates the airspace, write AS NOTAM.',
+  correctExample: 'AS NOTAM\n'
+      'AA 2026-07-04T08:00Z/2026-07-04T16:00Z',
+  incorrectExample: 'AA NONE',
+  keywords: const {'AA'},
+  checkCommand: (ctx, c, a) {
+    if (_aa(ctx, c) is! AaNoneCommand) return;
+    ctx.reportCommand(
+        c,
+        'AA NONE is not allowed in version 3.0. A reader of version 3.0 '
+        'ignores all AA commands of this airspace and shows it as always '
+        'active. If the activation times are known, write them as AA '
+        'commands. If they are not known, remove the airspace from the '
+        'file. To show that a NOTAM activates the airspace, write AS NOTAM.');
+  },
+);
+
 final Rule _noneCombined = Rule(
   id: 'aa-none-combined',
   severity: Severity.error,
-  specAnchor: 'combining-aa-commands',
-  description: 'AA NONE cannot be combined with other AA commands.',
-  explanation: 'AA NONE means that no activation times are known. It '
-      'overrides all other activation times. If an airspace has AA NONE, it '
-      'must not have any other AA command. Readers can understand the '
-      'combination in different ways.',
-  correctExample: 'AA NONE',
-  incorrectExample: 'AA NONE\n'
+  versions: SpecVersion.only21,
+  specAnchor: 'aa-airspace-activation-times',
+  anchorInVersion21Text: true,
+  description: 'In version 2.1, AA NONE cannot be combined with other AA '
+      'commands.',
+  explanation: 'In version 2.1, AA NONE means that no activation times are '
+      'known. It overrides all other activation times. If an airspace has AA '
+      'NONE, it must not have any other AA command. Readers can understand '
+      'the combination in different ways.\n'
+      '\n'
+      'Version 3.0 does not allow AA NONE at all. The rule aa-none-removed '
+      'reports it.',
+  correctExample: '*VERSION: 2.1\n'
+      '...\n'
+      'AA NONE',
+  incorrectExample: '*VERSION: 2.1\n'
+      '...\n'
+      'AA NONE\n'
       'AA 2026-07-04T08:00Z/2026-07-04T16:00Z',
   checkAirspace: (ctx, a) {
     final list = _aaOf(ctx, a);

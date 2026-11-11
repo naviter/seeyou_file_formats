@@ -362,6 +362,39 @@ const Map<String, String> emergencyCodes = {
 };
 
 // ---------------------------------------------------------------------------
+// AS: airspace source
+// ---------------------------------------------------------------------------
+
+/// The values of the `AS` command, as in the table of the specification.
+const List<String> airspaceSources = ['AIP', 'NOTAM', 'AIP+NOTAM', 'CUSTOM'];
+
+/// The characters that separate the words of a wrong `AS` value, for
+/// example `AIP + NOTAM` or `AIP,NOTAM`.
+final RegExp _sourceSeparator = RegExp(r'[\s+,;/&|]+');
+
+/// The words of an `AS` value in upper case, without separators. For
+/// example `{AIP, NOTAM}` for `notam, AIP`.
+Set<String> airspaceSourceWords(String value) => {
+      for (final w in value.toUpperCase().split(_sourceSeparator))
+        if (w.isNotEmpty) w
+    };
+
+/// The correct value for an `AS` value that is wrong only in its form, for
+/// example `AIP + NOTAM`, `NOTAM+AIP` or `AIP+`. Returns null if [value] is
+/// a correct value (in any case), or if there is no single correct value.
+String? airspaceSourceCorrection(String value) {
+  if (airspaceSources.contains(value.toUpperCase())) return null;
+  final words = airspaceSourceWords(value);
+  if (words.length == 1 && airspaceSources.contains(words.first)) {
+    return words.first;
+  }
+  if (words.length == 2 && words.containsAll(const {'AIP', 'NOTAM'})) {
+    return 'AIP+NOTAM';
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------------------
 // All attributes
 // ---------------------------------------------------------------------------
 

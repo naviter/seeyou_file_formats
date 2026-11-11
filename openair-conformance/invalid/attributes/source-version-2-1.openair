@@ -1,0 +1,15 @@
+*VERSION: 2.1
+*WRITTEN_BY: openair-conformance
+* Tests: AS in a file of version 2.1. AS is new in version 3.0.
+
+AC UNC
+AY TRA
+AN Example TRA
+AS NOTAM
+AH 4500 FT AMSL
+AL GND
+DP 46:00:00N 014:00:00E
+DP 46:00:00N 014:10:00E
+DP 45:55:00N 014:10:00E
+DP 45:55:00N 014:00:00E
+DP 46:00:00N 014:00:00E

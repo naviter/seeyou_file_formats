@@ -1,7 +1,7 @@
 ---
 title: Extended OpenAir file format specification (Draft)
 description: SeeYou OpenAir specification with Naviter extensions, Copyright © 2024-2026, Naviter d.o.o. Licensed under the MIT License
-date: 2026-11-08
+date: 2026-11-11
 version: 3.0.0 Draft
 header: ${title} - Naviter d.o.o.
 footer: Page ${pageNo} of ${pageCount}
@@ -50,7 +50,8 @@ For this reason:
 | `AY` | `AY Type` | Airspace type (CTR, TMA, RMZ, etc.) | No | [AY](#ay-airspace-type) |
 | `AF` | `AF Frequency` | Communication frequency. Can be used more than once. | No | [AF](#af-airspace-frequency) |
 | `AG` | `AG Station Name` | Controlling station name | No | [AG](#ag-station-name) |
-| `AA` | `AA StartDateTime/EndDateTime`, `AA [Weekdays] StartTime/EndTime [StartDate/EndDate]`, `AA EXCEPT Date`, `AA EXCEPT StartDate/EndDate` or `AA NONE` | Activation times (UTC) | No | [AA](#aa-airspace-activation-times) |
+| `AS` | `AS Source` | Airspace source (AIP, NOTAM, AIP+NOTAM, CUSTOM) | No | [AS](#as-airspace-source) |
+| `AA` | `AA StartDateTime/EndDateTime`, `AA [Weekdays] StartTime/EndTime [StartDate/EndDate]`, `AA EXCEPT Date`, `AA EXCEPT StartDate/EndDate` | Activation times (UTC) | No | [AA](#aa-airspace-activation-times) |
 | `AX` | `AX Code` | Transponder code (4 octal digits) | No | [AX](#ax-transponder-code) |
 | `AH` | `AH Altitude Unit AltRef`, `AH FLnnn` or `AH UNL` | Upper altitude limit | Yes | [AH](#ah-upper-altitude-limit) |
 | `AL` | `AL Altitude Unit AltRef`, `AL FLnnn` or `AL GND` | Lower altitude limit | Yes | [AL](#al-lower-altitude-limit) |
@@ -63,7 +64,7 @@ For this reason:
 
 \* Each airspace must have at least one geometry command: `DP`, `DA`, `DB`, `DC` or `DY`. `V` alone is not a geometry.
 
-Each airspace must have exactly one `AC`, one `AN`, one `AH` and one `AL` command. Each airspace must not have more than one `AY`, `AG` or `AX` command. `AF` and the `AA`, `D` and `V` commands can be used more than once.
+Each airspace must have exactly one `AC`, one `AN`, one `AH` and one `AL` command. Each airspace must not have more than one `AY`, `AG`, `AS` or `AX` command. `AF` and the `AA`, `D` and `V` commands can be used more than once.
 
 ## Units
 
@@ -335,6 +336,62 @@ AG Nordholz Radar
 
 
 
+#### AS: Airspace Source
+
+*Optional. New in version 3.0.* Says where the airspace and its activation are published. An airspace must not have more than one `AS` command.
+
+Format:
+```
+AS Source
+```
+
+`Source` is one of these values:
+
+| Source    | Meaning |
+| --------- | ------- |
+| AIP       | The airspace and its activation times are published in the Aeronautical Information Publication (AIP), including AIP amendments and AIP supplements. |
+| NOTAM     | The airspace exists only because of a NOTAM. For example, a temporary restricted area for an air show. |
+| AIP+NOTAM | The airspace is published in the AIP, and a NOTAM can also activate it. A NOTAM can activate the airspace at times that are not in the file. |
+| CUSTOM    | The airspace does not come from an official publication. The file author or another source defines it, for example a competition organiser or a club. |
+
+If an airspace has no `AS` command, the reader treats it as `AS AIP`. A reader treats a value that it does not know in the same way. Later versions of this specification can add values.
+
+> [!IMPORTANT]
+> `AS` does not change the meaning of the `AA` commands. A reader decides when the airspace is active only from the `AA` commands, see [AA](#aa-airspace-activation-times). This keeps the file [self-contained](#self-contained-data).
+>
+> * An airspace with `AS NOTAM` and no `AA` command is always active, the same as any other airspace without `AA` commands.
+> * If the writer knows the activation times from a NOTAM, it writes them as `AA` commands.
+>
+> A client can use `AS` to inform the pilot. For example, it can show that NOTAMs can change the activation of the airspace, or it can let the pilot hide airspaces by their source.
+
+A reader that does not support `AS` can ignore it. This is safe, because `AS` does not change the meaning of any other command.
+
+`AS` and [`AY`](#ay-airspace-type) are independent. `AY` gives the type of the airspace. `AS` gives the source. For example, a restricted area that a NOTAM activates keeps `AY R` and has `AS AIP+NOTAM`.
+
+Examples:
+
+```
+AC UNC
+AY TRA
+AN TRA Weser
+AS AIP+NOTAM
+AA MON-FRI 07:00Z/15:00Z 2026-11-10/2027-01-08
+```
+
+The AIP publishes the TRA with a schedule on working days. A NOTAM can also activate it at other times. These other times are not in the file.
+
+```
+AC UNC
+AY R
+AN ED-R Air Show
+AS NOTAM
+AA 2026-07-04T08:00Z/2026-07-04T16:00Z
+```
+
+A NOTAM publishes this restricted area. The writer wrote the activation time from the NOTAM as an `AA` command.
+
+
+
 #### AA: Airspace Activation Times
 *Optional.* `AA` commands specify when the airspace is active. There are three kinds of `AA` command:
 
@@ -342,7 +399,7 @@ AG Nordholz Radar
 * **Weekday:** `AA [Weekdays] StartTime/EndTime [StartDate/EndDate]` defines a schedule that repeats every week. See [Weekday activation](#weekday-activation). *New in version 3.0.*
 * **Exception:** `AA EXCEPT Date` or `AA EXCEPT StartDate/EndDate` removes the weekday schedule on one date or a range of dates. See [Exceptions](#exceptions). *New in version 3.0.*
 
-`AA NONE` is a special case, see [Interval activation](#interval-activation).
+An airspace without `AA` commands is always active. `AA NONE` is not allowed, see [AA NONE](#aa-none).
 
 `DateTime`, `Date` and `Time` are defined in [Time](#time).
 
@@ -361,20 +418,16 @@ AA StartDateTime/EndDateTime
 
 StartDateTime and EndDateTime are `DateTime` values, see [Time](#time). Together they are an ISO 8601 time interval. The interval must use UTC (Zulu) time. Local time or time zone offsets are not supported.
 
-No other ISO 8601 interval form is allowed. For example, a start and a duration (`2026-07-04T08:00Z/PT8H`) is not allowed. The only exception is `NONE`, as described below.
+No other ISO 8601 interval form is allowed. For example, a start and a duration (`2026-07-04T08:00Z/PT8H`) is not allowed. The only exception is `NONE` for an open start or an open end, as described below.
 
 The end must be after the start. An interval with the same start and end is not valid.
 
 Multiple `AA` commands are permitted within a single airspace definition. Each interval `AA` command defines one activation interval. When multiple activation intervals are provided, they should be sorted from earliest to latest by their start time. See [Combining AA commands](#combining-aa-commands) for the recommended order. Activation intervals should not overlap. Adjacent intervals may be represented as separate `AA` commands, but maintainers are encouraged to merge them when possible. 
 
-To handle unknown or flexible activation times, use the NONE token:
+To handle an unknown start or end, use the NONE token:
 * `AA StartDateTime/EndDateTime`: Defines a fixed activation interval.
 * `AA StartDateTime/NONE`: The airspace becomes active at StartDateTime, and stays active until an unspecified end time.
 * `AA NONE/EndDateTime`: The airspace is active until EndDateTime, with no known start time.
-* `AA NONE`: No specific activation times are defined. The airspace is included in the data but only shown when activation times are later provided (e.g. by NOTAM). No other AA commands may follow — this overrides them all.
-
-> [!IMPORTANT]
-> `AA NONE` overrides all other activation-time definitions for the airspace. If `AA NONE` is used, no other `AA` commands may be present in the same airspace definition. Airspace data maintainers and navigation software developers must pay special attention to `NONE`, because it changes the interpretation of the activation schedule.
 
 Example:
 
@@ -385,9 +438,13 @@ AA 2024-12-17T00:00Z/2024-12-17T24:00Z   * Active for the entire UTC day
 AA 2024-12-17T00:00Z/NONE                * Active from midnight UTC until unspecified end
 ----
 AA NONE/2024-12-18T00:00Z                * Active until midnight UTC, with unknown start
-----
-AA NONE                                  * No defined time - inactive. SeeYou Software will not show this airspace on the map.
 ```
+
+##### AA NONE
+
+*Removed in version 3.0.* Version 2.1 allowed `AA NONE`. It meant that the airspace has no known activation times, and that a client does not show it until activation times are known, for example from a NOTAM. This is now replaced with an `AS NOTAM` command.
+
+An OpenAir file is not a storage for airspaces that are not used. If an airspace is defined in the file, it must be there for a reason.
 
 ##### Weekday activation
 
@@ -466,7 +523,6 @@ One airspace definition can have interval, weekday and exception `AA` commands t
 
 1. The airspace is active when at least one interval or weekday `AA` command says it is active.
 2. `AA EXCEPT` commands then remove weekday windows, as described in [Exceptions](#exceptions).
-3. `AA NONE` cannot be combined with any other `AA` command, see [Interval activation](#interval-activation).
 
 The recommended order of the commands is:
 

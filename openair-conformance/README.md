@@ -76,17 +76,20 @@ Covered:
   allowed on the same line as `AN` or `AG`.
 - **Airspace structure:** every airspace starts with `AC`, has `AN`, `AH`,
   `AL` and a geometry (`V` alone is not a geometry). An airspace has at most
-  one `AC`, `AN`, `AY`, `AG`, `AX`, `AH` and `AL`. `AF` can be used more than
-  once. In version 2.1 `AN` is optional.
+  one `AC`, `AN`, `AY`, `AG`, `AS`, `AX`, `AH` and `AL`. `AF` can be used
+  more than once. In version 2.1 `AN` is optional.
 - **Attributes:** the classes of `AC`, the types of `AY`, and `AX` with
   exactly 4 octal digits. `AF` with exactly three decimals and no unit, in
   the VHF air band (118.000 to 136.990), as a 25 kHz or 8.33 kHz channel
-  name and not as the exact radio frequency.
+  name and not as the exact radio frequency. `AS` with the values `AIP`,
+  `NOTAM`, `AIP+NOTAM` and `CUSTOM`, and no other values. `AS` is new in
+  version 3.0.
 - **Altitude:** the unit and the reference are required, `FL`, `GND` and
   `UNL`, `MSL` as an alias of `AMSL`, `FL 95` with a space, `9500 FT STD` as
   the same altitude as `FL95`, and the lower limit below the upper limit.
 - **Activation times (`AA`):** only the allowed ISO 8601 forms (also times
-  with seconds), intervals, `NONE`, weekday commands, `AA EXCEPT`, 24:00Z as
+  with seconds), intervals, `NONE` for an open start or end, `AA NONE`
+  (allowed only in version 2.1), weekday commands, `AA EXCEPT`, 24:00Z as
   an end time only, and sun events. The specification says that the weekday
   and the date of a sun window mean the local day at the airspace. The sun
   event cases use local solar time for the local day. They test the polar

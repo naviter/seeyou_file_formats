@@ -16,7 +16,7 @@ import 'support/example_wrapper.dart';
 /// The allowed ID prefixes of each rule group.
 const Map<String, List<String>> _groupPrefixes = {
   'header': ['file-', 'header-', 'case-', 'command-', 'airspace-'],
-  'attributes': ['ac-', 'ay-', 'an-', 'af-', 'ag-', 'ax-'],
+  'attributes': ['ac-', 'ay-', 'an-', 'af-', 'ag-', 'as-', 'ax-'],
   'altitude': ['altitude-'],
   'activation': ['aa-'],
   'geometry': [
@@ -53,6 +53,7 @@ const Set<String> _exampleWithoutFix = {
   'altitude-flight-level-invalid',
   'aa-invalid-syntax',
   'aa-time-zone-not-z', // the example uses +02:00, not UTC
+  'aa-none-none', // the fix to AA NONE is only for version 2.1
 };
 
 /// True if [line] is a header comment (`*VERSION` or `*WRITTEN_BY`, in any

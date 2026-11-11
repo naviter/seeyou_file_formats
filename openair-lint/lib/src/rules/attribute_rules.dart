@@ -6,7 +6,7 @@ import '../model/openair_file.dart';
 import '../spec_version.dart';
 import 'rule.dart';
 
-/// Rules for the airspace attributes AC, AY, AN, AF, AG and AX.
+/// Rules for the airspace attributes AC, AY, AN, AF, AG, AS and AX.
 ///
 /// The tables of allowed values and the value checks are in
 /// `lib/src/attributes/attribute_values.dart`.
@@ -30,6 +30,9 @@ final List<Rule> attributeRules = [
   _agStationIsFrequency,
   _agContainsAsterisk,
   _agContainsAsteriskV21,
+  _asSourceMissing,
+  _asUnknownSource,
+  _asNeedsVersion3,
   _axNotFourDigits,
   _axNotOctal,
   _axNotOctalV21,
@@ -693,6 +696,122 @@ final Rule _agStationIsFrequency = Rule(
         c,
         '"${c.argument}" is a frequency, not a station name. Put the '
         'frequency in AF, and the name of the station in AG.');
+  },
+);
+
+// ---------------------------------------------------------------------------
+// AS
+// ---------------------------------------------------------------------------
+
+const String _sourceList = 'AIP, NOTAM, AIP+NOTAM or CUSTOM';
+
+final Rule _asSourceMissing = Rule(
+  id: 'as-source-missing',
+  severity: Severity.error,
+  versions: SpecVersion.all,
+  specAnchor: 'as-airspace-source',
+  description: 'The AS command must contain a source.',
+  explanation: 'AS says where the airspace and its activation are '
+      'published. The values are $_sourceList. An AS command without a '
+      'value has no meaning. Write the value, or remove the AS command. An '
+      'airspace without AS is the same as "AS AIP".',
+  correctExample: 'AS NOTAM',
+  incorrectExample: 'AS',
+  keywords: {'AS'},
+  checkCommand: (ctx, c, a) {
+    if (airspaceSourceWords(c.argument).isNotEmpty) return;
+    ctx.reportArgument(
+        c,
+        'AS has no source. Write $_sourceList, for example "AS NOTAM", or '
+        'remove the AS command.');
+  },
+);
+
+final Rule _asUnknownSource = Rule(
+  id: 'as-unknown-source',
+  severity: Severity.error,
+  versions: SpecVersion.all,
+  specAnchor: 'as-airspace-source',
+  fixDescription: '--fix writes the correct value when the value has the '
+      'right sources in a wrong form, for example "AIP+NOTAM" in place of '
+      '"AIP + NOTAM" or "NOTAM+AIP", and "AIP" in place of "AIP+". It does '
+      'not change other values.',
+  description: 'The AS value must be AIP, NOTAM, AIP+NOTAM or CUSTOM.',
+  explanation: 'AS says where the airspace and its activation are '
+      'published. Only these values are allowed:\n'
+      '\n'
+      'AIP: the airspace and its activation times are published in the '
+      'AIP, including AIP amendments and AIP supplements.\n'
+      'NOTAM: the airspace exists only because of a NOTAM.\n'
+      'AIP+NOTAM: the airspace is published in the AIP, and a NOTAM can also '
+      'activate it.\n'
+      'CUSTOM: the airspace does not come from an official publication.\n'
+      '\n'
+      'AIP+NOTAM is one value. Write it without spaces. Other combinations, '
+      'for example NOTAM+CUSTOM, are not allowed.',
+  correctExample: 'AS AIP+NOTAM',
+  incorrectExample: 'AS AIP + NOTAM',
+  keywords: {'AS'},
+  checkCommand: (ctx, c, a) {
+    final value = c.argument;
+    // Lower case is reported by case-not-upper-case.
+    if (airspaceSourceWords(value).isEmpty ||
+        airspaceSources.contains(value.toUpperCase())) {
+      return;
+    }
+    final correction = airspaceSourceCorrection(value);
+    final String advice;
+    if (correction != null) {
+      advice = 'Write "AS $correction".';
+    } else if (airspaceSourceWords(value)
+        .every(const {'AIP', 'NOTAM', 'CUSTOM'}.contains)) {
+      advice = 'The only combination is AIP+NOTAM. Write one value: '
+          '$_sourceList.';
+    } else {
+      advice = 'The values are $_sourceList. ${_unknownSourceHint(value)}';
+    }
+    ctx.reportArgument(c, '"$value" is not a value of AS. $advice',
+        fix: correction == null ? null : argumentFix(c, correction));
+  },
+);
+
+String _unknownSourceHint(String value) {
+  final upper = value.toUpperCase();
+  if (upper.contains('AIP') || upper == 'SUP' || upper == 'AMDT') {
+    return 'AIP amendments and AIP supplements are part of the AIP: '
+        'write "AIP" or "AIP+NOTAM".';
+  }
+  if (upper.contains('NOTAM')) return 'Write "NOTAM" or "AIP+NOTAM".';
+  return 'If the airspace does not come from an official publication, '
+      'write "CUSTOM".';
+}
+
+final Rule _asNeedsVersion3 = Rule(
+  id: 'as-needs-version-3',
+  severity: Severity.error,
+  versions: SpecVersion.only21,
+  specAnchor: 'as-airspace-source',
+  description: 'The AS command needs version 3.0.',
+  explanation: 'The AS command is new in version 3.0. Version 2.1 does not '
+      'define it, so a reader of version 2.1 does not know it.\n'
+      '\n'
+      'Write "*VERSION: 3.0" in the header, or remove the AS command.',
+  correctExample: '*VERSION: 2.1\n'
+      '...\n'
+      '* Source: NOTAM',
+  incorrectExample: '*VERSION: 2.1\n'
+      '...\n'
+      'AS NOTAM',
+  keywords: {'AS'},
+  checkCommand: (ctx, c, a) {
+    final version = ctx.target != null
+        ? 'version ${ctx.specVersion.label} (the --target option)'
+        : 'version ${ctx.specVersion.label}';
+    ctx.reportKeyword(
+        c,
+        'AS is new in version 3.0, but this file is checked as $version. '
+        'A reader of version 2.1 does not know the AS command. Write '
+        '"*VERSION: 3.0" in the header, or remove the AS command.');
   },
 );
 

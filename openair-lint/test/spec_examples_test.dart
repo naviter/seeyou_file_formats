@@ -237,7 +237,14 @@ void main() {
       'AA SUN 22:30Z/23:30Z',
       'AA MON-FRI 07:00Z/15:00Z|AA EXCEPT 2026-12-25',
       'AA MON-FRI 07:00Z/15:00Z|AA EXCEPT 2026-12-31/2027-01-01',
-      'AA NONE',
+      // AS: the values of the command reference and of the text.
+      'AS AIP',
+      'AS NOTAM',
+      'AS CUSTOM',
+      'AS AIP+NOTAM',
+      // "A restricted area that a NOTAM activates keeps AY R and has
+      // AS AIP+NOTAM."
+      'AY R|AS AIP+NOTAM',
       'AC D',
       'AC UNC|AY Q',
       'AN CTR Muenchen',
@@ -274,7 +281,14 @@ void main() {
       'AA MON-MON 09:00Z/11:30Z': 'aa-weekday-range-same-day',
       // "06:00Z/SR is wrong on days when sunrise is before 06:00 UTC."
       'AA 06:00Z/SR': 'aa-sun-event-order-changes',
-      'AA MON 09:00Z/11:30Z|AA NONE': 'aa-none-combined',
+      // "Version 3.0 does not allow AA NONE."
+      'AA NONE': 'aa-none-removed',
+      // AS: "Source is one of these values". Other values, also other
+      // combinations, are not valid.
+      'AS NOTAM+CUSTOM': 'as-unknown-source',
+      'AS AIP + NOTAM': 'as-unknown-source',
+      // "An airspace must not have more than one AS command."
+      'AS AIP|AS NOTAM': 'airspace-attribute-duplicate',
       'AA 2026-07-04T08:00+01:00/2026-07-04T16:00+01:00': 'aa-time-zone-not-z',
       'AA 2026-07-04T08:00Z/SS': 'aa-sun-event-not-allowed',
       'AA EXCEPT 2026-12-25': 'aa-except-without-weekday',
@@ -375,6 +389,10 @@ void main() {
     const invalid = <String, String>{
       'AH 100m AGL/423m AMSL': 'altitude-multiple-values',
       'AA MON 09:00Z/11:30Z': 'aa-needs-version-3',
+      // AA NONE cannot be combined with other AA commands in version 2.1.
+      'AA 2024-12-17T00:00Z/2024-12-17T10:00Z|AA NONE': 'aa-none-combined',
+      // AS is new in version 3.0.
+      'AS NOTAM': 'as-needs-version-3',
       // Version 2.1 says that intervals "must be sorted".
       'AA 2024-12-17T00:00Z/2024-12-17T10:00Z|'
               'AA 2023-12-16T12:00Z/2023-12-16T13:00Z':

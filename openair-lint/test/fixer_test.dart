@@ -290,7 +290,17 @@ void main() {
       ('af-invalid-format', 'AF 123.300 MHz', 'AF 123.300', SpecVersion.v2_1),
       ('af-not-three-decimals', 'AF 123.3', 'AF 123.300', SpecVersion.v3_0),
       ('af-not-three-decimals', 'AF 123.3000', 'AF 123.300', SpecVersion.v3_0),
-      ('aa-none-none', 'AA NONE/NONE', 'AA NONE', SpecVersion.v3_0),
+      ('aa-none-none', 'AA NONE/NONE', 'AA NONE', SpecVersion.v2_1),
+      ('as-unknown-source', 'AS AIP + NOTAM', 'AS AIP+NOTAM', SpecVersion.v3_0),
+      ('as-unknown-source', 'AS AIP, NOTAM', 'AS AIP+NOTAM', SpecVersion.v3_0),
+      ('as-unknown-source', 'AS AIP+', 'AS AIP', SpecVersion.v3_0),
+      (
+        'as-unknown-source',
+        'AS AIP+NOTAM+AIP',
+        'AS AIP+NOTAM',
+        SpecVersion.v3_0
+      ),
+      ('as-unknown-source', 'AS NOTAM+AIP', 'AS AIP+NOTAM', SpecVersion.v3_0),
       (
         'aa-invalid-syntax',
         'AA MON 07:00Z-15:00Z',

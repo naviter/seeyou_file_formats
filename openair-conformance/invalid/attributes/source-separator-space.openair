@@ -1,11 +1,11 @@
 *VERSION: 3.0
 *WRITTEN_BY: openair-conformance
-* Tests: AA NONE alone: no known activation times.
+* Tests: AS AIP + NOTAM with spaces. The value is AIP+NOTAM, without spaces.
 
-AC D
+AC UNC
 AY TRA
 AN Example TRA
-AA NONE
+AS AIP + NOTAM
 AH 4500 FT AMSL
 AL GND
 DP 46:00:00N 014:00:00E

@@ -1,6 +1,6 @@
 *VERSION: 3.0
 *WRITTEN_BY: openair-conformance
-* Tests: AA NONE/NONE. Write AA NONE.
+* Tests: AA NONE/NONE is not allowed.
 
 AC D
 AY TRA

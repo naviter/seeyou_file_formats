@@ -354,8 +354,9 @@ final Rule _airspaceGeometryMissing = Rule(
 
 /// The attribute commands that an airspace can have only once, other than
 /// `AC` (it always starts a new airspace) and `AH` and `AL` (they have their
-/// own rules).
-const List<String> _singleAttributes = ['AN', 'AY', 'AG', 'AX'];
+/// own rules). `AS` is new in version 3.0. In a file of version 2.1, the
+/// rule `as-needs-version-3` reports every `AS` command.
+const List<String> _singleAttributes = ['AN', 'AY', 'AG', 'AS', 'AX'];
 
 /// The `A` commands that an airspace can have more than once.
 const Set<String> _repeatableAttributes = {'AA', 'AF'};
@@ -380,10 +381,11 @@ final Rule _airspaceAttributeDuplicate = Rule(
   severity: Severity.error,
   versions: SpecVersion.only3,
   specAnchor: 'command-reference',
-  description: 'An airspace must have at most one AN, AY, AG and AX '
+  description: 'An airspace must have at most one AN, AY, AG, AS and AX '
       'command.',
   explanation: 'Each airspace can have at most one "AN" (name), "AY" '
-      '(type), "AG" (station) and "AX" (transponder code) command. When a '
+      '(type), "AG" (station), "AS" (source) and "AX" (transponder code) '
+      'command. When a '
       'command is in the same airspace two times, readers use only one of '
       'the values, and different readers use different ones. Some readers '
       'even start a new airspace at the second "AN".\n'
@@ -411,6 +413,7 @@ final Rule _airspaceAttributeDuplicate = Rule(
       for (final c in part) {
         final k = c.upperKeyword;
         if (!_singleAttributes.contains(k)) continue;
+        if (k == 'AS' && ctx.specVersion == SpecVersion.v2_1) continue;
         final first = firsts[k];
         if (first == null) {
           firsts[k] = c;

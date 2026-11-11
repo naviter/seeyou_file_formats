@@ -497,6 +497,50 @@ void main() {
     test('does not fire for AA NONE', () {
       expect(fires('aa-none-none', ['NONE']), isEmpty);
     });
+    test('the message in version 3.0 does not suggest AA NONE', () {
+      final d = lintRule('aa-none-none', aa(['NONE/NONE']));
+      expect(d.single.message, isNot(contains('Write AA NONE')));
+      expect(d.single.fix, isNull);
+    });
+    test('version 2.1 suggests AA NONE and has a fix', () {
+      final d = lintRule('aa-none-none', aa(['NONE/NONE'], version: '2.1'));
+      expect(d.single.message, contains('Write AA NONE'));
+      expect(d.single.fix, isNotNull);
+    });
+  });
+
+  group('aa-none-removed', () {
+    test('fires for AA NONE in version 3.0', () {
+      expect(fires('aa-none-removed', ['NONE']), [5]);
+      expect(fires('aa-none-removed', ['MON 09:00Z/10:00Z', 'NONE']), [6]);
+    });
+    test('does not fire for NONE on one side of an interval', () {
+      expect(
+          fires('aa-none-removed',
+              ['2026-07-04T08:00Z/NONE', 'NONE/2026-07-05T08:00Z']),
+          isEmpty);
+    });
+    test('does not apply to version 2.1', () {
+      expect(fires('aa-none-removed', ['NONE'], version: '2.1'), isEmpty);
+    });
+  });
+
+  group('schedule codes', () {
+    test('NOTAM suggests AS NOTAM in version 3.0', () {
+      final d = lintRule('aa-invalid-syntax', aa(['NOTAM']));
+      expect(d.single.message, contains('AS NOTAM'));
+      expect(d.single.message, isNot(contains('AA NONE')));
+    });
+    test('NOTAM suggests AA NONE in version 2.1', () {
+      final d = lintRule('aa-invalid-syntax', aa(['NOTAM'], version: '2.1'));
+      expect(d.single.message, contains('AA NONE'));
+    });
+    test('HX does not suggest AA NONE in version 3.0', () {
+      for (final v in ['HX', 'MON-FRI HX', 'EXCEPT HX']) {
+        final d = lintRule('aa-invalid-syntax', aa([v]));
+        expect(d.single.message, isNot(contains('AA NONE')), reason: v);
+      }
+    });
   });
 
   group('aa-interval-end-before-start', () {
@@ -1424,16 +1468,27 @@ void main() {
     });
   });
 
-  group('aa-none-combined', () {
+  group('aa-none-combined (version 2.1)', () {
     test('fires for AA NONE with other AA commands', () {
       expect(
           fires('aa-none-combined',
-              ['NONE', '2026-07-04T08:00Z/2026-07-04T16:00Z']),
+              ['NONE', '2026-07-04T08:00Z/2026-07-04T16:00Z'],
+              version: '2.1'),
           [5]);
-      expect(fires('aa-none-combined', ['MON 09:00Z/10:00Z', 'NONE']), [6]);
+      expect(
+          fires('aa-none-combined',
+              ['2026-07-04T08:00Z/2026-07-04T16:00Z', 'NONE'],
+              version: '2.1'),
+          [6]);
     });
     test('does not fire for AA NONE alone', () {
-      expect(fires('aa-none-combined', ['NONE']), isEmpty);
+      expect(fires('aa-none-combined', ['NONE'], version: '2.1'), isEmpty);
+    });
+    test('does not apply to version 3.0 (aa-none-removed reports AA NONE)', () {
+      expect(
+          fires('aa-none-combined',
+              ['NONE', '2026-07-04T08:00Z/2026-07-04T16:00Z']),
+          isEmpty);
     });
   });
 
@@ -1562,7 +1617,6 @@ void main() {
         ],
         ['2024-12-17T00:00Z/NONE'],
         ['NONE/2024-12-18T00:00Z'],
-        ['NONE'],
         ['MON 09:00Z/11:30Z'],
         ['MON-FRI 07:00Z/15:00Z'],
         ['SAT,SUN 08:00Z/18:00Z'],

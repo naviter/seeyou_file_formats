@@ -35,7 +35,7 @@ void main() {
   test('the base airspace has no attribute diagnostics', () {
     final ids = attributeIds();
     final d = lintAll(airspace('AY CTR\nAN Test\nAF 118.480\nAG Test Tower\n'
-            'AX 7000\n'))
+            'AS AIP+NOTAM\nAX 7000\n'))
         .where((d) => ids.contains(d.ruleId))
         .toList();
     expect(d, isEmpty);
@@ -46,12 +46,13 @@ void main() {
       final r = findRule(id)!;
       expect(r.specUrl, startsWith('https://github.com/naviter/'));
     }
-    expect(attributeIds(), hasLength(23));
+    expect(attributeIds(), hasLength(26));
   });
 
   test('the tables match the specification', () {
     expect(airspaceTypes.toSet(), specTable('#### AY'));
     expect(airspaceClasses.toSet(), specTable('#### AC'));
+    expect(airspaceSources.toSet(), specTable('#### AS'));
   });
 
   group('ac-class-missing', () {
@@ -525,6 +526,119 @@ void main() {
     });
   });
 
+  group('airspaceSourceCorrection', () {
+    test('gives the value for the right sources in a wrong form', () {
+      for (final (value, correct) in [
+        ('AIP + NOTAM', 'AIP+NOTAM'),
+        ('AIP,NOTAM', 'AIP+NOTAM'),
+        ('AIP NOTAM', 'AIP+NOTAM'),
+        ('NOTAM+AIP', 'AIP+NOTAM'),
+        ('notam/aip', 'AIP+NOTAM'),
+        ('AIP+NOTAM+AIP', 'AIP+NOTAM'),
+        ('AIP+', 'AIP'),
+        (' CUSTOM+', 'CUSTOM'),
+      ]) {
+        expect(airspaceSourceCorrection(value), correct, reason: value);
+      }
+    });
+    test('is null for a correct value or no single correct value', () {
+      for (final value in [
+        'AIP',
+        'AIP+NOTAM',
+        'aip+notam',
+        'NOTAM+CUSTOM',
+        'AIP+NOTAM+CUSTOM',
+        'AIC',
+        '',
+      ]) {
+        expect(airspaceSourceCorrection(value), isNull, reason: value);
+      }
+    });
+  });
+
+  group('as-source-missing', () {
+    const id = 'as-source-missing';
+    test('fires for AS without a value', () {
+      final d = single(id, airspace('AS\n'));
+      expect(d.line, 4);
+      expect(d.severity, Severity.error);
+    });
+    test('fires for AS with only a separator', () {
+      expect(linesOf(id, airspace('AS +\n')), [4]);
+      expect(lintRule('as-unknown-source', airspace('AS +\n')), isEmpty);
+    });
+    test('does not fire for a source', () {
+      expect(lintRule(id, airspace('AS NOTAM\n')), isEmpty);
+    });
+  });
+
+  group('as-unknown-source', () {
+    const id = 'as-unknown-source';
+    test('valid values', () {
+      for (final v in ['AIP', 'NOTAM', 'AIP+NOTAM', 'CUSTOM']) {
+        expect(lintRule(id, airspace('AS $v\n')), isEmpty, reason: v);
+      }
+    });
+    test('lower case is left to case-not-upper-case', () {
+      final text = airspace('AS aip+notam\n');
+      expect(lintRule(id, text), isEmpty);
+      expect(linesOf('case-not-upper-case', text), [4]);
+    });
+    test('the right sources in a wrong form have a fix', () {
+      for (final v in ['AIP + NOTAM', 'NOTAM+AIP', 'AIP,NOTAM', 'AIP+']) {
+        final d = single(id, airspace('AS $v\n'));
+        expect(d.fix, isNotNull, reason: v);
+        expect(d.message, contains('Write "AS '), reason: v);
+      }
+    });
+    test('other combinations are not allowed', () {
+      for (final v in ['NOTAM+CUSTOM', 'AIP+CUSTOM', 'AIP+NOTAM+CUSTOM']) {
+        final d = single(id, airspace('AS $v\n'));
+        expect(d.fix, isNull, reason: v);
+        expect(d.message, contains('The only combination is AIP+NOTAM'),
+            reason: v);
+      }
+    });
+    test('an unknown word has a hint and no fix', () {
+      final d = single(id, airspace('AS AIP-SUP\n'));
+      expect(d.message, contains('write "AIP"'));
+      expect(d.fix, isNull);
+      expect(single(id, airspace('AS AIC\n')).message,
+          contains('"AIC" is not a value of AS'));
+    });
+  });
+
+  group('as-needs-version-3', () {
+    const id = 'as-needs-version-3';
+    test('fires for AS in a file of version 2.1', () {
+      final text = airspace('AS NOTAM\n', version: '2.1');
+      final d = single(id, text);
+      expect(d.line, 4);
+      expect(d.severity, Severity.error);
+      expect(linesOf('command-unknown', text), isEmpty);
+    });
+    test('does not fire in a file of version 3.0', () {
+      expect(lintRule(id, airspace('AS NOTAM\n')), isEmpty);
+    });
+  });
+
+  group('AS in other rules', () {
+    test('two AS commands are a duplicate attribute', () {
+      expect(
+          linesOf(
+              'airspace-attribute-duplicate', airspace('AS AIP\nAS NOTAM\n')),
+          [5]);
+    });
+    test('two AS commands in version 2.1 are reported only as AS', () {
+      final text = airspace('AS AIP\nAS NOTAM\n', version: '2.1');
+      expect(linesOf('airspace-attribute-duplicate-v21', text), isEmpty);
+      expect(linesOf('as-needs-version-3', text), [4, 5]);
+    });
+    test('AS is not an unknown command', () {
+      expect(linesOf('command-unknown', airspace('AS NOTAM\n')), isEmpty);
+    });
+  });
+
   group('ax-not-four-digits', () {
     const id = 'ax-not-four-digits';
     test('valid', () {
@@ -763,7 +877,7 @@ Set<String> specTable(String heading) {
   final result = <String>{};
   for (final l in lines.skip(start + 1)) {
     if (l.startsWith('#')) break;
-    final m = RegExp(r'^\|\s*([A-Z]+)\s*\|').firstMatch(l);
+    final m = RegExp(r'^\|\s*([A-Z+]+)\s*\|').firstMatch(l);
     if (m != null) result.add(m.group(1)!);
   }
   return result;

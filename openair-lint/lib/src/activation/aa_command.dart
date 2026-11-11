@@ -35,7 +35,8 @@ sealed class AaCommand {
   String get kindLabel;
 }
 
-/// `AA NONE`: no known activation time.
+/// `AA NONE`: no known activation time. Version 2.1 allows it. Version 3.0
+/// does not allow it (rule `aa-none-removed`).
 final class AaNoneCommand extends AaCommand {
   AaNoneCommand(super.text, super.issues);
 
@@ -211,16 +212,31 @@ const Map<String, String> _scheduleCodes = {
       'commands is always active.',
   'HJ': 'HJ (sunrise to sunset) is not an AA value. Write AA SR/SS.',
   'HN': 'HN (sunset to sunrise) is not an AA value. Write AA SS/SR.',
+  'HX': 'HX (no specific hours) is not an AA value. If the airspace is '
+      'always active, leave out the AA commands. If the activation times '
+      'are not known, remove the airspace from the file.',
+  'HO': 'HO (service available to meet operational requests) is not an AA '
+      'value. If the airspace is always active, leave out the AA commands. '
+      'If the activation times are not known, remove the airspace from the '
+      'file.',
+  'NOTAM': 'NOTAM is not an AA value. Write AS NOTAM for an airspace that '
+      'is activated by NOTAM, and write the known activation times as AA '
+      'commands.',
+  'PH': 'Public holidays are not an AA value. The file must be '
+      'self-contained. Write each holiday as AA EXCEPT Date.',
+  'HOL': 'Public holidays are not an AA value. The file must be '
+      'self-contained. Write each holiday as AA EXCEPT Date.',
+};
+
+/// The advice of [_scheduleCodes] for a file of version 2.1, where it is
+/// different. Version 2.1 allows `AA NONE`.
+const Map<String, String> _scheduleCodesV21 = {
   'HX': 'HX (no specific hours) is not an AA value. Write AA NONE, or '
       'leave out the AA commands.',
   'HO': 'HO (service available to meet operational requests) is not an AA '
       'value. Write AA NONE, or leave out the AA commands.',
   'NOTAM': 'NOTAM is not an AA value. Write AA NONE for an airspace that is '
       'activated by NOTAM.',
-  'PH': 'Public holidays are not an AA value. The file must be '
-      'self-contained. Write each holiday as AA EXCEPT Date.',
-  'HOL': 'Public holidays are not an AA value. The file must be '
-      'self-contained. Write each holiday as AA EXCEPT Date.',
 };
 
 /// The advice for a schedule code after a list of weekdays, for example
@@ -237,7 +253,7 @@ String _scheduleCodeAfterDays(String code, String days) => switch (code) {
 
 const String _forms = 'Use one of these forms: '
     'AA 2026-07-04T08:00Z/2026-07-04T16:00Z, AA MON-FRI 07:00Z/15:00Z, '
-    'AA EXCEPT 2026-12-25 or AA NONE.';
+    'AA EXCEPT 2026-12-25.';
 
 final RegExp _dayWord = RegExp(r'^[A-Za-z,\-]+$');
 
@@ -404,9 +420,10 @@ class _AaParser {
           fixOffset: fixOffset,
           fixLength: fixLength));
 
-  void _syntax(int offset, int length, String message, {String? replacement}) =>
+  void _syntax(int offset, int length, String message,
+          {String? v21Message, String? replacement}) =>
       _issue(AaIssueKind.invalidSyntax, offset, length, message,
-          replacement: replacement);
+          v21Message: v21Message, replacement: replacement);
 
   /// Reports a value in an ISO 8601 form that the specification does not
   /// allow. [note] says which form (from [IsoParse.formNote]); nothing is
@@ -475,12 +492,14 @@ class _AaParser {
       final afterWeekdays =
           k > 0 && words.take(k).every((x) => _dayWord.hasMatch(x.text));
       if (!afterWeekdays) {
-        _syntax(w.offset, w.text.length, _scheduleCodes[codeKey]!);
+        _syntax(w.offset, w.text.length, _scheduleCodes[codeKey]!,
+            v21Message: _scheduleCodesV21[codeKey]);
         return AaUnknownCommand(source, issues);
       }
       final days = text.substring(words.first.offset, words[k - 1].end);
       final weekdays = _parseDayList(words.sublist(0, k));
-      _syntax(w.offset, w.text.length, _scheduleCodeAfterDays(codeKey, days));
+      _syntax(w.offset, w.text.length, _scheduleCodeAfterDays(codeKey, days),
+          v21Message: _scheduleCodesV21[codeKey]);
       return AaWeekdayCommand(source, issues,
           weekdays: weekdays, weekdaysGiven: true);
     }
@@ -524,8 +543,11 @@ class _AaParser {
           AaIssueKind.noneNone,
           first.offset,
           first.text.length,
-          'AA NONE/NONE is not allowed. Write AA NONE for an airspace '
-          'without known activation times.',
+          'AA NONE/NONE is not allowed. If the airspace is always active, '
+          'remove the AA command. If the activation times are not known, '
+          'remove the airspace from the file.',
+          v21Message: 'AA NONE/NONE is not allowed. Write AA NONE for an '
+              'airspace without known activation times.',
           replacement: words.length == 1 ? 'NONE' : null);
       _extraWords(words, 1, 'An interval');
       return AaIntervalCommand(source, issues,
@@ -1207,7 +1229,8 @@ class _AaParser {
     final upper = word.text.toUpperCase();
     final code = _scheduleCodes[upper];
     if (code != null) {
-      _syntax(word.offset, word.text.length, code);
+      _syntax(word.offset, word.text.length, code,
+          v21Message: _scheduleCodesV21[upper]);
       return AaExceptCommand(source, issues);
     }
     final dayParts = upper.split(RegExp('[-,]'));

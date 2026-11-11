@@ -2,8 +2,29 @@
 
 ## Unreleased
 
-The linter follows the revised specification of 2026-11-08. The linter now
-has 155 rules.
+The linter follows the revised specification of 2026-11-11. The linter now
+has 159 rules.
+
+New command `AS` (airspace source) and removed `AA NONE`:
+
+- The new command `AS` says where the airspace and its activation are
+  published: `AIP`, `NOTAM`, `AIP+NOTAM` or `CUSTOM`. `AS` is not an
+  unknown command any more.
+- New rules: `as-source-missing` (error), `as-unknown-source` (error, with
+  fix for the right sources in a wrong form, for example `AIP + NOTAM` or
+  `NOTAM+AIP`) and `as-needs-version-3` (error, 2.1).
+- `airspace-attribute-duplicate` also reports a second `AS` command.
+- New rule `aa-none-removed` (error, 3.0): version 3.0 does not allow
+  `AA NONE`.
+- `aa-none-combined` checks only version 2.1 files now. In version 3.0
+  `aa-none-removed` reports every `AA NONE`.
+- `aa-none-none` gives the fix to `AA NONE` only in version 2.1 files. In
+  version 3.0 the message says: remove the `AA` command if the airspace is
+  always active, or remove the airspace if its activation times are not
+  known.
+- `aa-invalid-syntax`: in version 3.0 files, the messages for `HX`, `HO`
+  and `NOTAM` do not suggest `AA NONE`. For `NOTAM` the message suggests
+  `AS NOTAM`. Version 2.1 files get the old messages.
 
 Automatic fixes:
 

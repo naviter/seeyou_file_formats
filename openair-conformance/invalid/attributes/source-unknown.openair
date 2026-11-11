@@ -1,12 +1,11 @@
 *VERSION: 3.0
 *WRITTEN_BY: openair-conformance
-* Tests: AA NONE together with another AA command.
+* Tests: AS with a value that is not AIP, NOTAM, AIP+NOTAM or CUSTOM.
 
-AC D
+AC UNC
 AY TRA
 AN Example TRA
-AA NONE
-AA 2026-07-04T08:00Z/2026-07-04T16:00Z
+AS AIC
 AH 4500 FT AMSL
 AL GND
 DP 46:00:00N 014:00:00E

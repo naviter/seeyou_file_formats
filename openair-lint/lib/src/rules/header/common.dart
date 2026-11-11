@@ -4,15 +4,18 @@ part of '../header_rules.dart';
 const String _generalAnchor = 'general-requirements';
 
 /// All commands that the specification defines (upper case).
+///
+/// `AS` is new in version 3.0. In a file of version 2.1, the rule
+/// `as-needs-version-3` reports it.
 const Set<String> _specKeywords = {
-  'AC', 'AN', 'AY', 'AF', 'AG', 'AA', 'AX', 'AH', 'AL', //
+  'AC', 'AN', 'AY', 'AF', 'AG', 'AS', 'AA', 'AX', 'AH', 'AL', //
   'DP', 'DA', 'DB', 'DC', 'DY', 'V',
 };
 
 /// The `A` commands that describe the airspace. They come before the
 /// geometry. `AC` is not in this set, because it always starts a block.
 const Set<String> _attributeKeywords = {
-  'AN', 'AY', 'AF', 'AG', 'AA', 'AX', 'AH', 'AL', //
+  'AN', 'AY', 'AF', 'AG', 'AS', 'AA', 'AX', 'AH', 'AL', //
 };
 
 /// The commands that define the geometry, including `V`.

@@ -22,7 +22,7 @@ class RuleGroup {
 /// All rule groups, in documentation order.
 final List<RuleGroup> ruleGroups = [
   RuleGroup('header', 'Header and file', headerRules),
-  RuleGroup('attributes', 'Airspace attributes (AC, AY, AN, AF, AG, AX)',
+  RuleGroup('attributes', 'Airspace attributes (AC, AY, AN, AF, AG, AS, AX)',
       attributeRules),
   RuleGroup('altitude', 'Altitude limits (AH, AL)', altitudeRules),
   RuleGroup('activation', 'Activation times (AA)', activationRules),
