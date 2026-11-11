@@ -3,7 +3,7 @@
 ## Unreleased
 
 The linter follows the revised specification of 2026-11-11. The linter now
-has 159 rules.
+has 161 rules.
 
 New command `AS` (airspace source) and removed `AA NONE`:
 
@@ -30,7 +30,7 @@ Automatic fixes:
 
 - New option `--fix`: fixes the problems that have a safe automatic fix
   and saves the files. New option `--fix-dry-run`: shows the same changes
-  as a diff and does not change the files. 39 rules have a fix. A rule
+  as a diff and does not change the files. 42 rules have a fix. A rule
   fixes a problem only when there is exactly one correct result and the
   meaning of the file does not change. See "Automatic fixes" in the README.
 - Without `--fix`, the summary says how many problems have a fix.
@@ -81,6 +81,12 @@ New rules:
   3.0): only the date, time and interval forms in the specification are
   allowed. In version 2.1 files the same forms are warnings
   (`aa-value-form-not-allowed-v21`, `aa-interval-form-not-allowed-v21`).
+- `aa-time-00-as-end` (error, 3.0, with fix): `00:00Z` is allowed only as a
+  start time. To end at midnight, write `24:00Z` of the day before, for
+  example `2026-07-04T24:00Z` in place of `2026-07-05T00:00Z`, and
+  `22:00Z/24:00Z` in place of `22:00Z/00:00Z`. In version 2.1 files the
+  same problem is a warning (`aa-time-00-as-end-v21`). The messages and
+  fixes of other rules also write an end at midnight as `24:00Z`.
 - `aa-sun-event-fixed-start-near-day-start` (warning): a fixed start time
   very close to the start of the local solar day. A small difference in the
   position of the airspace can move the window by one day.

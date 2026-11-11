@@ -34,6 +34,10 @@ enum AaIssueKind {
   /// `24:00Z` is used as a start time.
   time24AsStart('aa-time-24-as-start'),
 
+  /// `00:00Z` is used as an end time. The meaning is known (midnight), so
+  /// the other rules can still use the command.
+  time00AsEnd('aa-time-00-as-end', blocking: false),
+
   /// `NONE` where the specification does not allow it.
   noneNotAllowed('aa-none-not-allowed'),
 

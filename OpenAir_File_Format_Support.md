@@ -127,6 +127,8 @@ Other ISO 8601 forms are not allowed. Examples of forms that are not allowed: th
 
 `24:00Z` (or `24:00:00Z`) is allowed as an end time. It means the end of the day. It is not allowed as a start time.
 
+*New in version 3.0.* `00:00Z` (or `00:00:00Z`) is allowed as a start time. It means the start of the day. It is not allowed as an end time. To end at midnight UTC, write `24:00Z` of the day before. For example, write `2026-07-04T24:00Z`, not `2026-07-05T00:00Z`.
+
 #### Sun events
 
 *New in version 3.0.* A weekday `AA` command can use a sun event in place of a `Time` value. The sun events are the ICAO abbreviations from ICAO Doc 8400:
@@ -437,7 +439,7 @@ AA 2024-12-17T00:00Z/2024-12-17T24:00Z   * Active for the entire UTC day
 ----
 AA 2024-12-17T00:00Z/NONE                * Active from midnight UTC until unspecified end
 ----
-AA NONE/2024-12-18T00:00Z                * Active until midnight UTC, with unknown start
+AA NONE/2024-12-17T24:00Z                * Active until midnight UTC, with unknown start
 ```
 
 ##### AA NONE
@@ -462,6 +464,7 @@ AA [Weekdays] StartTime/EndTime [StartDate/EndDate]
   * If Weekdays is left out, the schedule applies to every day.
 * **StartTime/EndTime** *(required)*: two `Time` values in UTC, see [Time](#time). For example `09:00Z/11:30Z`. `NONE` is not allowed.
   * `24:00Z` is allowed as EndTime. It means the end of the day.
+  * `00:00Z` is not allowed as EndTime. Use `24:00Z`. For example, write `FRI 22:00Z/24:00Z`, not `FRI 22:00Z/00:00Z`.
   * StartTime, EndTime or both can be a [sun event](#sun-events): `SR`, `SS`, `BCMT` or `EECT`. For example `SR/SS` or `07:00Z/SS`. The client first calculates the sun event for the day, and then applies the other rules.
   * If EndTime is earlier than or equal to StartTime, the window ends on the next day. For example, `FRI 22:00Z/02:00Z` starts on Friday at 22:00 UTC and ends on Saturday at 02:00 UTC. With a sun event, the client compares the calculated times. For example, `SS/SR` starts at sunset and ends at sunrise on the next day.
   * When a sun event is mixed with a fixed time, the writer must check that the order is correct on every day of the schedule. For example, `06:00Z/SR` is wrong on days when sunrise is before 06:00 UTC. On these days, the window would end on the next day.

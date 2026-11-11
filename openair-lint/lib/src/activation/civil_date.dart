@@ -222,3 +222,12 @@ String formatInstant(int ms) {
   final ofDay = ms - date.startInstant;
   return '${date}T${formatTimeOfDay(ofDay)}';
 }
+
+/// Formats the end of an interval like [formatInstant], but midnight is
+/// written as `24:00Z` of the day before. The specification does not allow
+/// `00:00Z` as an end time.
+String formatEndInstant(int ms) {
+  final date = CivilDate.fromInstant(ms);
+  if (ms != date.startInstant) return formatInstant(ms);
+  return '${date.addDays(-1)}T24:00Z';
+}

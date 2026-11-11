@@ -27,6 +27,8 @@ final List<Rule> activationRules = [
   _timeMissingZ,
   _timeZoneNotZ,
   _time24AsStart,
+  _time00AsEnd,
+  _time00AsEndV21,
   _valueFormNotAllowed,
   _valueFormNotAllowedV21,
   _noneNotAllowed,
@@ -161,7 +163,7 @@ class _Interval {
   final int end;
 
   String get label => '${aa.startIsNone ? 'NONE' : formatInstant(start)}/'
-      '${aa.endIsNone ? 'NONE' : formatInstant(end)}';
+      '${aa.endIsNone ? 'NONE' : formatEndInstant(end)}';
 }
 
 /// The usable interval commands of an airspace, in file order.
@@ -409,6 +411,58 @@ final Rule _time24AsStart = _issueRule(
   incorrectExample: 'AA 2026-07-04T24:00Z/2026-07-05T06:00Z',
 );
 
+const String _time00AsEndFix = '--fix writes 24:00Z of the day before in '
+    'place of 00:00Z, for example "2026-07-04T24:00Z" in place of '
+    '"2026-07-05T00:00Z", and "22:00Z/24:00Z" in place of "22:00Z/00:00Z". '
+    'The meaning does not change. A value in a form that is not allowed '
+    '(for example 20260705T0000Z) is fixed by the rule '
+    'aa-value-form-not-allowed.';
+
+final Rule _time00AsEnd = _issueRule(
+  AaIssueKind.time00AsEnd,
+  severity: Severity.error,
+  versions: SpecVersion.only3,
+  specAnchor: 'time',
+  fixDescription: _time00AsEndFix,
+  description: '00:00Z is allowed only as a start time.',
+  explanation: '00:00Z means the start of the day. It can only be a start '
+      'time. To end at midnight UTC, write 24:00Z of the day before. In an '
+      'interval, write 2026-07-04T24:00Z, not 2026-07-05T00:00Z. In a '
+      'weekday command, write 22:00Z/24:00Z, not 22:00Z/00:00Z.\n'
+      '\n'
+      'Version 2.1 of the specification allows 00:00Z as an end time. For '
+      'version 2.1 files, the rule aa-time-00-as-end-v21 reports it as a '
+      'warning.',
+  correctExample: 'AA 2026-07-04T18:00Z/2026-07-04T24:00Z\n'
+      'AA FRI 22:00Z/24:00Z',
+  incorrectExample: 'AA 2026-07-04T18:00Z/2026-07-05T00:00Z\n'
+      'AA FRI 22:00Z/00:00Z',
+);
+
+final Rule _time00AsEndV21 = _issueRule(
+  AaIssueKind.time00AsEnd,
+  id: 'aa-time-00-as-end-v21',
+  severity: Severity.warning,
+  versions: SpecVersion.only21,
+  specAnchor: 'time',
+  fixDescription: _time00AsEndFix,
+  description: 'In version 2.1, 00:00Z should not be used as an end time.',
+  explanation: 'Version 2.1 of the specification allows 00:00Z as an end '
+      'time. Version 3.0 does not allow it. To end at midnight UTC, write '
+      '24:00Z of the day before: 2026-07-04T24:00Z, not '
+      '2026-07-05T00:00Z. Both versions allow 24:00Z as an end time, and the '
+      'meaning is the same.\n'
+      '\n'
+      'For version 3.0 files, the rule aa-time-00-as-end reports 00:00Z as '
+      'an end time as an error.',
+  correctExample: '*VERSION: 2.1\n'
+      '...\n'
+      'AA 2026-07-04T18:00Z/2026-07-04T24:00Z',
+  incorrectExample: '*VERSION: 2.1\n'
+      '...\n'
+      'AA 2026-07-04T18:00Z/2026-07-05T00:00Z',
+);
+
 const String _allowedValueForms = 'The specification allows only these '
     'forms of dates and times:\n'
     '\n'
@@ -653,7 +707,7 @@ final Rule _intervalsAdjacent = Rule(
         if (first.aa.startIsNone && second.aa.endIsNone) continue;
         final merged =
             '${first.aa.startIsNone ? 'NONE' : formatInstant(first.start)}/'
-            '${second.aa.endIsNone ? 'NONE' : formatInstant(second.end)}';
+            '${second.aa.endIsNone ? 'NONE' : formatEndInstant(second.end)}';
         ctx.reportCommand(
             b.command,
             'This interval and the interval on line ${x.command.line} '
@@ -1716,8 +1770,9 @@ String _duplicateKey(AaCommand aa) {
         return 'I $start $end';
       case AaWeekdayCommand():
         final days = (aa.weekdays.toList()..sort()).join(',');
-        return 'W $days ${aa.startTime} ${aa.endTime} ${aa.fromDate} '
-            '${aa.toDate}';
+        // An end at 00:00Z has the same meaning as an end at 24:00Z.
+        final end = aa.endTime?.ms == 0 ? '24:00Z' : '${aa.endTime}';
+        return 'W $days ${aa.startTime} $end ${aa.fromDate} ${aa.toDate}';
       case AaExceptCommand(:final fromDate, :final toDate):
         return 'E $fromDate $toDate';
       case AaUnknownCommand():

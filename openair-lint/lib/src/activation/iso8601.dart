@@ -455,7 +455,7 @@ IsoParse<int> parseIsoDateTime(String text, int base, List<AaIssue> issues,
           base,
           text.length,
           '"$text" has no time of day. An interval needs a date and a time, '
-          'for example ${text}T00:00Z.'));
+          'for example ${text}T${isEnd ? '24' : '00'}:00Z.'));
     } else {
       issues.add(AaIssue(
           AaIssueKind.invalidTime,
@@ -495,7 +495,7 @@ IsoParse<int> parseIsoDateTime(String text, int base, List<AaIssue> issues,
         text.length,
         '"$text" mixes the basic format and the extended format. Use the '
         'same format for the date and the time, for example '
-        '${formatInstant(date.value!.startInstant + time.value!)}.'));
+        '${(isEnd ? formatEndInstant : formatInstant)(date.value!.startInstant + time.value!)}.'));
     return const IsoParse(null);
   }
   final notes = [
@@ -579,7 +579,7 @@ IsoParse<int>? parseShortEndDateTime(
         text.length,
         '"$text" mixes the basic format and the extended format. Use the '
         'same format for the date and the time, for example '
-        '${formatInstant(value)}.'));
+        '${formatEndInstant(value)}.'));
     return const IsoParse(null);
   }
   return IsoParse(value,

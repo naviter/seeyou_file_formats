@@ -442,6 +442,18 @@ class _AaParser {
         replacement: note.contains('fraction') ? null : correctValue);
   }
 
+  /// Reports `00:00Z` as an end time. [part] is the end as written.
+  /// [correct] is the same end with `24:00Z` of the day before. There is an
+  /// automatic fix only if the end uses an allowed form ([formNote] is
+  /// null). Else the fix of [_formNotAllowed] writes [correct].
+  void _time00AsEnd(TextPart part, String? formNote, String correct) {
+    final fix = 'To end at midnight, write "$correct".';
+    _issue(AaIssueKind.time00AsEnd, part.offset, part.text.length,
+        '00:00Z is allowed only as a start time. $fix',
+        v21Message: 'Version 3.0 does not allow 00:00Z as an end time. $fix',
+        replacement: formNote == null ? correct : null);
+  }
+
   /// Reports an interval in an ISO 8601 form other than
   /// StartDateTime/EndDateTime. [what] says what is wrong, [form] names the
   /// form. If [start] and [end] are known, the message shows the interval
@@ -451,7 +463,7 @@ class _AaParser {
     final known = start != null && end != null && end > start;
     final fix = start != null && end != null && end > start
         ? 'Write the interval as StartDateTime/EndDateTime: '
-            '"${formatInstant(start)}/${formatInstant(end)}".'
+            '"${formatInstant(start)}/${formatEndInstant(end)}".'
         : 'Write the interval as StartDateTime/EndDateTime, for example '
             '2026-07-04T08:00Z/2026-07-04T16:00Z.';
     _issue(AaIssueKind.intervalFormNotAllowed, whole.offset, whole.text.length,
@@ -460,7 +472,7 @@ class _AaParser {
         // formatInstant writes whole seconds. An interval with parts of a
         // second gets no automatic fix.
         replacement: known && start % 1000 == 0 && end % 1000 == 0
-            ? '${formatInstant(start)}/${formatInstant(end)}'
+            ? '${formatInstant(start)}/${formatEndInstant(end)}'
             : null);
   }
 
@@ -573,8 +585,8 @@ class _AaParser {
       final (from, to) = (dates[0], dates[1]);
       final known = from != null && to != null && !(to < from);
       final interval = known
-          ? '${from}T00:00Z/${to.addDays(1)}T00:00Z'
-          : '2026-07-04T00:00Z/2026-07-05T00:00Z';
+          ? '${from}T00:00Z/${to}T24:00Z'
+          : '2026-07-04T00:00Z/2026-07-05T24:00Z';
       final weekday = known
           ? '00:00Z/24:00Z $from/$to'
           : '00:00Z/24:00Z 2026-07-04/2026-07-05';
@@ -711,7 +723,19 @@ class _AaParser {
         if (end == null) ok = false;
         if (end != null) {
           _formNotAllowed(
-              right, r.formNote, allowedDateTimeForms, formatInstant(end));
+              right, r.formNote, allowedDateTimeForms, formatEndInstant(end));
+          // Midnight, written as 00:00Z (not as 24:00Z of the day before).
+          final timeText =
+              right.text.substring(right.text.indexOf(RegExp('[Tt]')) + 1);
+          final endDate = CivilDate.fromInstant(end);
+          if (end == endDate.startInstant && !timeText.startsWith('24')) {
+            _time00AsEnd(
+                right,
+                r.formNote,
+                r.formNote == null
+                    ? '${endDate.addDays(-1)}T24${timeText.substring(2)}'
+                    : formatEndInstant(end));
+          }
         }
       case _Shape.duration:
         final r = parseIsoDuration(right.text, right.offset, issues);
@@ -799,7 +823,7 @@ class _AaParser {
             AaIssueKind.intervalEndBeforeStart,
             whole.offset,
             whole.text.length,
-            'The end ${formatInstant(end)} is before the start '
+            'The end ${formatEndInstant(end)} is before the start '
             '${formatInstant(start)}.');
       } else if (end == start) {
         _issue(
@@ -1096,8 +1120,15 @@ class _AaParser {
       case _Shape.unknown:
         final r = parseIsoTime(part.text, part.offset, issues, isEnd: isEnd);
         if (r.value == null) return null;
-        _formNotAllowed(
-            part, r.formNote, allowedTimeForms, formatTimeOfDay(r.value!));
+        // 00:00Z as an end time is written as 24:00Z. The meaning is the
+        // same: an end at 00:00Z is always on the next day.
+        final midnightEnd = isEnd && r.value == 0;
+        final correct = formatTimeOfDay(midnightEnd ? msPerDay : r.value!);
+        _formNotAllowed(part, r.formNote, allowedTimeForms, correct);
+        if (midnightEnd) {
+          _time00AsEnd(part, r.formNote,
+              r.formNote == null ? '24${part.text.substring(2)}' : correct);
+        }
         return AaTimeOfDay.fixed(r.value!);
     }
   }

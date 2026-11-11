@@ -226,6 +226,9 @@ void main() {
       'AA 09:00Z/11:30Z',
       'AA 09:00Z/24:00Z',
       'AA FRI 22:00Z/02:00Z',
+      // "To end at midnight UTC, write 24:00Z of the day before."
+      'AA 2026-07-04T18:00Z/2026-07-04T24:00Z',
+      'AA FRI 22:00Z/24:00Z',
       'AA SR/SS',
       'AA 07:00Z/SS',
       'AA SS/SR',
@@ -328,6 +331,10 @@ void main() {
       // "24:00Z is allowed as an end time. It is not allowed as a start
       // time."
       'AA 24:00Z/02:00Z': 'aa-time-24-as-start',
+      // "00:00Z is allowed as a start time. It is not allowed as an end
+      // time." and "write FRI 22:00Z/24:00Z, not FRI 22:00Z/00:00Z".
+      'AA 2026-07-04T18:00Z/2026-07-05T00:00Z': 'aa-time-00-as-end',
+      'AA FRI 22:00Z/00:00Z': 'aa-time-00-as-end',
       // V: "A value from an earlier airspace is not used."
       'AC D|AN First|AH 4500 FT AMSL|AL GND|V X=46:00:00N 014:00:00E|DC 2|'
               'AC D|AN Second|AH 4500 FT AMSL|AL GND|DC 2':
@@ -376,7 +383,7 @@ void main() {
       'AA 2023-12-16T12:00Z/2023-12-16T13:00Z|'
           'AA 2024-12-17T00:00Z/2024-12-17T24:00Z',
       'AA 2024-12-17T00:00Z/NONE',
-      'AA NONE/2024-12-18T00:00Z',
+      'AA NONE/2024-12-17T24:00Z',
       'AA NONE',
     ];
     for (final example in valid) {
@@ -401,6 +408,9 @@ void main() {
       // only some forms, so the other forms are warnings in version 2.1.
       'AA 2026-07-04T08:00Z/PT8H': 'aa-interval-form-not-allowed-v21',
       'AA 20260704T0800Z/20260704T1600Z': 'aa-value-form-not-allowed-v21',
+      // The example of version 2.1 ends at 00:00Z. Version 3.0 allows only
+      // 24:00Z of the day before, so this is a warning in version 2.1.
+      'AA NONE/2024-12-18T00:00Z': 'aa-time-00-as-end-v21',
       // Version 2.1 only says that the DB arc is over-defined.
       'DP 46:00:00N 014:00:00E|V X=46:00:00N 014:00:00E|'
           'DB 46:10:00N 014:00:00E, 46:00:00N 014:16:00E|'

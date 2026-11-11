@@ -90,7 +90,7 @@ Covered:
 - **Activation times (`AA`):** only the allowed ISO 8601 forms (also times
   with seconds), intervals, `NONE` for an open start or end, `AA NONE`
   (allowed only in version 2.1), weekday commands, `AA EXCEPT`, 24:00Z as
-  an end time only, and sun events. The specification says that the weekday
+  an end time only, 00:00Z as a start time only, and sun events. The specification says that the weekday
   and the date of a sun window mean the local day at the airspace. The sun
   event cases use local solar time for the local day. They test the polar
   rule of the specification for `SR/SS` and `SS/SR`, and the night from

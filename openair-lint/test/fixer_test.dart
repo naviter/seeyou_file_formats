@@ -344,6 +344,48 @@ void main() {
         SpecVersion.v3_0
       ),
       (
+        'aa-value-form-not-allowed',
+        'AA 2026-07-05T08:00Z/20260706T0000Z',
+        'AA 2026-07-05T08:00Z/2026-07-05T24:00Z',
+        SpecVersion.v3_0
+      ),
+      (
+        'aa-interval-form-not-allowed',
+        'AA 2026-07-05T22:00Z/PT2H',
+        'AA 2026-07-05T22:00Z/2026-07-05T24:00Z',
+        SpecVersion.v3_0
+      ),
+      (
+        'aa-time-00-as-end',
+        'AA 2026-07-05T18:00Z/2026-07-06T00:00Z',
+        'AA 2026-07-05T18:00Z/2026-07-05T24:00Z',
+        SpecVersion.v3_0
+      ),
+      (
+        'aa-time-00-as-end',
+        'AA NONE/2026-03-01T00:00:00Z',
+        'AA NONE/2026-02-28T24:00:00Z',
+        SpecVersion.v3_0
+      ),
+      (
+        'aa-time-00-as-end',
+        'AA FRI 22:00Z/00:00Z',
+        'AA FRI 22:00Z/24:00Z',
+        SpecVersion.v3_0
+      ),
+      (
+        'aa-time-00-as-end',
+        'AA 00:00:00Z/00:00:00Z',
+        'AA 00:00:00Z/24:00:00Z',
+        SpecVersion.v3_0
+      ),
+      (
+        'aa-time-00-as-end-v21',
+        'AA 2026-07-05T18:00Z/2026-07-06T00:00Z',
+        'AA 2026-07-05T18:00Z/2026-07-05T24:00Z',
+        SpecVersion.v2_1
+      ),
+      (
         'aa-time-zone-not-z',
         'AA 2026-09-14T06:00UTC/2026-09-18T14:00Z',
         'AA 2026-09-14T06:00Z/2026-09-18T14:00Z',
@@ -441,6 +483,8 @@ void main() {
         'AA 2026-07-05T08:00:00.5Z/NONE',
         SpecVersion.v3_0
       ),
+      // The form is not allowed: aa-value-form-not-allowed fixes it.
+      ('aa-time-00-as-end', 'AA MON 22:00Z/0000Z', SpecVersion.v3_0),
       ('aa-time-missing-z', 'AA MON 07:00/15:00', SpecVersion.v3_0),
       ('aa-time-zone-not-z', 'AA MON 08:00+01:00/15:00Z', SpecVersion.v3_0),
       ('aa-time-zone-not-z', 'AA MON 08:00LT/15:00Z', SpecVersion.v3_0),

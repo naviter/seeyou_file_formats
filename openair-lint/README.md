@@ -262,6 +262,7 @@ These problems are fixed:
 | `aa-invalid-syntax` | `-` in place of other dashes, no spaces around `/`, and `07:00Z/15:00Z` in place of `07:00Z-15:00Z`. |
 | `aa-none-none` | `AA NONE` in place of `AA NONE/NONE`. |
 | `aa-time-zone-not-z` | `Z` in place of `UTC`, `UT`, `ZULU`, `GMT` or an offset of 0 such as `+00:00`. Not for other offsets or local time. |
+| `aa-time-00-as-end` (and `-v21`) | `2026-07-04T24:00Z` in place of `2026-07-05T00:00Z` as an end, and `22:00Z/24:00Z` in place of `22:00Z/00:00Z`. |
 | `aa-value-form-not-allowed` (and `-v21`) | `2026-07-04T08:00Z` in place of `20260704T0800Z` (not for decimal fractions). |
 | `aa-interval-form-not-allowed` (and `-v21`) | `2026-07-04T08:00Z/2026-07-04T16:00Z` in place of `2026-07-04T08:00Z/PT8H`. |
 | `aa-weekday-list-has-spaces` | `MON,WED,FRI` in place of `MON, WED, FRI` (not `MON FRI`, which can mean `MON,FRI` or `MON-FRI`). |

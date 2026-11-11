@@ -366,6 +366,79 @@ void main() {
     });
   });
 
+  group('aa-time-00-as-end', () {
+    test('fires for 00:00Z as an end', () {
+      expect(
+          fires('aa-time-00-as-end', ['2026-07-04T18:00Z/2026-07-05T00:00Z']),
+          [5]);
+      expect(fires('aa-time-00-as-end', ['NONE/2026-07-05T00:00:00Z']), [5]);
+      expect(fires('aa-time-00-as-end', ['FRI 22:00Z/00:00Z']), [5]);
+      expect(fires('aa-time-00-as-end', ['00:00Z/00:00Z']), [5]);
+      expect(fires('aa-time-00-as-end', ['SS/00:00Z']), [5]);
+      // The form is not allowed, but the value is 00:00Z.
+      expect(fires('aa-time-00-as-end', ['MON 22:00Z/0000Z']), [5]);
+    });
+    test('does not fire for 24:00Z as an end or 00:00Z as a start', () {
+      expect(
+          fires('aa-time-00-as-end', [
+            '2026-07-04T18:00Z/2026-07-04T24:00Z',
+            '2026-07-05T00:00Z/2026-07-05T06:00Z',
+            '2026-07-06T00:00Z/NONE',
+            'NONE/2026-07-03T24:00:00Z',
+            'FRI 22:00Z/24:00Z',
+            '00:00Z/06:00Z',
+            'SAT 00:00:00Z/24:00:00Z',
+          ]),
+          isEmpty);
+    });
+    test('the message gives the end as 24:00Z of the day before', () {
+      expect(
+          messages('aa-time-00-as-end', ['2026-03-01T18:00Z/2026-03-02T00:00Z'])
+              .single,
+          '00:00Z is allowed only as a start time. To end at midnight, write '
+          '"2026-03-01T24:00Z".');
+      expect(messages('aa-time-00-as-end', ['FRI 22:00Z/00:00:00Z']).single,
+          contains('"24:00:00Z"'));
+      expect(messages('aa-time-00-as-end', ['MON 22:00Z/0000Z']).single,
+          contains('"24:00Z"'));
+    });
+    test('is an error only in version 3.0', () {
+      expect(findRule('aa-time-00-as-end')!.severity, Severity.error);
+      expect(findRule('aa-time-00-as-end-v21')!.severity, Severity.warning);
+      expect(
+          fires('aa-time-00-as-end', ['2026-07-04T18:00Z/2026-07-05T00:00Z'],
+              version: '2.1'),
+          isEmpty);
+    });
+    test('the value is still known, so other rules use the command', () {
+      final c = parseAa('2026-07-04T18:00Z/2026-07-05T00:00Z');
+      expect(c.isUsable, isTrue);
+      expect(
+          fires('aa-intervals-overlap', [
+            '2026-07-04T18:00Z/2026-07-05T00:00Z',
+            '2026-07-04T20:00Z/2026-07-04T22:00Z',
+          ]),
+          [6]);
+    });
+    test('22:00Z/00:00Z and 22:00Z/24:00Z are duplicates', () {
+      expect(fires('aa-duplicate', ['FRI 22:00Z/00:00Z', 'FRI 22:00Z/24:00Z']),
+          [6]);
+    });
+  });
+
+  group('aa-time-00-as-end-v21', () {
+    test('is a warning in version 2.1 that names version 3.0', () {
+      final d = lintRule('aa-time-00-as-end-v21',
+              aa(['NONE/2024-12-18T00:00Z'], version: '2.1'))
+          .single;
+      expect(d.severity, Severity.warning);
+      expect(
+          d.message,
+          'Version 3.0 does not allow 00:00Z as an end time. To end at '
+          'midnight, write "2024-12-17T24:00Z".');
+    });
+  });
+
   group('aa-value-form-not-allowed', () {
     test('fires for ISO 8601 forms that are not allowed', () {
       for (final v in [
@@ -1323,14 +1396,14 @@ void main() {
       expect(forms.first.message, contains('"2026-07-04"'));
       final syntax = lintRule('aa-invalid-syntax', text).single.message;
       // The examples use the dates of the command.
-      expect(syntax, contains('2026-07-04T00:00Z/2026-07-06T00:00Z'));
+      expect(syntax, contains('2026-07-04T00:00Z/2026-07-05T24:00Z'));
       expect(syntax, contains('00:00Z/24:00Z 2026-07-04/2026-07-05'));
     });
     test('plain dates get only aa-invalid-syntax', () {
       final text = aa(['2026-07-04/2026-07-05']);
       expect(lintRule('aa-value-form-not-allowed', text), isEmpty);
       expect(lintRule('aa-invalid-syntax', text).single.message,
-          contains('2026-07-04T00:00Z/2026-07-06T00:00Z'));
+          contains('2026-07-04T00:00Z/2026-07-05T24:00Z'));
     });
   });
 
@@ -1616,7 +1689,7 @@ void main() {
           '2024-12-17T00:00Z/2024-12-17T24:00Z   * Active for the entire day',
         ],
         ['2024-12-17T00:00Z/NONE'],
-        ['NONE/2024-12-18T00:00Z'],
+        ['NONE/2024-12-17T24:00Z'],
         ['MON 09:00Z/11:30Z'],
         ['MON-FRI 07:00Z/15:00Z'],
         ['SAT,SUN 08:00Z/18:00Z'],
