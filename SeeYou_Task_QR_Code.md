@@ -18,7 +18,7 @@ The Naviter extension allows all sports and all task types to be supported by th
 ## Changes in 2.3.0
 
 - The zipped QR code (`XCTSKZ:`), see [Plain and zipped QR codes](#plain-and-zipped-qr-codes). SeeYou Navigator writes the zipped code by default.
-- The Naviter extension moved from `"o"` to XCTrack's extension lists `"x"`, with the id `"NAV"`. Readers should still read `"o"` from older codes.
+- The Naviter extension moved from `"o"` to XCTrack's extension lists `"x"`, with the id `"NAV"`. Readers should still read `"o"`: older codes have it, and so does the code for older apps (see [Plain and zipped QR codes](#plain-and-zipped-qr-codes)).
 - Naviter task options version `3`, with the XC flag `xc`.
 - Turnpoint sector shape `s` and direction type `dt`.
 - XCTrack's goal finish altitude `g.fa`, written besides the Naviter finish altitude.
@@ -36,6 +36,8 @@ XCTSKZ:eNpt0ltvgjAUAOC/spxnQgqIGJ6sbmEmXpJp9uA0...
 ```
 
 The zipped code is about a third shorter, so the QR code is smaller and easier to scan. XCTrack prefers it, and readers should accept both forms. A reader should also accept base64url and missing padding, as some writers produce them.
+
+SeeYou Navigator writes the zipped code with the Naviter extension in `"x"`. For apps that can't read it (Navigator, Oudie and Omni versions before this specification, and apps without zipped codes), it offers a "code for older apps": the plain code with the Naviter extension in `"o"` as before version 2.3.0 (see [Extensions](#extensions-x)). It never writes both `"o"` and `"x"`, to keep the QR code small.
 
 The JSON is usually the short format 2 described below. Readers should also accept XCTrack's long format 1 (`"version": 1`, the `.xctsk` file format) in either form.
 
