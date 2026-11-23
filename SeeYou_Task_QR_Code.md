@@ -21,7 +21,8 @@ The Naviter extension allows all sports and all task types to be supported by th
 - The Naviter extension moved from `"o"` to XCTrack's extension lists `"x"`, with the id `"NAV"`. Readers should still read `"o"` from older codes.
 - Naviter task options version `3`, with the XC flag `xc`.
 - Turnpoint sector shape `s` and direction type `dt`.
-- XCTrack's goal finish altitude `g.fa`.
+- XCTrack's goal finish altitude `g.fa`, written besides the Naviter finish altitude.
+- A QR code may hold XCTrack's long format 1.
 
 ## Plain and zipped QR codes
 
@@ -35,6 +36,8 @@ XCTSKZ:eNpt0ltvgjAUAOC/spxnQgqIGJ6sbmEmXpJp9uA0...
 ```
 
 The zipped code is about a third shorter, so the QR code is smaller and easier to scan. XCTrack prefers it, and readers should accept both forms. A reader should also accept base64url and missing padding, as some writers produce them.
+
+The JSON is usually the short format 2 described below. Readers should also accept XCTrack's long format 1 (`"version": 1`, the `.xctsk` file format) in either form.
 
 ## Conceptual Structure
 
@@ -193,6 +196,8 @@ Defines the shape of the last task turnpoint sector. Possible values are `1` (Li
 ##### Finish Altitude `fa`
 
 XCTrack's elevated goal: the altitude in meters above the last turnpoint's altitude (from its `z`). The Naviter finish altitude (MSL, below) is used before it when both are given.
+
+A writer that has a Naviter finish altitude above the last turnpoint's altitude writes it here as well, as the difference, so XCTrack has it. Example: finish altitude `1350` MSL and the last turnpoint at `300` give `"fa": 1050`.
 
 ### Naviter task options (in `x`)
 
