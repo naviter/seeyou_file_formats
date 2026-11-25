@@ -2,20 +2,20 @@
 title: SeeYou Task QR Code specification
 description: SeeYou Task QR Code specification file, Copyright © 2026, Naviter d.o.o. All Rights Reserved
 date: 2026-11-23
-version: 2.3.0
+version: 3.0.0
 header: ${title} - Naviter d.o.o.
 footer: Page ${pageNo} of ${pageCount}
 ---
 
 # SeeYou Task QR Code specification
 
-*Copyright © 2026-11-23, Naviter d.o.o. All Rights Reserved. Version 2.3.0*
+*Copyright © 2026-11-23, Naviter d.o.o. All Rights Reserved. Version 3.0.0*
 
 The Task QR Code format is used to share tasks between devices equipped with a QR Code scanner or a camera. This file format was originally developed by XCTrack for use in their software. This document follows the version 2 format of the [XCTrack specification](https://xctrack.org/Competition_Interfaces.html) and describes the Naviter extension used by SeeYou Navigator, Oudie N and Omni.
 
 The Naviter extension allows all sports and all task types to be supported by this specification. Not least, Hike and Fly for paragliding and Assigned Area Tasks for gliding are part of the extension. It uses XCTrack's extension mechanism (`"x"`), so tools that follow the XCTrack specification keep it.
 
-## Changes in 2.3.0
+## Changes in 3.0.0
 
 - The zipped QR code (`XCTSKZ:`), see [Plain and zipped QR codes](#plain-and-zipped-qr-codes). SeeYou Navigator writes the zipped code by default.
 - The Naviter extension moved from `"o"` to XCTrack's extension lists `"x"`, with the id `"NAV"`. Readers should still read `"o"`: older codes have it, and so does the code for older apps (see [Plain and zipped QR codes](#plain-and-zipped-qr-codes)).
@@ -37,7 +37,7 @@ XCTSKZ:eNpt0ltvgjAUAOC/spxnQgqIGJ6sbmEmXpJp9uA0...
 
 The zipped code is about a third shorter, so the QR code is smaller and easier to scan. XCTrack prefers it, and readers should accept both forms. A reader should also accept base64url and missing padding, as some writers produce them.
 
-SeeYou Navigator writes the zipped code with the Naviter extension in `"x"`. For apps that can't read it (Navigator, Oudie and Omni versions before this specification, and apps without zipped codes), it offers a "code for older apps": the plain code with the Naviter extension in `"o"` as before version 2.3.0 (see [Extensions](#extensions-x)). It never writes both `"o"` and `"x"`, to keep the QR code small.
+SeeYou Navigator writes the zipped code with the Naviter extension in `"x"`. For apps that can't read it (Navigator, Oudie and Omni versions before this specification, and apps without zipped codes), it offers a "code for older apps": the plain code with the Naviter extension in `"o"` as before version 3.0.0 (see [Extensions](#extensions-x)). It never writes both `"o"` and `"x"`, to keep the QR code small.
 
 The JSON is usually the short format 2 described below. Readers should also accept XCTrack's long format 1 (`"version": 1`, the `.xctsk` file format) in either form.
 
@@ -115,7 +115,7 @@ XCTrack's specification lets each maker add data in extension lists:
 
 A writer that uses only the Naviter extension writes it as the first and only entry, for example `"x":[{"id":"NAV","v":3,"tt":10800}]` on the task and `"x":[{"a1":45,"a12":157.7}]` on a turnpoint. A turnpoint without Naviter data has no `"x"`. A reader finds `"NAV"` by its id, so other makers' entries may come before it.
 
-Before version 2.3.0, the Naviter data was in `"o"` on the task and on each turnpoint (and `"na_o"` in version 1). Readers should still read it when the task has no `"NAV"` extension.
+Before version 3.0.0, the Naviter data was in `"o"` on the task and on each turnpoint (and `"na_o"` in version 1). Readers should still read it when the task has no `"NAV"` extension.
 
 ## Object and Property descriptions
 
